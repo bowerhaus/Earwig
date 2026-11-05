@@ -104,6 +104,7 @@ final class SpikeModel {
             if began { self?.stop(reason: "interruption") }
         }
         listener.onEvent = { [weak self] in self?.note($0) }
+        audio.onEvent = { [weak self] in self?.note($0) }
         listener.onWordsChanged = { [weak self] in self?.heardChanged($0) }
         NotificationCenter.default.addObserver(forName: AVSpeechSynthesizer.availableVoicesDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.loadVoices() }
@@ -402,8 +403,13 @@ extension SpikeModel {
     private func startPolling() {
         pollTask?.cancel()
         pollTask = Task { [weak self] in
+            var ticks = 0
             while !Task.isCancelled {
                 self?.poll()
+                ticks += 1
+                if ticks % 50 == 0, let self, self.listener.state == .listening {
+                    self.note(self.listener.healthLine)
+                }
                 try? await Task.sleep(for: .milliseconds(100))
             }
         }
@@ -421,7 +427,10 @@ extension SpikeModel {
     // MARK: - Log
 
     func note(_ message: String) {
-        log.append("\(Self.clock.string(from: Date())) \(message)")
+        let line = "\(Self.clock.string(from: Date())) \(message)"
+        log.append(line)
+        // Also to stdout, so `devicectl device process launch --console` shows it live.
+        print(line)
     }
 
     func clearLog() {

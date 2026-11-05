@@ -46,6 +46,16 @@ final class Listener {
     private(set) var words: [HeardWord] = []
     /// Set once if volatile results arrived without word time ranges.
     private(set) var volatileWithoutTimes = false
+    @ObservationIgnored private var volatileCount = 0
+    @ObservationIgnored private var finalCount = 0
+    @ObservationIgnored private var lastResultAt: TimeInterval?
+    @ObservationIgnored private var lastFastResults = true
+    @ObservationIgnored private var lastContextWords: [String]?
+    @ObservationIgnored private var restartedAt: TimeInterval?
+    /// Added to the analyser's times so words heard after a restart (whose timeline starts
+    /// again at zero) sort after the words before it.
+    @ObservationIgnored private var audioOffset: TimeInterval = 0
+    @ObservationIgnored private var carryOffset: TimeInterval = 0
 
     @ObservationIgnored var onWordsChanged: (([HeardWord]) -> Void)?
     @ObservationIgnored var onEvent: ((String) -> Void)?
@@ -80,6 +90,13 @@ final class Listener {
         state = .preparing
         words = []
         volatileWithoutTimes = false
+        volatileCount = 0
+        finalCount = 0
+        lastResultAt = nil
+        lastFastResults = fastResults
+        lastContextWords = contextWords
+        audioOffset = carryOffset
+        carryOffset = 0
         do {
             guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "en-GB")) else {
                 throw ListenerError.unsupportedLocale
@@ -116,6 +133,7 @@ final class Listener {
                     }
                 } catch {
                     self?.onEvent?("results ended with error: \(error.localizedDescription)")
+                    await self?.recover()
                 }
             }
             try audio.installMicTap { buffer, host in feeder.feed(buffer, hostTime: host) }
@@ -144,6 +162,35 @@ final class Listener {
         await tearDown()
         state = .idle
         onEvent?("listening stopped")
+    }
+
+    /// One line on whether audio is flowing and results are arriving, for the log.
+    var healthLine: String {
+        guard let feeder else { return "listener: \(state)" }
+        let fed = feeder.fed
+        let since = lastResultAt.map { String(format: "%.1f s ago", HostClock.now - $0) } ?? "never"
+        return String(format: "health: engine %@, fed %d buffers (%.1f s audio), results %d volatile / %d final, last %@, words %d",
+                      audio.isRunning ? "running" : "STOPPED", fed.buffers, fed.seconds, volatileCount, finalCount, since, words.count)
+    }
+
+    /// Restarts listening after the results stream failed, at most once every ten seconds.
+    private func recover() async {
+        guard state == .listening else { return }
+        if let restartedAt, HostClock.now - restartedAt < 10 {
+            onEvent?("not restarting again so soon; listening stopped")
+            await tearDown()
+            state = .failed("results ended; restarted too recently")
+            return
+        }
+        restartedAt = HostClock.now
+        let kept = words
+        carryOffset = (kept.last?.audioStart ?? audioOffset) + 1
+        await tearDown()
+        state = .idle
+        onEvent?("restarting listening")
+        await start(contextWords: lastContextWords, fastResults: lastFastResults)
+        words = kept + words
+        onWordsChanged?(words)
     }
 
     func clearWords() {
@@ -189,9 +236,12 @@ final class Listener {
 
     private func handle(_ result: SpeechTranscriber.Result, receivedAt: TimeInterval) {
         guard let feeder else { return }
-        let rangeStart = result.range.start.seconds
-        let rangeEnd = CMTimeRangeGetEnd(result.range).seconds
+        let offset = audioOffset
+        let rangeStart = result.range.start.seconds + offset
+        let rangeEnd = CMTimeRangeGetEnd(result.range).seconds + offset
         let isFinal = result.isFinal
+        lastResultAt = receivedAt
+        if isFinal { finalCount += 1 } else { volatileCount += 1 }
 
         struct Incoming {
             let text: String
@@ -205,7 +255,7 @@ final class Listener {
             let pieces = text.split(whereSeparator: \.isWhitespace).map(String.init)
             guard !pieces.isEmpty else { continue }
             if let timeRange = run.audioTimeRange {
-                for piece in pieces { incoming.append(Incoming(text: piece, start: timeRange.start.seconds, confidence: run.transcriptionConfidence)) }
+                for piece in pieces { incoming.append(Incoming(text: piece, start: timeRange.start.seconds + offset, confidence: run.transcriptionConfidence)) }
             } else {
                 untimed += pieces
             }
@@ -234,7 +284,7 @@ final class Listener {
             kept.append(HeardWord(
                 text: item.text,
                 audioStart: item.start,
-                spokenAt: feeder.hostTime(forAnalyzerTime: item.start),
+                spokenAt: feeder.hostTime(forAnalyzerTime: item.start - offset),
                 firstHeardAt: sameWord ? earlier!.firstHeardAt : receivedAt,
                 isFinal: isFinal,
                 finalisedAt: isFinal ? ((sameWord ? earlier!.finalisedAt : nil) ?? receivedAt) : nil,
@@ -280,6 +330,7 @@ private final class MicFeeder: @unchecked Sendable {
     private var framesFed: AVAudioFramePosition = 0
     private var anchors: [(analyzer: TimeInterval, host: TimeInterval)] = []
     private var currentLevel: Float = 0
+    private var buffersFed = 0
     private var finished = false
 
     init(analyzerFormat: AVAudioFormat, continuation: AsyncStream<AnalyzerInput>.Continuation) {
@@ -289,23 +340,30 @@ private final class MicFeeder: @unchecked Sendable {
 
     var level: Float { lock.withLock { currentLevel } }
 
+    /// Buffers and seconds of audio fed to the analyser so far.
+    var fed: (buffers: Int, seconds: TimeInterval) {
+        lock.withLock { (buffersFed, Double(framesFed) / analyzerFormat.sampleRate) }
+    }
+
     func feed(_ buffer: AVAudioPCMBuffer, hostTime: TimeInterval) {
         let level = Self.rms(buffer)
         guard let output = convert(buffer) else {
             lock.withLock { currentLevel = level }
             return
         }
-        let start: TimeInterval = lock.withLock {
+        let isFinished: Bool = lock.withLock {
             currentLevel = level
-            let start = Double(framesFed) / analyzerFormat.sampleRate
-            anchors.append((start, hostTime))
+            anchors.append((Double(framesFed) / analyzerFormat.sampleRate, hostTime))
+            buffersFed += 1
             if anchors.count > 4000 { anchors.removeFirst(anchors.count - 4000) }
             framesFed += AVAudioFramePosition(output.frameLength)
-            return start
+            return finished
         }
-        guard !lock.withLock({ finished }) else { return }
-        let time = CMTime(seconds: start, preferredTimescale: CMTimeScale(analyzerFormat.sampleRate))
-        continuation.yield(AnalyzerInput(buffer: output, bufferStartTime: time))
+        guard !isFinished else { return }
+        // No timestamp: the analyser then takes the audio as contiguous, which it is, and
+        // its timeline matches `framesFed`. Stamping each buffer risked "audio input
+        // timestamp overlaps or precedes prior audio input", which ends the results.
+        continuation.yield(AnalyzerInput(buffer: output))
     }
 
     func finish() {

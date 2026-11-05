@@ -9,6 +9,11 @@ final class AudioEngineHost {
     private let player = AVAudioPlayerNode()
     private let timePitch = AVAudioUnitTimePitch()
     private var micTapInstalled = false
+    private var micBlock: (@Sendable (AVAudioPCMBuffer, TimeInterval) -> Void)?
+    private var configurationObserver: NSObjectProtocol?
+
+    /// Called with a one-line description of engine events (configuration changes, restarts).
+    var onEvent: ((String) -> Void)?
     /// Bumped on every `play` and `stopPhrase`, so a stale completion is ignored.
     private var playToken = 0
 
@@ -17,6 +22,25 @@ final class AudioEngineHost {
         engine.attach(timePitch)
         engine.connect(player, to: timePitch, format: VoiceRenderer.outputFormat)
         engine.connect(timePitch, to: engine.mainMixerNode, format: VoiceRenderer.outputFormat)
+        // The engine stops itself when the hardware configuration changes (a route change,
+        // a sample-rate change). Restart it and the mic tap, or listening goes silent.
+        configurationObserver = NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.configurationChanged() }
+        }
+    }
+
+    private func configurationChanged() {
+        let wasRunning = engine.isRunning
+        guard let micBlock, micTapInstalled else {
+            onEvent?("engine configuration changed (running \(wasRunning)); no mic tap to restore")
+            return
+        }
+        do {
+            try installMicTap(micBlock)
+            onEvent?("engine configuration changed (running \(wasRunning)); restarted with mic \(Int(micFormat.sampleRate)) Hz")
+        } catch {
+            onEvent?("engine configuration changed; restart failed: \(error.localizedDescription)")
+        }
     }
 
     var isRunning: Bool { engine.isRunning }
@@ -87,6 +111,7 @@ final class AudioEngineHost {
             block(buffer, host)
         }
         micTapInstalled = true
+        micBlock = block
         try start()
     }
 
@@ -94,6 +119,7 @@ final class AudioEngineHost {
         guard micTapInstalled else { return }
         engine.inputNode.removeTap(onBus: 0)
         micTapInstalled = false
+        micBlock = nil
     }
 }
 

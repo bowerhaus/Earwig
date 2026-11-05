@@ -4,7 +4,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 ## State (2026-11-05)
 
-- **Plan 002 (skeleton, models, parser) is drafted** in `plans/002-skeleton-models-parser.md`, on branch `skeleton-models-parser` (from `main` at `6d2b848`). Reviewed by Andy; issue [#3](https://github.com/bowerhaus/Earwig/issues/3). No code yet. The branch is not pushed yet, so the issue's plan and branch links work once it is.
+- **Plan 002 (skeleton, models, parser) is drafted** in `plans/002-skeleton-models-parser.md`, on branch `skeleton-models-parser` (from `main` at `6d2b848`). Reviewed by Andy; issue [#3](https://github.com/bowerhaus/Earwig/issues/3). No code yet. The branch is pushed to origin.
 - Plan 001 is complete (PASS, PR #2, issue #1 closed; PRD v0.3). The project builds clean, SwiftLint is clean, 17 tests pass.
 - The plan follows Cutaway's own parser (`../Cutaway/pipeline/script.py`, `../Cutaway/docs/file-contracts.md`, "The script"), leniently.
 

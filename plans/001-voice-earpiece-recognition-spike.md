@@ -81,4 +81,17 @@ Whether the same holds for Personal Voice and the downloaded voices on the phone
 
 ### On the device
 
-_Not yet tested._
+Tested on Andy's iPhone 14 Pro (iOS 27.0.1) with his SK18 in-ear earpiece, 2026-11-05, on a made-up two-step script (the harbour walk, about 230 spoken words). Personal Voice is not yet set up on the phone, so it is untested.
+
+| Voice | Quality | Verdict |
+|-------|---------|---------|
+| Personal Voice | Personal | Not tested: none set up yet |
+| Jamie (en-GB) | Premium | Okay; not fantastic |
+| Stephanie (en-GB) | Enhanced | Okay; not fantastic. Andy's pick |
+
+| Criterion | Result |
+|-----------|--------|
+| Render speed | RTF 0.03 for one of the two voices (which one to confirm) |
+| Word timings | To confirm from the log |
+| Speed change | Pass: 0.85x and 1.2x through the time-pitch node work and sound okay |
+| Earpiece route | At the start of a take, with the mic open: output SK18 (A2DP), input iPhone Microphone (built-in mic). The ten-minute run is still to come |

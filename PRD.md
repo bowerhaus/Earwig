@@ -1,6 +1,6 @@
 # Earwig - Product Requirements Document (PRD)
 
-**Status:** Draft v0.2, 2026-11-05. Changes by version are in the Document History at the end.
+**Status:** Draft v0.3, 2026-11-05. Changes by version are in the Document History at the end.
 **Name:** Earwig (decided 2026-11-05: UK slang for listening in). Bundle identifier `com.bowerhaus.Earwig`.
 
 ## Executive Summary
@@ -101,7 +101,7 @@ None at run time. Development needs Xcode 27 or later, `xcodegen`, `swiftlint`.
 | **Direction** | Text in a step that is not spoken by the presenter: a step's title and `Shows:` field, anything in brackets inside a line, a `Footage:` or `Open:` field. Directions are never matched against what the presenter says. Some are read as cues (section 4.2). |
 | **Phrase** | The unit of playback and gating: a line split at sentence ends and at clause breaks (commas, dashes, semicolons) so no phrase is longer than about twelve words. The voice can only wait at a phrase boundary. |
 | **Rendering** | A phrase's audio in one voice, with the start time of every word in it. All of a script's phrases are rendered before a take, and cached by script hash and voice. |
-| **Lead** | How far ahead of the presenter the voice runs, set in words (default from the spike, section 11), with the equivalent in seconds shown. |
+| **Lead** | How far ahead of the presenter the voice runs, set in words (default 5, found in plan 001), with the equivalent in seconds shown. |
 | **Position** | Two positions in the script, both as a word index: the voice's (where playback is) and the presenter's (the last script word confidently heard). The engine's job is to keep the difference near the lead. |
 | **Cue voice** | A second, clearly different voice (an Apple voice, never the presenter's) that reads directions and slates so the presenter knows at once that it is not a line. |
 | **Take** | One attempt at a step, numbered from 1 for that step within the script. The slate says it. |
@@ -130,11 +130,11 @@ Priorities: P0 is v1, P1 should follow soon, P2 is nice to have.
 
 | Feature | Priority | Notes |
 |---|---|---|
-| Render every phrase of a script before a take, with word timings | P0 | `AVSpeechSynthesizer.write(_:toBufferCallback:)` for the audio, the `willSpeakRangeOfSpeechString` delegate for the word boundaries. A progress bar on first use; cached afterwards by script hash and voice. |
-| Presenter's voice: Apple Personal Voice | P0 | Trained once by the presenter in Settings, Accessibility, Personal Voice. Earwig requests authorisation and lists the Personal Voices available. The first plan is a spike to judge its quality and rendering speed on the iPhone 14 Pro (section 11). |
-| Fallback: Apple downloaded voices | P0 | Enhanced or Premium voices the presenter has downloaded (Jamie Premium and Stephanie Enhanced were judged good in PhysiMate). Compact default voices are listed but marked poor. |
+| Render every phrase of a script before a take, with word timings | P0 | `AVSpeechSynthesizer.write(_:toBufferCallback:toMarkerCallback:)` for the audio; the word boundaries come from word markers, by the marker callback or the `willSpeakMarker` delegate (whichever the voice sends), with `byteSampleOffset` in bytes. The `willSpeakRangeOfSpeechString` delegate is no use for timing during `write`, which runs far ahead of real time (plan 001). The downloaded voices render about 40 times faster than real time on the iPhone 14 Pro, so a progress bar is only needed for long scripts; cached afterwards by script hash and voice. |
+| Presenter's voice: Apple Personal Voice | P0 | Trained once by the presenter in Settings, Accessibility, Personal Voice, with Allow Apps to Request to Use on. Earwig requests authorisation in code (there is no usage-description key) and lists the Personal Voices available. Not yet judged: the author had not made one at plan 001; it is to be tried against Stephanie for quality, render speed and word markers once made (section 15). |
+| Default voice until Personal Voice is judged: Apple downloaded voices | P0 | Stephanie (Enhanced, en-GB) is the default, the author's pick in plan 001 ("okay, not fantastic"); Jamie (Premium, en-GB) is the alternative. Both rendered every word with timings. Compact default voices are listed but marked poor. |
 | Cue voice for slates and directions | P0 | An Apple voice chosen in Settings, by default the best downloaded voice that is not the presenter's. Directions read as cues: at the start of a step, its number and title, then its `Shows:` text ("Step three. Rosie up ahead. Rosie trots far ahead up the long track."). A per-script switch turns cues off; a bracketed direction inside a line is read in the cue voice at that point. Cues are never matched. |
-| Rate | P0 | A base speaking rate per voice in Settings, applied at render time. The engine's pacing changes playback speed, not the render. |
+| Rate | P0 | A base speaking rate per voice in Settings, applied at render time (default 0.5). The engine's pacing changes playback speed, not the render; 0.85x to 1.2x through the time-pitch node sounded natural in plan 001. |
 | Import a rendering made elsewhere | P2 | A folder of phrase audio and a timings file, as Cutaway could produce with ElevenLabs or from the presenter's own recording (section 13). |
 
 **Why pre-render.** The synthesiser cannot change speed mid-utterance, Personal Voice
@@ -147,10 +147,10 @@ synthesis latency.
 
 | Feature | Priority | Notes |
 |---|---|---|
-| On-device continuous recognition of the presenter | P0 | `SpeechAnalyzer` with a `SpeechTranscriber` in the script's locale (en-GB), volatile results on, with audio time ranges; the engine consumes words as they firm up. Locale assets are downloaded once through `AssetInventory` with a prompt. |
+| On-device continuous recognition of the presenter | P0 | `SpeechAnalyzer` with a `SpeechTranscriber` in the script's locale (en-GB), volatile and fast results on, with audio time ranges, the script's words as contextual strings. The mic audio is fed untimed (stamping it made the analyser stop with "audio input timestamp overlaps or precedes prior audio input"). Interim results come as one untimed block of text per stretch of speech, rewritten as it grows, about 0.9 s behind the presenter; finals time every word but arrive only at a pause. So the engine follows the interim text by word order and takes exact times from finals. Listening restarts itself if its results fail, and the audio engine restarts on a configuration change. Locale assets are downloaded once through `AssetInventory` with a prompt. |
 | The iPhone's own microphone, always | P0 | The audio session is `.playAndRecord` with Bluetooth allowed for A2DP output only (never the hands-free profile), and the preferred input set to the built-in mic. The earpiece is never the microphone: the hands-free profile would drop its audio to telephone quality and use its poor mic. |
 | Route check before a take | P0 | The Prompt screen shows the output route and input in use and warns if the earpiece has fallen into the hands-free profile or the input is not the built-in mic. |
-| Runs locked and in a pocket | P0 | Background audio mode; recognition continues with the screen off. The pocket is a supported position, the mount beside the lens is the designed one (section 11). |
+| Runs locked and in a pocket | P0 | Background audio mode; recognition continues with the screen off (verified for over eight minutes locked in plan 001). The pocket is a supported position, the mount beside the lens is the designed one (section 11). |
 | Listening check screen | P0 | Shows recognised words live with their delay, the input level, and the route. Used by the spike and kept as a diagnostic in Settings. |
 
 ### 4.4 Following
@@ -160,12 +160,12 @@ stream of heard words, and decides what the player does.
 
 | Feature | Priority | Notes |
 |---|---|---|
-| Hold the lead | P0 | The voice stays about `lead` words ahead of the presenter. |
+| Hold the lead | P0 | The voice stays about `lead` words ahead of the presenter. Default 5 words, the author's preference in plan 001; shorter leads left a gap at every phrase end. Five words is about two words of felt head start plus the recogniser's delay, so the engine should measure that delay and add it itself (5.4), and the setting can then come down to the felt head start. |
 | Hybrid pacing | P0 | Playback speed is nudged between bounds (default 0.85x to 1.2x, in Settings) to keep the lead; a phrase boundary is a gate: the next phrase starts only when the presenter is within `lead` words of the end of the current one. Phrase-gated only, with speed fixed at 1.0x, is the first milestone and remains available as a setting. |
 | Wait | P0 | When the voice reaches a gate and the presenter is not there, it waits silently. No filler, no repeat. |
 | Pick up again | P0 | While waiting, every heard word is matched first near the expected position, then across the whole step, then the script. On a confident match the voice resumes from `lead` words past the presenter, at the next phrase start on or after that point. |
 | Off piste | P0 | Heard words that match nothing are ignored. The voice waits at its gate for as long as it takes. |
-| Fluffs and restarts | P0 | A presenter who goes back and says a phrase again is matched where they are, so the voice steps back with them. |
+| Fluffs and restarts | P0 | A presenter who goes back and says a phrase again is matched where they are, so the voice steps back with them. In plan 001, without stepping back, the gates already held while the presenter repeated a line, and the author "could live with" every fluff; the one awkward case is a restart after the gate has opened, when the voice is already into the next phrase. Stepping back should be simple: replay from the phrase the presenter is in. |
 | Manual controls | P0 | On screen, large: Hold (toggle), Back a phrase, Forward a phrase, Restart the step, Stop. Where else they live (an earpiece button, a Watch) is open (section 15). |
 | Fixed pace (no listening) | P1 | The voice reads at 1.0x and never waits; the presenter keeps up. For rehearsal and for noisy places. |
 
@@ -240,12 +240,16 @@ engine. Every rule here is unit-tested with fixture word streams.
 ### 5.1 Inputs
 
 - The script as a flat list of **script words**, each knowing its phrase, line and step,
-  with a normalised form (lower case, punctuation stripped, numbers written out, British
-  and American spellings folded, as Cutaway's `pipeline/script.py` does) so "20 metres"
-  heard as "twenty metres" matches.
+  with a normalised form (lower case, punctuation stripped, British and American spellings
+  folded, as Cutaway's `pipeline/script.py` does). A number is **one** script word whatever
+  its length, matched by value, so "1890", "eighteen ninety" and the recogniser's digits
+  agree and a year does not use up the lead; it matches while its digits are still
+  arriving ("18" on the way to "1890"). Compounds and contractions fold both ways
+  ("sea wall" and "seawall", "there's" and "there is"). All three cost words in plan 001.
 - Each phrase's rendering duration and per-word start times.
-- **Heard words**: from the recogniser, each with its normalised text, start time on the
-  engine's clock, and whether it is volatile or final. Volatile words move the position
+- **Heard words**: from the recogniser, each with its normalised text, whether it is
+  volatile or final, and for finals its start time on the engine's clock. Volatile words
+  have no times of their own (4.3): they are matched by order and move the position
   tentatively; final words commit it.
 - The player's reported playback position (phrase and word).
 - Settings: lead, pacing mode, speed bounds, and the thresholds in 5.3.
@@ -274,6 +278,11 @@ position, confidence) for the screen and the diagnostics.
 
 ### 5.4 Pacing
 
+- The **presenter position** used for pacing and gates is an estimate of where the
+  presenter is now: the last heard word advanced by their speaking rate over the time since
+  it was heard, plus the recogniser's measured delay (about 0.9 s in plan 001). Waiting for
+  the recogniser alone stalls a gate, worst on a short phrase just after a final, when the
+  first interim result can arrive 1.5 s late.
 - Error `e` = (voice position − presenter position) − lead, in words.
 - Hybrid: speed = clamp(1 + k·e, minSpeed, maxSpeed), with k such that one word of error
   changes speed by about 0.05x; speed changes are rate-limited so the voice never lurches.
@@ -450,13 +459,14 @@ in `EarwigTheme`; views never define their own.
 
 | Risk | Mitigation |
 |---|---|
-| Personal Voice is not good enough to follow comfortably, or renders too slowly on the 14 Pro | Plan 001 is a spike on the real phone, judged by the author: Personal Voice against Jamie Premium and Stephanie Enhanced, on a real script, through the real earpiece. Pre-rendering absorbs slow synthesis. If Personal Voice fails, the downloaded voice is v1 and the ElevenLabs import (section 13) moves up. |
-| The in-ear earpieces fall into the hands-free profile, so the prompt sounds like a phone call | The session allows Bluetooth for A2DP only and pins the built-in mic. Checked in the spike on the author's earpieces; the route check (4.3) shows it on every take. If the earpieces cannot do A2DP while the mic is open, the fallback is wired or AirPods. |
-| Recognition is poor outdoors (wind, sea) or with the phone in a pocket | The spike measures recognition on the beach and in a pocket. The engine tolerates missed words (5.3, runs of two, lost after six). The mount beside the lens is the designed position; a lavalier into the phone is a possible later input. |
+| Personal Voice is not good enough to follow comfortably, or renders too slowly on the 14 Pro | Still open: no Personal Voice existed at plan 001. Stephanie (Enhanced) is the v1 default meanwhile, judged "okay, not fantastic" and rendering about 40 times faster than real time. Pre-rendering absorbs slow synthesis. If Personal Voice fails too, the ElevenLabs import (section 13) moves up. |
+| The in-ear earpieces fall into the hands-free profile, so the prompt sounds like a phone call | Retired for the author's SK18: with the session allowing Bluetooth for A2DP only and the built-in mic pinned, it stayed in A2DP with the mic open through every take in plan 001, including over eight minutes locked, and the mic did not pick up the earpiece. The route check (4.3) still shows it on every take, for other earpieces. |
+| Recognition is poor outdoors (wind, sea) or with the phone in a pocket | Indoors it is good in the hand and in a gilet pocket alike (plan 001: about 0.9 s median delay, 96 to 98% of script words, most misses spelling, not hearing). Outdoors and the mount are not yet measured; they are checked on the first real takes. The engine tolerates missed words (5.3, runs of two, lost after six). A lavalier into the phone is a possible later input. |
 | Speed changes sound wrong | Time-pitch, not varispeed; narrow default bounds (0.85x to 1.2x); phrase-gated mode with no speed change as the fallback. |
-| The lead is wrong for the presenter | It is a setting; the spike finds the default by trial on the beach script. |
-| Speech recognition stops in the background or on lock | Background audio mode keeps the session alive; verified in the spike with the screen locked for a ten-minute take. |
+| The lead is wrong for the presenter | It is a setting; plan 001 found 5 words by trial. The recogniser's delay is part of it, so the engine measures and adds that delay itself (5.4). |
+| Speech recognition stops in the background or on lock | Retired: background audio mode kept the session alive with the screen locked for 8 min 20 s of looping takes in plan 001, with mic audio continuous throughout. Listening also restarts itself if its results fail. |
 | en-GB on-device transcription assets are missing | Downloaded once through `AssetInventory` with a prompt; Settings shows the state. |
+| Numbers, years and compounds stall the follower | Plan 001 saw a year at a phrase end hold a gate for 2.8 s at every lead, and "sea wall" heard as "seawall". The normaliser rules in 5.1 cover them; the engine's fixture word streams (stage 3) include years, numbers, compounds and contractions. |
 | An incoming call | Pauses the take; the presenter restarts the step. Not tested in the spike (calls are rare; waived as in PhysiMate). |
 | Earpiece audio heard by the Osmo | One listen on the first real take at the chosen volume. Expected inaudible. |
 | Filming on the iPhone with Earwig running | Out of v1 (section 13). The stock Camera app stops Earwig's audio; the later mode films inside Earwig. |
@@ -467,7 +477,7 @@ in `EarwigTheme`; views never define their own.
 
 Each stage is one plan, one branch, one issue and one PR.
 
-1. **Spike: voice, earpiece and recognition** (plan 001). A throwaway screen in the real
+1. **Spike: voice, earpiece and recognition** (plan 001, done: see its Results). A throwaway screen in the real
    target: list voices, render a real script phrase by phrase with timings, play through
    the earpiece with the built-in mic open and the route shown, show heard words live.
    Tried on the author's phone, on the beach script, in a pocket and on the mount, screen
@@ -563,6 +573,9 @@ shared between recording and listening.
    directions at the start of a step. Proposed: both, with the per-script switch.
 5. Whether Personal Voice's authorisation and the Personal Voice itself survive a
    TestFlight install (the voice lives in the OS, so it should).
+6. Personal Voice against Stephanie, once the author has made one: quality through the
+   earpiece, render speed, and whether its word markers arrive. Until then Stephanie is
+   the default.
 
 ---
 
@@ -570,5 +583,6 @@ shared between recording and listening.
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.3 | 2026-11-05 | Plan 001 results (spike on the iPhone 14 Pro with the SK18 earpiece): Stephanie (Enhanced) is the default voice until Personal Voice is judged; the default lead is 5 words; the earpiece holds A2DP with the mic open and recognition runs locked, so those risks are retired; recognition is about 0.9 s behind, untimed in its interim results, and fed untimed audio (4.3); the engine estimates the presenter's place and adds the delay (5.4) and treats numbers, compounds and contractions as said (5.1); render and rate details (4.2); fluffs (4.4); open question 6. |
 | 0.2 | 2026-11-05 | The App Store Connect key lives in the Keychain under a team-level name, not in a file; the app itself has no keys (section 2). MIT licence; repo public. |
 | 0.1 | 2026-11-05 | First draft from the author's answers: Osmo as camera with the iPhone in a pocket or on a mount; in-ear Bluetooth earpieces as output only; Personal Voice first with downloaded voices as fallback; on-device recognition; hybrid pacing with phrase gating as the fallback; configurable lead with the default from the spike; paste import first; cues in a second voice; no mirror, pedals or remotes; name Earwig. |

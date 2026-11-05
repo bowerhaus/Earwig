@@ -1,0 +1,124 @@
+# Plan 001: Voice, Earpiece and Recognition Spike
+
+**GitHub Issue:** [#1](https://github.com/bowerhaus/Earwig/issues/1) (PR must include "Closes #1")
+**Branch:** `voice-earpiece-recognition-spike` (from `main`)
+**Goal:** Before building any product code, find out on Andy's iPhone 14 Pro whether the three things Earwig rests on hold up: a voice good enough to follow (Personal Voice, or a downloaded Apple voice) rendered fast enough with usable word timings; his in-ear Bluetooth earpieces staying at music quality (A2DP) while the iPhone's own mic is open; and on-device recognition quick and accurate enough to follow him, on a mount and in a pocket. Find the default lead by feel.
+
+**PRD references:** §2 Technical Specifications, §4.2 Voice Rendering, §4.3 Listening, §4.4 Following (lead), §11 Risks, §12 stage 1.
+
+---
+
+## Why a spike
+
+Every later stage assumes these answers, and none of them can be had from the simulator or the documentation:
+
+- **The voice.** Personal Voice is the presenter's own voice, which is the point of Earwig, but its quality varies with how it was trained and it renders slower than real time on some phones. Apple's downloaded voices (Jamie Premium, Stephanie Enhanced) were judged good in PhysiMate, but for announcements, not for a voice you speak along behind. Whether `write(_:toBufferCallback:)` reports word boundaries for Personal Voice, and in audio time rather than wall time, is also unknown.
+- **The earpieces.** With `.playAndRecord` and the mic open, a Bluetooth earpiece can drop into the hands-free profile (telephone quality, its own poor mic). The session asks for A2DP only and the built-in mic, but whether Andy's earpieces honour that is a property of the earpieces.
+- **Recognition.** `SpeechAnalyzer` with `SpeechTranscriber` is new in iOS 26. Its delay from a spoken word to a volatile result, and its accuracy outdoors and from a pocket, decide how much lead the engine needs and how forgiving the matcher must be.
+- **The lead.** How far ahead the voice should run is a matter of feel. It has to be found by speaking behind it.
+
+If Personal Voice fails, the downloaded voice is v1 and the ElevenLabs import (PRD §13) moves up. If the earpieces cannot hold A2DP with the mic open, the fallback is wired or AirPods. If recognition is too slow or poor in a pocket, the mount becomes the only supported position.
+
+## Deliverable
+
+A throwaway spike screen in the real `Earwig` target (the spike UI is deleted at the end; the project, the audio session code and what survives of the renderer and listener stay):
+
+1. **Voices.** Requests Personal Voice authorisation, then lists Personal Voices first and every installed Apple voice after, each with its language and quality (default, enhanced, premium). Refreshes on `availableVoicesDidChangeNotification`. Pick one to render with.
+2. **Render.** Paste a script. It is split into phrases (sentence ends and clause breaks, at most about twelve words) and each phrase rendered with `AVSpeechSynthesizer.write(_:toBufferCallback:toMarkerCallback:)`. Logged per phrase: render time, audio duration, real-time factor, and word start times both from the word markers (audio offsets, from the marker callback or the `willSpeakMarker` delegate, whichever sends them) and from the `willSpeakRangeOfSpeechString` delegate (wall clock, for comparison).
+3. **Play.** Rendered phrases play from an `AVAudioEngine` through an `AVAudioUnitTimePitch` node, with a speed slider (0.8x to 1.25x). Audio session `.playAndRecord`, mode default, `.allowBluetoothA2DP` set and `.allowBluetoothHFP` not, preferred input the built-in mic.
+4. **Route.** The current output port and input port are always on screen, updated on route change; a red warning when the output is `bluetoothHFP` or the input is not the built-in mic.
+5. **Listen.** `SpeechAnalyzer` with an en-GB `SpeechTranscriber` (volatile results, audio time ranges, optional fast results, optional script words as contextual strings) on the built-in mic, downloading the locale assets through `AssetInventory` if needed. Heard words shown live with their delay: the time the word first appeared minus the time it was spoken, from the result's audio time range on the analyser's clock.
+6. **Mark.** A large tap-to-mark button: tap as you say a word; the next heard word's delay from the tap is logged, as a check on the computed delay.
+7. **Gate.** A simple gated playback: phrase n+1 starts only when the heard position (a forward match of heard words against the script) is within N words of the end of phrase n, with N on a stepper. Shows the voice's phrase, the heard position and the state (speaking, waiting).
+8. **Log.** A session log (render times, delays, route changes, interruptions, gate releases) that can be copied or shared from the screen, so the numbers come off the phone.
+
+## Evaluation
+
+On Andy's iPhone 14 Pro (iOS 27.0.1), with his in-ear Bluetooth earpieces, on a real script he pastes. Voices: his Personal Voice, Jamie (Premium, en-GB), Stephanie (Enhanced, en-GB). Positions: the phone on a mount near the camera, and in a pocket; screen locked for about ten minutes; outdoors if he can.
+
+| Criterion | Pass |
+|-----------|------|
+| Voice quality | Andy would speak along behind it for a two-minute step through the earpiece, and it sounds like talking, not reading |
+| Render speed | A two-minute step renders in under a minute on the 14 Pro (real-time factor at most 0.5); slower is marginal, as pre-rendering absorbs it |
+| Word timings | Word markers arrive during `write` for the chosen voice, at sample offsets that fall inside the phrase's audio and in order |
+| Speed change | 0.85x to 1.2x through the time-pitch node sounds natural |
+| Earpiece route | Output stays `bluetoothA2DP` and input `builtInMic` with the mic open, for the whole ten-minute run; music quality by ear |
+| Mic hears the earpiece | Words played into the earpiece are not heard by the recogniser when Andy is silent |
+| Recognition delay, mount | Median delay from spoken word to first heard at most 1.0 s |
+| Recognition delay, pocket | Median at most 1.5 s |
+| Accuracy, mount | At least 90% of script words read are heard (volatile or final) |
+| Accuracy, pocket and outdoors | At least 80% |
+| Background | Playback and recognition continue with the screen locked for ten minutes |
+| Lead | Andy names the N (words) that felt right with gated playback |
+
+## Outcomes
+
+- **Pass:** Personal Voice is the presenter's voice in v1 (PRD §4.2), with the downloaded voices as fallback; the default lead is the N Andy chose (§4.4); the risks it settled are marked in §11.
+- **Voice marginal or fail:** a downloaded voice (Jamie Premium or Stephanie Enhanced) is the default; Personal Voice stays as an option if it renders at all; the ElevenLabs import (§13) is considered for an earlier stage.
+- **Earpiece fail:** the earpieces cannot hold A2DP with the mic open; §11's fallback (wired or AirPods) becomes the supported output and §4.3 says so.
+- **Recognition fail in a pocket:** the mount is the only supported position in v1; §4.3 and §11 say so; a lavalier into the phone moves up.
+
+## Steps
+
+1. Create the project: `project.yml` (iOS 26.0, iPhone only, background audio, microphone and speech recognition usage strings; Personal Voice has no documented usage-description key, its authorisation is requested in code), `CLAUDE.md`, `.gitignore`, `.swiftlint.yml` with the `engine_purity` rule. Builds clean with SwiftLint.
+2. Implement `AudioSessionManager` (session, route, interruptions), `VoiceRenderer` (phrases to buffers with word timings), `PhrasePlayer` (`AVAudioEngine` with time-pitch), `Listener` (`SpeechAnalyzer` on the mic), a basic `PhraseSplitter` and `WordNormaliser` with tests, and the spike screen with the route, the mark button, gated playback and the log.
+3. Installed on Andy's iPhone 14 Pro with `devicectl`; he tries it per the evaluation table; results recorded in this file under **Results**, from his verdicts and the copied logs.
+4. Update the PRD (§4.2 voice, §4.4 default lead, §11 risks) to v0.3 with a Document History row.
+5. Delete the spike UI; keep the project, the audio session code and whatever of the renderer, player and listener survives.
+
+## Results
+
+### Before the device: simulator check (2026-11-05)
+
+On the iOS 26.5 simulator with its compact Daniel (en-GB) voice, so says nothing about quality or the 14 Pro:
+
+- `write` produces audio (22,050 Hz mono float32) about 7x faster than real time.
+- **The `write` marker callback sends no markers.** Word markers arrive through the `willSpeakMarker` delegate instead, one per word, in order. The renderer takes them from whichever source sends them and logs which.
+- **`byteSampleOffset` is in bytes**, not samples: four bytes per float frame. Read that way, every word starts inside the phrase's audio, in order.
+- The `willSpeakRangeOfSpeechString` delegate is useless for timing during `write`: all its calls for a phrase arrive within a few milliseconds, because rendering runs ahead of real time.
+
+Whether the same holds for Personal Voice and the downloaded voices on the phone is for the device trial.
+
+### On the device
+
+Tested on Andy's iPhone 14 Pro (iOS 27.0.1) with his SK18 in-ear earpiece, 2026-11-05, on a made-up two-step script (the harbour walk, about 230 spoken words). Personal Voice is not yet set up on the phone, so it is untested.
+
+| Voice | Quality | Verdict |
+|-------|---------|---------|
+| Personal Voice | Personal | Not tested: none set up yet |
+| Jamie (en-GB) | Premium | Okay; not fantastic |
+| Stephanie (en-GB) | Enhanced | Okay; not fantastic. Andy's pick |
+
+| Criterion | Result |
+|-----------|--------|
+| Render speed | Pass. Stephanie: 27 phrases, 63.0 s of audio rendered in 1.3 s (RTF 0.02). Jamie: RTF 0.03 |
+| Word timings | Pass for Stephanie: 221 of 221 words timed by markers |
+| Speed change | Pass: 0.85x and 1.2x through the time-pitch node work and sound okay |
+| Earpiece route | Pass: output SK18 (A2DP), input iPhone Microphone (built-in mic) with the mic open, at the start of every take and through the long locked run (below) |
+| Mic hears the earpiece | Pass: a 26-second straight-through take of Stephanie through the SK18 at Andy's normal volume, Andy silent, with mic audio flowing throughout: no words recognised. Listening picked his voice up again at once afterwards |
+| Recognition delay, first read | Indoors, phone in Andy's hand. Median 0.92 s from the start of a word to its first appearance, p90 1.33 s (0.67 s and 1.01 s from the word's end); 78 words. Computed from the console after the fact, as the app's own figure (0.52 s) was wrong (below) |
+| Recognition, in hand (full read) | Indoors, phone in Andy's hand, whole harbour walk read at presenting pace (222 script words), script words as context, fast results on. Delay median 0.94 s, p90 1.35 s (220 words; 0.72 s and 1.05 s from the word's end). Accuracy 96% (214 of 222 heard in order from the final results); of the 8 misses only 2 were mishearings ("at" as "of", "path climbs" as "paths climb up"), the rest spelling ("sea wall"/"seawall", "three hundred"/"300", "there's"/"there is"), so about 99% with a better normaliser. Two taps on Mark gave 2.3 s and 2.7 s from tap to first appearance; unreliable, as a mark resolves before the final times its words |
+| Recognition, pocket (indoors) | Phone locked in Andy's left-hand gilet pocket, indoors, same read. Delay median 0.91 s, p90 1.31 s (220 words; 0.69 s and 1.02 s from the word's end). Accuracy 97% (216 of 222 in order); mishearings "thought" as "talk", "ours" as "hours", a dropped "to" and two stray words, the rest spelling. Listening ran throughout (health line every 5 s for 93 s, engine running, no restarts). No worse than in the hand |
+| Lead 3 and lead 2 (gated, Stephanie, indoors) | Andy: "seems okay", but the pauses are too long: after reaching the end of a beat he waits a long time for the next to start. Waits after the voice finished a phrase averaged 1.26 s at lead 3 and 1.41 s at lead 2, the longest 3.5 s, mostly at sentence ends. Recognition while following the voice: median 0.93 s and 0.96 s, accuracy 98% in both. Cause: the gate opens on the recogniser hearing the release word, about 0.9 s (two to three words) after it is said, so at lead 2 the presenter has already finished the phrase. |
+| Leads 4 and 5 | Andy: "4 and 5 sounded better. Maybe 5 sounds the best." Average wait after a phrase 0.57 s at lead 4 (9 of 25 gates with no wait) and 0.36 s at lead 5 (12 of 25); accuracy 100% and 99%. Andy noted that after pausing at the end of a beat it takes about a second for recognition to pick up again: the first word after a pause takes a median 1.08 s to appear against 0.92 s mid-flow |
+| The 1890 phrase | "The sea wall was built in 1890," waited about 2.8 s at every lead. The recogniser builds the number up as digits ("18", "189", "1890"), so it matches only once it is complete, at the phrase end; and the normaliser counts "1890" as six words ("one thousand eight hundred and ninety") where two are said, which used up the lead. "Sea wall" was also heard as "seawall", so the matcher lost two words there |
+| Fluffs (lead 5) | Andy fluffed three lines on purpose: broke off and resumed ("up the cliff, blah, blah, blah, up the cliff path"), stumbled and restarted a line from its start (the boats line), and restarted a line after a wrong word ("timetape", then "the trick, the trick is…"). In the first two the voice had finished its phrase and the gate held until he was back within the lead (waits 1.8 s and 3.9 s); no repeat released a gate early. In the third his first attempt had already opened the gate, so the voice went on to the next phrase while he restarted, then waited 5.4 s for him to catch up. Accuracy 98% with every repeat heard. The spike never steps the voice back. Andy: none of the fluffs was particularly bad, "I could live with all of them"; the voice stepping back would make it easier, but it need not be complex. "Overall, I'm pretty happy with that." |
+| Felt wait at lead 5 | Measured from Andy's side, the time from finishing a phrase (its last word's end in the final results) to the voice starting the next: in the two lead 5 takes the voice started the next phrase before he finished in 19 and 20 of 25 phrases, median 0.6 s and 0.5 s before. Waits over 0.5 s only after the 1890 phrase (0.6 s, 0.7 s) and once after the third fluff. Andy felt one wait early on that was not the date: most likely "…a couple of hours." into "Most of these boats" (+0.1 s in both takes, plus Bluetooth latency and the time to hear the first words), where the short phrase followed a recogniser final and its first interim result arrived late, about 1.5 s after he began it, carrying four words at once |
+| Long locked run (Background, Earpiece route) | Pass. Gated lead 5, looping, screen locked: 8 min 20 s, five full loops, with listening on for 9 min 50 s in all. Output SK18 (A2DP) and input built-in mic throughout: no route changes, never hands-free, never off the built-in mic. The engine never stopped and mic audio was continuous (591 s fed in 591 s). Recognition median 0.97 s, p90 1.41 s over 1,163 words, accuracy 94% with Andy going off script on purpose. Andy: "That worked really well. I was pretty comfortable with that." He likes that he can vary off script and she still catches up; the catch is that he is getting used to the script |
+| Recognition, staying on | After fixing the input timestamps (below), listening ran for the whole session; results stopped only when Andy stopped speaking |
+| Recognition, mount | Not tested: no mount set up. To check on the first real take (stage 5) |
+| Recognition, outdoors | Not tested (evening). To check on the first outdoor take, pocket first |
+| Personal Voice | Not tested: Andy has not made one yet. To judge against Stephanie once made (render speed, quality, whether its word markers arrive) |
+
+**Recognition findings (device, iOS 27.0.1):**
+1. **Never stamp the analyser's input.** Feeding `AnalyzerInput(buffer:bufferStartTime:)` with a start time counted from frames ended the results after a few seconds with "audio input timestamp overlaps or precedes prior audio input". Untimed input is taken as contiguous and works.
+2. **Interim (volatile) results carry no word times.** Each is one run for the whole stretch since the last final, timed from the end of that final (pause included) to the end of the audio so far, rewritten on every result. Finals time every word, but arrive only at a pause, about 1 s after its last word.
+3. So a word's delay is measured as its first appearance in an interim result (by its place in the block) against its start time from the final. The follow engine must match on interim text by order, not by time; exact word times arrive too late to follow by.
+4. The normaliser (stage 3) must fold compounds ("sea wall" and "seawall") and contractions ("there's" and "there is") as well as numbers; the recogniser writes numbers as digits ("4 miles", "300 feet"). A number should count as one script word for the lead and gates, match by value, and match while its digits are still building up ("18" on the way to "1890"); a year is said as two words, not six.
+5. Gates should use an estimate of where the presenter is now (the last heard word advanced by their speaking rate over the time since), not the last heard word: the first interim result after a final can arrive about 1.5 s late, which stalls the gate on a short phrase.
+6. The lead in words has to cover the recogniser's delay (about 0.9 s, two to three words at presenting pace) as well as the head start the presenter feels: lead 5 felt best, which is roughly a two-word head start plus three words of delay. The engine should measure the delay and the presenter's rate and add the difference itself, so the lead setting means only the felt head start.
+7. Device markers: Stephanie sends word markers through both the `write` marker callback and the `willSpeakMarker` delegate (the simulator's compact voice used only the delegate), `byteSampleOffset` in bytes.
+
+**What survives the spike:** `AudioSessionManager` (session, route, interruptions), `VoiceRenderer` (phrases to buffers with word timings from either marker source), `AudioEngineHost` (time-pitch player and mic tap, restarted on configuration changes), `Listener` (`SpeechAnalyzer` on the mic with untimed input, asset download, restart on failure, first-heard and final timing per word), `PhraseSplitter`, `WordNormaliser` and `EarwigTheme`. The spike screen, its follower, gate and sample script are deleted; they are in commit `7cb9880` (`git checkout 7cb9880 -- Earwig/Spike` and point `EarwigApp` at `SpikeView`) for judging Personal Voice later.
+
+**Outcome: PASS** (2026-11-05). On-device rendering, A2DP output with the built-in mic, and on-device recognition all work on the iPhone 14 Pro with the SK18, indoors in the hand and in a pocket, locked for over eight minutes. v1's default presenter voice is Stephanie (Enhanced, en-GB), Andy's pick, with Jamie (Premium) as the alternative; Personal Voice stays first in the PRD, to be judged against Stephanie once Andy has made one. The default lead is 5 words, Andy's preference. Recognition runs about 0.9 s behind the presenter, and the follow engine (stage 3) must make up for it, estimate the presenter's place between results, match numbers and compounds as said, and step the voice back on a restart. The mount and outdoors are checked on the first real takes. PRD v0.3 updates §4.2, §4.3, §4.4, §5, §11 and §15.

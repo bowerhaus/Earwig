@@ -1,0 +1,39 @@
+excluded:
+  - Earwig.xcodeproj
+  - Earwig/Resources
+  - EarwigTests
+  - build
+
+opt_in_rules:
+  - large_tuple
+  - unused_closure_parameter
+
+disabled_rules:
+  - line_length                     # Swift naturally runs long; not signal for our codebase
+  - identifier_name                 # single-letter loop vars, 'id', etc. are idiomatic Swift
+  - trailing_comma                  # cosmetic
+  - vertical_whitespace             # cosmetic
+  - todo                            # known stubs for later plans
+  - empty_enum_arguments            # cosmetic
+  - force_try                       # #Preview ModelContainer initialisers
+  - implicit_optional_initialization # `var x: T? = nil` vs `var x: T?` — cosmetic preference
+
+file_length:
+  warning: 750
+  error: 1000
+
+type_body_length:
+  warning: 320
+  error: 400
+
+function_body_length:
+  warning: 80
+  error: 120
+
+custom_rules:
+  engine_purity:
+    name: "Engine purity"
+    included: ".*/Earwig/Engine/.*\\.swift"
+    regex: "^\\s*(@testable\\s+)?import\\s+(SwiftUI|UIKit|SwiftData|AVFoundation|AVFAudio|Speech|Combine)\\b"
+    message: "Engine/ must not import UI, audio, speech, persistence or Combine frameworks (PRD §5)"
+    severity: error

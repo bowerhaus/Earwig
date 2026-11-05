@@ -1,6 +1,6 @@
 # Earwig - Product Requirements Document (PRD)
 
-**Status:** Draft v0.1, 2026-11-05. Changes by version are in the Document History at the end.
+**Status:** Draft v0.2, 2026-11-05. Changes by version are in the Document History at the end.
 **Name:** Earwig (decided 2026-11-05: UK slang for listening in). Bundle identifier `com.bowerhaus.Earwig`.
 
 ## Executive Summary
@@ -79,7 +79,8 @@ take sounds like you talking, not reading.
 | Tests | Swift Testing (`import Testing`). The follow engine and the script parser are pure Swift and fully unit-tested with fixture word streams. |
 | Lint | SwiftLint, with an `engine_purity` custom rule as PhysiMate's: `Engine/` imports no UI, audio, persistence or Combine framework. |
 | Dependencies | None. Apple frameworks only: AVFoundation (`AVSpeechSynthesizer`, `AVAudioEngine`, `AVAudioSession`), Speech (`SpeechAnalyzer`, `SpeechTranscriber`), SwiftData. |
-| Distribution | TestFlight, uploaded by `scripts/release/testflight.sh` with the App Store Connect API key sourced from `~/.appstoreconnect.env`; cloud-managed distribution signing; the script refuses a dirty tree, a stale project or a build number already tagged, and tags `testflight/<version>-<build>`. Builds expire after 90 days. |
+| Distribution | TestFlight, uploaded by `scripts/release/testflight.sh`; cloud-managed distribution signing; the script refuses a dirty tree, a stale project or a build number already tagged, and tags `testflight/<version>-<build>`. Builds expire after 90 days. |
+| Keys | The app has none: no cloud, no accounts. The only key is the App Store Connect API key (a team key with the Admin role, which cloud-managed signing needs) and only the release script uses it. It lives in the macOS Keychain, not in a file: service `bowerhaus.appstoreconnect`, items for the key ID, the issuer ID and the base64 `.p8`, stored once by running the command the script prints, in the author's own terminal (Claude never handles a key's value). At upload the script writes the key to an owner-only temporary file for xcodebuild and deletes it on exit, success or failure. Named for the team, not the app, so PhysiMate's script can read the same item when it is upgraded to this. |
 | Background | `UIBackgroundModes: audio`. A take runs with the screen locked and the phone in a pocket. |
 | Privacy strings | Microphone ("Earwig listens to you so the prompt keeps pace with what you say") and speech recognition. Personal Voice needs its own authorisation request. |
 | Spelling | UK spelling in UI text and code names. |
@@ -569,4 +570,5 @@ shared between recording and listening.
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.2 | 2026-11-05 | The App Store Connect key lives in the Keychain under a team-level name, not in a file; the app itself has no keys (section 2). MIT licence; repo public. |
 | 0.1 | 2026-11-05 | First draft from the author's answers: Osmo as camera with the iPhone in a pocket or on a mount; in-ear Bluetooth earpieces as output only; Personal Voice first with downloaded voices as fallback; on-device recognition; hybrid pacing with phrase gating as the fallback; configurable lead with the default from the spike; paste import first; cues in a second voice; no mirror, pedals or remotes; name Earwig. |

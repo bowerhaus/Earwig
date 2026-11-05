@@ -24,7 +24,7 @@ If Personal Voice fails, the downloaded voice is v1 and the ElevenLabs import (P
 A throwaway spike screen in the real `Earwig` target (the spike UI is deleted at the end; the project, the audio session code and what survives of the renderer and listener stay):
 
 1. **Voices.** Requests Personal Voice authorisation, then lists Personal Voices first and every installed Apple voice after, each with its language and quality (default, enhanced, premium). Refreshes on `availableVoicesDidChangeNotification`. Pick one to render with.
-2. **Render.** Paste a script. It is split into phrases (sentence ends and clause breaks, at most about twelve words) and each phrase rendered with `AVSpeechSynthesizer.write(_:toBufferCallback:toMarkerCallback:)`. Logged per phrase: render time, audio duration, real-time factor, and word start times both from the word markers (audio sample offsets) and from the `willSpeakRangeOfSpeechString` delegate (wall clock, for comparison).
+2. **Render.** Paste a script. It is split into phrases (sentence ends and clause breaks, at most about twelve words) and each phrase rendered with `AVSpeechSynthesizer.write(_:toBufferCallback:toMarkerCallback:)`. Logged per phrase: render time, audio duration, real-time factor, and word start times both from the word markers (audio offsets, from the marker callback or the `willSpeakMarker` delegate, whichever sends them) and from the `willSpeakRangeOfSpeechString` delegate (wall clock, for comparison).
 3. **Play.** Rendered phrases play from an `AVAudioEngine` through an `AVAudioUnitTimePitch` node, with a speed slider (0.8x to 1.25x). Audio session `.playAndRecord`, mode default, `.allowBluetoothA2DP` set and `.allowBluetoothHFP` not, preferred input the built-in mic.
 4. **Route.** The current output port and input port are always on screen, updated on route change; a red warning when the output is `bluetoothHFP` or the input is not the built-in mic.
 5. **Listen.** `SpeechAnalyzer` with an en-GB `SpeechTranscriber` (volatile results, audio time ranges, optional fast results, optional script words as contextual strings) on the built-in mic, downloading the locale assets through `AssetInventory` if needed. Heard words shown live with their delay: the time the word first appeared minus the time it was spoken, from the result's audio time range on the analyser's clock.
@@ -60,12 +60,25 @@ On Andy's iPhone 14 Pro (iOS 27.0.1), with his in-ear Bluetooth earpieces, on a 
 
 ## Steps
 
-1. Create the project: `project.yml` (iOS 26.0, iPhone only, background audio, microphone, speech recognition and Personal Voice usage strings), `CLAUDE.md`, `.gitignore`, `.swiftlint.yml` with the `engine_purity` rule. Builds clean with SwiftLint.
+1. Create the project: `project.yml` (iOS 26.0, iPhone only, background audio, microphone and speech recognition usage strings; Personal Voice has no documented usage-description key, its authorisation is requested in code), `CLAUDE.md`, `.gitignore`, `.swiftlint.yml` with the `engine_purity` rule. Builds clean with SwiftLint.
 2. Implement `AudioSessionManager` (session, route, interruptions), `VoiceRenderer` (phrases to buffers with word timings), `PhrasePlayer` (`AVAudioEngine` with time-pitch), `Listener` (`SpeechAnalyzer` on the mic), a basic `PhraseSplitter` and `WordNormaliser` with tests, and the spike screen with the route, the mark button, gated playback and the log.
 3. Andy installs from Xcode on his iPhone 14 Pro and tries it per the evaluation table; results recorded in this file under **Results**, from his verdicts and the copied logs.
 4. Update the PRD (§4.2 voice, §4.4 default lead, §11 risks) to v0.3 with a Document History row.
 5. Delete the spike UI; keep the project, the audio session code and whatever of the renderer, player and listener survives.
 
 ## Results
+
+### Before the device: simulator check (2026-11-05)
+
+On the iOS 26.5 simulator with its compact Daniel (en-GB) voice, so says nothing about quality or the 14 Pro:
+
+- `write` produces audio (22,050 Hz mono float32) about 7x faster than real time.
+- **The `write` marker callback sends no markers.** Word markers arrive through the `willSpeakMarker` delegate instead, one per word, in order. The renderer takes them from whichever source sends them and logs which.
+- **`byteSampleOffset` is in bytes**, not samples: four bytes per float frame. Read that way, every word starts inside the phrase's audio, in order.
+- The `willSpeakRangeOfSpeechString` delegate is useless for timing during `write`: all its calls for a phrase arrive within a few milliseconds, because rendering runs ahead of real time.
+
+Whether the same holds for Personal Voice and the downloaded voices on the phone is for the device trial.
+
+### On the device
 
 _Not yet tested._

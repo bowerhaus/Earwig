@@ -25,7 +25,13 @@ swiftlint lint --quiet
 
 Tests use Swift Testing (`import Testing`). Keep the build free of warnings and SwiftLint clean.
 
-Audio, Bluetooth routing, Personal Voice, speech recognition and lock-screen behaviour cannot be verified in the simulator. Anything in the audio path must be checked on the author's iPhone 14 Pro, installed from Xcode.
+Audio, Bluetooth routing, Personal Voice, speech recognition and lock-screen behaviour cannot be verified in the simulator. Anything in the audio path must be checked on the author's iPhone 14 Pro. Claude installs it there directly, without opening Xcode (find the phone's UDID with `xcrun devicectl list devices`):
+
+```bash
+xcodebuild -scheme Earwig -destination 'id=<UDID>' -derivedDataPath build/DerivedData -allowProvisioningUpdates build
+xcrun devicectl device install app --device <UDID> build/DerivedData/Build/Products/Debug-iphoneos/Earwig.app
+xcrun devicectl device process launch --device <UDID> com.bowerhaus.Earwig
+```
 
 ## Architecture
 

@@ -62,7 +62,7 @@ On Andy's iPhone 14 Pro (iOS 27.0.1), with his in-ear Bluetooth earpieces, on a 
 
 1. Create the project: `project.yml` (iOS 26.0, iPhone only, background audio, microphone and speech recognition usage strings; Personal Voice has no documented usage-description key, its authorisation is requested in code), `CLAUDE.md`, `.gitignore`, `.swiftlint.yml` with the `engine_purity` rule. Builds clean with SwiftLint.
 2. Implement `AudioSessionManager` (session, route, interruptions), `VoiceRenderer` (phrases to buffers with word timings), `PhrasePlayer` (`AVAudioEngine` with time-pitch), `Listener` (`SpeechAnalyzer` on the mic), a basic `PhraseSplitter` and `WordNormaliser` with tests, and the spike screen with the route, the mark button, gated playback and the log.
-3. Andy installs from Xcode on his iPhone 14 Pro and tries it per the evaluation table; results recorded in this file under **Results**, from his verdicts and the copied logs.
+3. Installed on Andy's iPhone 14 Pro with `devicectl`; he tries it per the evaluation table; results recorded in this file under **Results**, from his verdicts and the copied logs.
 4. Update the PRD (§4.2 voice, §4.4 default lead, §11 risks) to v0.3 with a Document History row.
 5. Delete the spike UI; keep the project, the audio session code and whatever of the renderer, player and listener survives.
 

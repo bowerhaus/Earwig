@@ -12,7 +12,7 @@ Branch `voice-earpiece-recognition-spike`. Issue: drafted, not yet created (need
 
 ## Device trial checklist
 
-Install from Xcode on the iPhone 14 Pro (scheme Earwig, his device, Run). First launch asks for the mic and speech recognition. Earpiece paired and in.
+Claude installs on the iPhone 14 Pro with `devicectl` (CLAUDE.md, Build Commands); installed 2026-11-05. First launch asks for the mic and speech recognition. Earpiece paired and in.
 
 1. **Voices.** Tap Ask for Personal Voice. Pick Personal Voice, paste a real script (any length; two minutes is the test), Render. Note the render summary (RTF). Start take in *Straight through*: judge it. Repeat for Jamie (Premium) and Stephanie (Enhanced). Try the speed slider at 0.85x and 1.2x.
 2. **Earpiece.** With Listen on and a take playing, watch the Route section: output should say A2DP, input built-in mic. Note any red warning. Sound quality by ear.

@@ -1,0 +1,77 @@
+# Generates Earwig.xcodeproj (git-ignored). Regenerate after adding or removing files:
+#   xcodegen generate
+name: Earwig
+options:
+  bundleIdPrefix: com.bowerhaus
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: S7K2GRB2RN
+    CODE_SIGN_STYLE: Automatic
+    # The version the app reports. Bump the build before each TestFlight upload and commit it;
+    # App Store Connect refuses a build number it has already seen.
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Earwig:
+    type: application
+    platform: iOS
+    sources:
+      - path: Earwig
+    info:
+      path: Earwig/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Earwig
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        NSMicrophoneUsageDescription: Earwig listens to you so the prompt keeps pace with what you say.
+        NSSpeechRecognitionUsageDescription: Earwig recognises your speech on this iPhone to follow your place in the script. Nothing leaves the phone.
+        # Personal Voice has no documented usage-description key; its authorisation is
+        # requested in code with AVSpeechSynthesizer.requestPersonalVoiceAuthorization.
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIBackgroundModes:
+          - audio
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bowerhaus.Earwig
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: true
+  EarwigTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: EarwigTests
+    dependencies:
+      - target: Earwig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bowerhaus.EarwigTests
+        GENERATE_INFOPLIST_FILE: true
+        TARGETED_DEVICE_FAMILY: "1"
+schemes:
+  Earwig:
+    build:
+      targets:
+        Earwig: all
+        EarwigTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - EarwigTests
+    archive:
+      config: Release

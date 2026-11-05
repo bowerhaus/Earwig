@@ -73,6 +73,9 @@ final class Listener {
         self.audio = audio
     }
 
+    /// Seconds of audio heard since `start`, on the same timeline as `HeardWord.audioStart`.
+    var currentAudioTime: TimeInterval { (feeder?.fed.seconds ?? 0) + audioOffset }
+
     /// The mic's level, 0 to 1, for a meter.
     var inputLevel: Float { feeder?.level ?? 0 }
 

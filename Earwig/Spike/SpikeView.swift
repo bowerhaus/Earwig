@@ -136,6 +136,7 @@ struct SpikeView: View {
                 ForEach(SpikeModel.Mode.allCases) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
+            Toggle("Loop take until Stop", isOn: $model.loopTake)
             Stepper(value: $model.lead, in: 0...10) {
                 Text("Lead \(model.lead) words\(model.secondsPerWord.map { String(format: " ≈ %.1f s", Double(model.lead) * $0) } ?? "")")
             }
@@ -168,6 +169,10 @@ struct SpikeView: View {
         }
     }
 
+    private var loopText: String {
+        model.loopTake && model.loopCount > 0 ? " · loop \(model.loopCount + 1)" : ""
+    }
+
     private var isWaiting: Bool {
         if case .waiting = model.playState { return true }
         return false
@@ -176,8 +181,8 @@ struct SpikeView: View {
     private var stateText: String {
         switch model.playState {
         case .idle: "Idle"
-        case .speaking(let index): "Speaking phrase \(index + 1) of \(model.renders.count)"
-        case .waiting(let index): "Waiting after phrase \(index + 1)"
+        case .speaking(let index): "Speaking phrase \(index + 1) of \(model.renders.count)\(loopText)"
+        case .waiting(let index): "Waiting after phrase \(index + 1)\(loopText)"
         case .finished: "Finished"
         }
     }

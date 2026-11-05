@@ -54,6 +54,9 @@ final class SpikeModel {
     }
 
     var mode: Mode = .gated
+    /// Start again from the first phrase when a take ends, until Stop, for the locked run.
+    var loopTake = false
+    private(set) var loopCount = 0
     /// Words: the next phrase starts when the heard position is within this many words of
     /// the end of the current one.
     var lead = 3
@@ -94,6 +97,9 @@ final class SpikeModel {
     private let renderer = VoiceRenderer()
     private var follower = SpikeFollower(script: [])
     private var waitStartedAt: Date?
+    /// Heard words before this point on the listener's timeline belong to an earlier loop.
+    private var loopAudioStart: TimeInterval = 0
+    private var wrapping = false
     private var pollTask: Task<Void, Never>?
     private var renderTask: Task<Void, Never>?
 
@@ -261,6 +267,9 @@ final class SpikeModel {
         }
         audio.speed = Float(speed)
         heardPosition = -1
+        loopCount = 0
+        wrapping = false
+        loopAudioStart = listener.currentAudioTime
         note("take started: mode \(mode.rawValue), lead \(lead) words, speed \(String(format: "%.2f", speed)), route \(session.route.summary)")
         play(0)
     }
@@ -269,6 +278,7 @@ final class SpikeModel {
         guard playState != .idle else { return }
         audio.stopPhrase()
         playState = .idle
+        wrapping = false
         voicePosition = -1
         note("take stopped (\(reason))\(statsLine)")
     }
@@ -307,14 +317,38 @@ final class SpikeModel {
 
     private func phraseFinished(_ index: Int) {
         guard playState == .speaking(index) else { return }
-        if index + 1 >= renders.count {
+        if index + 1 >= renders.count, !loopTake {
             playState = .finished
             note("take finished\(statsLine)")
             return
         }
         playState = .waiting(index)
         waitStartedAt = Date()
+        if index + 1 >= renders.count {
+            // Looping: start again once the presenter has said the end, or after ten
+            // seconds if the last words were never heard.
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(10))
+                self?.wrapLoop(after: index, reason: "timed out waiting for the end")
+            }
+        }
         checkGate()
+    }
+
+    /// Starts the take again from the first phrase, a moment after the presenter finishes.
+    private func wrapLoop(after index: Int, reason: String) {
+        guard playState == .waiting(index), !wrapping else { return }
+        wrapping = true
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard let self, self.wrapping, self.playState == .waiting(index) else { return }
+            self.wrapping = false
+            self.loopCount += 1
+            self.loopAudioStart = self.listener.currentAudioTime
+            self.heardPosition = -1
+            self.note("loop \(self.loopCount) (\(reason)): route \(self.session.route.summary), ever hands-free \(self.everHandsFree), ever off built-in mic \(self.everNotBuiltInMic);\(self.statsLine)")
+            self.play(0)
+        }
     }
 
     private func phraseEnd(_ index: Int) -> Int {
@@ -323,6 +357,12 @@ final class SpikeModel {
 
     private func checkGate() {
         guard case .waiting(let index) = playState else { return }
+        if index + 1 >= renders.count {
+            if mode == .through || heardPosition >= scriptWords.count - 2 {
+                wrapLoop(after: index, reason: "heard the end")
+            }
+            return
+        }
         let target = phraseEnd(index) - lead
         guard mode == .through || heardPosition >= target else { return }
         let waited = waitStartedAt.map { Date().timeIntervalSince($0) } ?? 0
@@ -339,7 +379,7 @@ extension SpikeModel {
 
     private func heardChanged(_ words: [HeardWord]) {
         let previousCount = heardCount
-        let normalised = words.flatMap { WordNormaliser.normaliseToken($0.text) }
+        let normalised = words.filter { $0.audioStart >= loopAudioStart }.flatMap { WordNormaliser.normaliseToken($0.text) }
         let result = follower.follow(normalised)
         heardPosition = result.position
         accuracy = result.accuracy

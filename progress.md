@@ -12,7 +12,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 ## Checklist
 
 - [x] 1. Script words (`Engine/ScriptWords.swift`, `WordNormaliser` change) with tests
-- [ ] 2. Parsers (`ScriptParser`: detection, Cutaway, plain) with tests
+- [x] 2. Parsers (`ScriptParser`: detection, Cutaway, plain) with tests
 - [ ] 3. Phrase list (Codable, cue phrases, parser version, re-derive)
 - [ ] 4. Models and container (Script, Step, Rendering, Take, `ModelJSON`, factory)
 - [ ] 5. Import (`ScriptImporter`, hash, replace by title) with tests

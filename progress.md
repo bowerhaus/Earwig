@@ -4,15 +4,15 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 ## State (2026-11-05)
 
-- **Plan 002 (skeleton, models, parser) is drafted** in `plans/002-skeleton-models-parser.md`, on branch `skeleton-models-parser` (from `main` at `6d2b848`). No code yet; no issue yet.
+- **Plan 002 (skeleton, models, parser) is drafted** in `plans/002-skeleton-models-parser.md`, on branch `skeleton-models-parser` (from `main` at `6d2b848`). Reviewed by Andy; issue [#3](https://github.com/bowerhaus/Earwig/issues/3). No code yet. The branch is not pushed yet, so the issue's plan and branch links work once it is.
 - Plan 001 is complete (PASS, PR #2, issue #1 closed; PRD v0.3). The project builds clean, SwiftLint is clean, 17 tests pass.
 - The plan follows Cutaway's own parser (`../Cutaway/pipeline/script.py`, `../Cutaway/docs/file-contracts.md`, "The script"), leniently.
 
-## Next action: Andy reviews the plan
+## Next action: build plan 002
 
-1. Andy reviews plan 002, in particular its four **Questions for review** (square brackets as inline directions; re-paste by title; numbers as one script word now, compounds and contractions in stage 3; dark only). Fold his answers into the plan's design decisions.
-2. Then `/plan_create_issue` (needs his yes), and put the issue number in the plan's header.
-3. Then `/plan_autopilot` is recommended: the stage is pure Swift and unit-testable in the simulator, with one short device check at step 7 (paste a real Cutaway script by Universal Clipboard).
+1. Andy's review is folded in: decisions 4, 5 and 8 agreed; decision 11 is now one distinctive theme, not necessarily dark, with no light and dark variants, picked by Andy from candidates in step 6.
+2. `/plan_autopilot` is recommended: pure Swift and unit-testable in the simulator. It pauses for the palette pick (step 6) and the device paste check (step 7).
+3. The PR must include "Closes #3".
 
 ## Reminders
 

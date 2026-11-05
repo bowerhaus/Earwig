@@ -1,6 +1,6 @@
 # Plan 002: Skeleton, Models and Parser
 
-**GitHub Issue:** to be created after review (`/plan_create_issue`)
+**GitHub Issue:** [#3](https://github.com/bowerhaus/Earwig/issues/3) (PR must include "Closes #3")
 **Branch:** `skeleton-models-parser` (from `main` at `6d2b848`, after plan 001 merged)
 **Goal:** Put a script into Earwig and see it as Earwig will follow it. Paste a Cutaway `script.md` or plain text; it is parsed into steps, lines, directions and phrases, stored in SwiftData, listed on the Scripts screen and shown step by step on the Script screen. Every later stage reads its script from here, so the script words and phrase indices this stage stores are the ones the follow engine (stage 3) and the renderer (stage 4) will use.
 
@@ -26,7 +26,7 @@
 8. **Hash and re-paste** (PRD §3, §4.1, Flow 4). The hash is SHA-256 (CryptoKit) of the source text with line endings made `\n` and trailing whitespace trimmed per line. Paste on the Scripts screen: the same hash as a stored script opens that script and changes nothing; the same title as a stored script (case-insensitive) replaces its text, steps and format and keeps its takes, `lastStep` (clamped) and cues setting; otherwise a new script. The Script screen also has **Paste new version** for a script whose title changed. Renderings are kept on replace; re-using them per unchanged phrase is stage 4's (a phrase is identified by its text and voice, not its index).
 9. **Paste with SwiftUI's `PasteButton`**, not `UIPasteboard`: it reads the clipboard without the "Allow Paste" prompt every time, which matters for Universal Clipboard from the Mac. Text only. A paste with no steps or no words shows an error and stores nothing.
 10. **Models as PRD §6.1 and the siblings' conventions:** every relationship optional with an inverse, a default on every stored property, no `@Attribute(.unique)`, enums as raw strings (`formatRaw`, `outcomeRaw`) with typed accessors, Codable values as JSON `Data` behind typed accessors through one `ModelJSON` encoder (PhysiMate's), `sortOrder` on `Step` with an `orderedSteps` accessor. Steps, takes and renderings cascade on deleting a script. `Rendering` and `Take` are created now, unused until stages 4 and 5, so they arrive without a migration. Takes reference a step by index, not by relationship, so a re-paste that rebuilds the steps keeps them.
-11. **Dark always.** PRD §10 asks for dark and high-contrast; the app sets `.preferredColorScheme(.dark)` and `EarwigTheme` has one palette: background, surface, primary and secondary text, accent (the voice's phrase), cue (directions and cues, a muted second colour distinct from secondary text), and the existing warning, good and caution. Views never define a colour (CLAUDE.md).
+11. **One distinctive theme, not necessarily dark** (Andy, at review). Earwig has its own look rather than the system's: one palette, the same whatever the phone's light or dark setting, with the app's colour scheme set to match the palette so system controls read on it. Not split into light and dark variants. `EarwigTheme` holds it: background, surface, primary and secondary text, accent (the voice's phrase), cue (directions and cues, a muted second colour distinct from secondary text), and warning, good and caution. It must stay high-contrast and large-type legible at arm's length (PRD §10). In step 6, two or three candidate palettes are shown on the Script screen as simulator screenshots and Andy picks one; the theme is one file, so it can change again on device. Views never define a colour (CLAUDE.md). PRD §10 is updated to say so.
 12. **A sample script** (the made-up harbour walk from plan 001, `7cb9880`) is a test fixture and a **Try the sample** button on the empty Scripts screen, so the simulator and a fresh install have a script without a paste. The repo is public: fixtures are made up.
 13. **The Script screen in this stage**: tapping a step selects it as the start step (stored as `lastStep`, ticked) because there is no take to start yet; the rendering row says "Not rendered" with the voice name; each step shows "No takes yet". A toolbar menu has the cues switch, Paste new version and Delete.
 
@@ -58,9 +58,9 @@
 3. **Phrase list.** Phrases per step from the parsed lines with the splitter, cue phrases for inline directions, line indices; Codable round trip; the parser version and re-derivation when it is stale.
 4. **Models and container.** The four entities, `ModelJSON`, `ModelContainerFactory`, wired into `EarwigApp`. Tests in an in-memory container: steps out of order come back in order; deleting a script cascades steps, takes and renderings; typed accessors persist.
 5. **Import.** `ScriptImporter` with tests: a new paste; the same text again (also with CRLF and trailing spaces) opens the existing script and adds nothing; the same title with changed text replaces the steps and keeps takes and the cues setting and clamps `lastStep`; an empty or wordless paste is refused.
-6. **Theme and screens.** `EarwigTheme`, the Scripts and Script screens and their view models, the sample. Checked in the simulator with screenshots: empty state, the sample, a pasted Cutaway and a pasted plain script, delete, Paste new version, landscape.
+6. **Theme and screens.** The Scripts and Script screens and their view models, the sample. Two or three candidate palettes for `EarwigTheme` shown on the Script screen as simulator screenshots; Andy picks one (the one pause in this step). Checked in the simulator with screenshots: empty state, the sample, a pasted Cutaway and a pasted plain script, delete, Paste new version, landscape, and the phone in both light and dark settings looking the same.
 7. **Device check.** Installed on Andy's iPhone 14 Pro over the plan 001 build with `devicectl`. Andy copies a real Cutaway `script.md` on the Mac and pastes it into Earwig on the phone by Universal Clipboard: it imports with no paste prompt, the steps read right, and a second paste of the same text does not duplicate it. His script stays on his phone; nothing of it is recorded here beyond counts and his verdict.
-8. `swiftlint lint` clean, no build warnings, all tests pass; Results filled; PRD §4.1, §5.1 and §6.1 updated where the decisions above pin them (square brackets, re-paste by title, number runs, parser version), as v0.4 with a Document History row; `progress.md` emptied to its stub.
+8. `swiftlint lint` clean, no build warnings, all tests pass; Results filled; PRD §4.1, §5.1, §6.1 and §10 updated where the decisions above pin them (square brackets, re-paste by title, number runs, parser version, the theme), as v0.4 with a Document History row; `progress.md` emptied to its stub.
 
 ## Verification
 
@@ -68,12 +68,9 @@
 - Simulator screenshots of the screens in step 6.
 - The device check in step 7, recorded below from Andy's report.
 
-## Questions for review
+## Review (2026-11-05)
 
-1. Square brackets as the only inline directions, round brackets spoken (decision 4)?
-2. Re-paste matching by title, plus Paste new version on the Script screen (decision 8)?
-3. Numbers grouped into one script word here, with compounds and contractions left to the stage 3 matcher (decision 5)?
-4. Dark only (decision 11)?
+Andy agreed decisions 4 (square brackets as the only inline directions), 8 (re-paste by title, plus Paste new version) and 5 (numbers as one script word here, compounds and contractions in stage 3). He did not want dark only: decision 11 is now one distinctive theme, not necessarily dark, with no separate light and dark variants.
 
 ## Results
 

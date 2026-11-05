@@ -95,3 +95,11 @@ Tested on Andy's iPhone 14 Pro (iOS 27.0.1) with his SK18 in-ear earpiece, 2026-
 | Word timings | Pass for Stephanie: 221 of 221 words timed by markers |
 | Speed change | Pass: 0.85x and 1.2x through the time-pitch node work and sound okay |
 | Earpiece route | At the start of a take, with the mic open: output SK18 (A2DP), input iPhone Microphone (built-in mic). The ten-minute run is still to come |
+| Recognition delay, first read | Indoors, phone position not noted. Median 0.92 s from the start of a word to its first appearance, p90 1.33 s (0.67 s and 1.01 s from the word's end); 78 words. Computed from the console after the fact, as the app's own figure (0.52 s) was wrong (below) |
+| Recognition, staying on | After fixing the input timestamps (below), listening ran for the whole session; results stopped only when Andy stopped speaking |
+
+**Recognition findings (device, iOS 27.0.1):**
+1. **Never stamp the analyser's input.** Feeding `AnalyzerInput(buffer:bufferStartTime:)` with a start time counted from frames ended the results after a few seconds with "audio input timestamp overlaps or precedes prior audio input". Untimed input is taken as contiguous and works.
+2. **Interim (volatile) results carry no word times.** Each is one run for the whole stretch since the last final, timed from the end of that final (pause included) to the end of the audio so far, rewritten on every result. Finals time every word, but arrive only at a pause, about 1 s after its last word.
+3. So a word's delay is measured as its first appearance in an interim result (by its place in the block) against its start time from the final. The follow engine must match on interim text by order, not by time; exact word times arrive too late to follow by.
+4. Device markers: Stephanie sends word markers through both the `write` marker callback and the `willSpeakMarker` delegate (the simulator's compact voice used only the delegate), `byteSampleOffset` in bytes.

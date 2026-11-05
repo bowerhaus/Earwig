@@ -18,7 +18,8 @@ struct HeardWord: Identifiable, Equatable, Sendable {
     var finalisedAt: TimeInterval?
     var confidence: Double?
 
-    /// Seconds from saying the word to first seeing it.
+    /// Seconds from starting to say the word to first seeing it. Exact once the word is
+    /// final; before that `spokenAt` is an estimate spread across the interim block.
     var delay: TimeInterval { firstHeardAt - spokenAt }
 
     /// Seconds from saying the word to its final result.
@@ -56,6 +57,9 @@ final class Listener {
     /// again at zero) sort after the words before it.
     @ObservationIgnored private var audioOffset: TimeInterval = 0
     @ObservationIgnored private var carryOffset: TimeInterval = 0
+    /// When each word of the current interim block, by its place in the block, first
+    /// appeared. Shifted along as finals take words off the front.
+    @ObservationIgnored private var segmentFirstSeen: [TimeInterval] = []
 
     @ObservationIgnored var onWordsChanged: (([HeardWord]) -> Void)?
     @ObservationIgnored var onEvent: ((String) -> Void)?
@@ -97,6 +101,7 @@ final class Listener {
         lastContextWords = contextWords
         audioOffset = carryOffset
         carryOffset = 0
+        segmentFirstSeen = []
         do {
             guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "en-GB")) else {
                 throw ListenerError.unsupportedLocale
@@ -243,72 +248,91 @@ final class Listener {
         lastResultAt = receivedAt
         if isFinal { finalCount += 1 } else { volatileCount += 1 }
 
-        struct Incoming {
-            let text: String
-            let start: TimeInterval
-            let confidence: Double?
+        let (incoming, runLog) = incomingWords(in: result, offset: offset, isFinal: isFinal)
+        // Console only: the shape of each result, to see how words are timed.
+        print(String(format: "result %@ %.2f–%.2f at +%.2f s: ", isFinal ? "final" : "volatile", rangeStart - offset, rangeEnd - offset, receivedAt - (feeder.firstHostTime ?? receivedAt)) + runLog.joined(separator: " | "))
+
+        // Interim results are one block from the end of the last final to now, rewritten
+        // each time; finals time every word but come only at pauses (plan 001 Results).
+        // So a word's first appearance is tracked by its place in the current block, and
+        // its exact spoken time comes from the final.
+        if incoming.count > segmentFirstSeen.count {
+            segmentFirstSeen += Array(repeating: receivedAt, count: incoming.count - segmentFirstSeen.count)
         }
+
+        // Replace what this result covers. A volatile result replaces every interim word
+        // after its start; a final replaces every interim word before its end, as the
+        // interim block starts earlier than the final's first word.
+        let replaced = words.filter { word in
+            if word.isFinal { return word.audioStart >= rangeStart - 0.001 && word.audioStart < rangeEnd }
+            return isFinal ? word.audioStart < rangeEnd : word.audioStart >= rangeStart - 0.001
+        }
+        let replacedIDs = Set(replaced.map(\.id))
+        var kept = words.filter { !replacedIDs.contains($0.id) }
+        for (index, item) in incoming.enumerated() {
+            kept.append(HeardWord(
+                text: item.text,
+                audioStart: item.start,
+                spokenAt: feeder.hostTime(forAnalyzerTime: item.start - offset),
+                firstHeardAt: index < segmentFirstSeen.count ? segmentFirstSeen[index] : receivedAt,
+                isFinal: isFinal,
+                finalisedAt: isFinal ? receivedAt : nil,
+                confidence: item.confidence
+            ))
+        }
+        if isFinal {
+            segmentFirstSeen.removeFirst(min(incoming.count, segmentFirstSeen.count))
+        }
+        kept.sort { $0.audioStart < $1.audioStart }
+        words = kept
+        onWordsChanged?(words)
+    }
+
+    private struct Incoming {
+        let text: String
+        let start: TimeInterval
+        let confidence: Double?
+    }
+
+    /// A result's words in order with their estimated or exact start times (offset onto
+    /// this listening's timeline), and a description of its runs for the console.
+    private func incomingWords(in result: SpeechTranscriber.Result, offset: TimeInterval, isFinal: Bool) -> ([Incoming], [String]) {
+        let rangeStart = result.range.start.seconds + offset
+        let rangeEnd = CMTimeRangeGetEnd(result.range).seconds + offset
         var incoming: [Incoming] = []
         var untimed: [String] = []
         var runLog: [String] = []
-        defer {
-            // Console only: the shape of each result, to see how words are timed.
-            print(String(format: "result %@ %.2f–%.2f at +%.2f s: ", isFinal ? "final" : "volatile", rangeStart - offset, rangeEnd - offset, receivedAt - (feeder.firstHostTime ?? receivedAt)) + runLog.joined(separator: " | "))
-        }
         for run in result.text.runs {
             let text = String(result.text[run.range].characters)
             let pieces = text.split(whereSeparator: \.isWhitespace).map(String.init)
             guard !pieces.isEmpty else { continue }
-            if let timeRange = run.audioTimeRange {
-                // A run can cover several words with one time range (interim results do).
-                // Spread its words across the range by letter count.
-                let total = Double(pieces.reduce(0) { $0 + $1.count })
-                var before = 0.0
-                for piece in pieces {
-                    let start = timeRange.start.seconds + timeRange.duration.seconds * (total > 0 ? before / total : 0)
-                    incoming.append(Incoming(text: piece, start: start + offset, confidence: run.transcriptionConfidence))
-                    before += Double(piece.count)
-                }
-                runLog.append(String(format: "“%@” %.2f–%.2f", text, timeRange.start.seconds, CMTimeRangeGetEnd(timeRange).seconds))
-            } else {
+            guard let timeRange = run.audioTimeRange else {
                 runLog.append("“\(text)” untimed")
                 untimed += pieces
+                continue
             }
+            // An interim run covers several words with one time range. Spread its words
+            // across the range by letter count; finals have one run per word.
+            let total = Double(pieces.reduce(0) { $0 + $1.count })
+            var before = 0.0
+            for piece in pieces {
+                let start = timeRange.start.seconds + timeRange.duration.seconds * (total > 0 ? before / total : 0)
+                incoming.append(Incoming(text: piece, start: start + offset, confidence: run.transcriptionConfidence))
+                before += Double(piece.count)
+            }
+            runLog.append(String(format: "“%@” %.2f–%.2f", text, timeRange.start.seconds, CMTimeRangeGetEnd(timeRange).seconds))
         }
         if !untimed.isEmpty {
             if !isFinal, !volatileWithoutTimes {
                 volatileWithoutTimes = true
                 onEvent?("volatile results arrive without word times; spreading them over the result's range")
             }
-            let step = untimed.isEmpty ? 0 : max(rangeEnd - rangeStart, 0) / Double(untimed.count)
+            let step = max(rangeEnd - rangeStart, 0) / Double(untimed.count)
             for (index, piece) in untimed.enumerated() {
                 incoming.append(Incoming(text: piece, start: rangeStart + step * Double(index), confidence: nil))
             }
         }
-
-        // Replace what this result covers. A volatile result also replaces any earlier
-        // volatile words after its start, as its hypothesis may be shorter than the last.
-        let replaced = words.filter { word in
-            (word.audioStart >= rangeStart - 0.001 && word.audioStart < rangeEnd) || (!isFinal && !word.isFinal && word.audioStart >= rangeStart)
-        }
-        let replacedIDs = Set(replaced.map(\.id))
-        var kept = words.filter { !replacedIDs.contains($0.id) }
-        for item in incoming {
-            let earlier = replaced.min { abs($0.audioStart - item.start) < abs($1.audioStart - item.start) }
-            let sameWord = earlier.map { abs($0.audioStart - item.start) < 0.25 } ?? false
-            kept.append(HeardWord(
-                text: item.text,
-                audioStart: item.start,
-                spokenAt: feeder.hostTime(forAnalyzerTime: item.start - offset),
-                firstHeardAt: sameWord ? earlier!.firstHeardAt : receivedAt,
-                isFinal: isFinal,
-                finalisedAt: isFinal ? ((sameWord ? earlier!.finalisedAt : nil) ?? receivedAt) : nil,
-                confidence: item.confidence
-            ))
-        }
-        kept.sort { $0.audioStart < $1.audioStart }
-        words = kept
-        onWordsChanged?(words)
+        return (incoming, runLog)
     }
 
     private static func describe(_ status: AssetInventory.Status) -> String {

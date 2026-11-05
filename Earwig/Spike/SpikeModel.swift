@@ -345,7 +345,8 @@ extension SpikeModel {
         accuracy = result.accuracy
         heardCount = words.count
         heardTail = Array(words.suffix(14).reversed())
-        let delays = words.map(\.delay).filter { $0 > -1 && $0 < 30 }.sorted()
+        // Only final words have exact spoken times; interim ones are estimates.
+        let delays = words.filter(\.isFinal).map(\.delay).filter { $0 > -1 && $0 < 30 }.sorted()
         medianDelay = Self.percentile(delays, 0.5)
         p90Delay = Self.percentile(delays, 0.9)
         medianFinalDelay = Self.percentile(words.compactMap(\.finalDelay).filter { $0 > -1 && $0 < 30 }.sorted(), 0.5)

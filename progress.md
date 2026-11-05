@@ -16,7 +16,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - [x] 3. Phrase list (Codable, cue phrases, parser version, re-derive)
 - [x] 4. Models and container (Script, Step, Rendering, Take, `ModelJSON`, factory)
 - [x] 5. Import (`ScriptImporter`, hash, replace by title) with tests
-- [ ] 6. Theme and screens; palette candidates shown to Andy (pause for his pick)
+- [ ] 6. Theme and screens; palette candidates shown to Andy (pause for his pick) — **screens built; WAITING for Andy's palette pick** (Paper, Copper or Harbour, in `EarwigPalette` in `App/EarwigTheme.swift`). Then: fix `current` to his pick, delete the other candidates and the `-EarwigPalette` argument, finish the screenshots (empty state, plain paste, landscape)
 - [ ] 7. Device check (see Manual test)
 - [ ] 8. PRD v0.4, Results
 - [ ] Tests + lint
@@ -25,6 +25,8 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - [ ] Complete (commit + PR)
 
 ## Notes
+
+- Simulator: launch with `-EarwigPalette <name> -EarwigDemo YES` (DEBUG) to add the sample and open it without taps. A stale microphone alert from earlier test-host runs stuck on SpringBoard until the simulator was rebooted; the app itself requests nothing at launch.
 
 - Review decisions: 4, 5, 8 agreed; 11 is one distinctive theme, not necessarily dark, no light and dark variants.
 - Cutaway's parser for reference: `../Cutaway/pipeline/script.py` (`parse`), contract in `../Cutaway/docs/file-contracts.md`.

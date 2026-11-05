@@ -91,7 +91,7 @@ Tested on Andy's iPhone 14 Pro (iOS 27.0.1) with his SK18 in-ear earpiece, 2026-
 
 | Criterion | Result |
 |-----------|--------|
-| Render speed | RTF 0.03 for one of the two voices (which one to confirm) |
-| Word timings | To confirm from the log |
+| Render speed | Pass. Stephanie: 27 phrases, 63.0 s of audio rendered in 1.3 s (RTF 0.02). An earlier render reported RTF 0.03 (voice to confirm) |
+| Word timings | Pass for Stephanie: 221 of 221 words timed by markers |
 | Speed change | Pass: 0.85x and 1.2x through the time-pitch node work and sound okay |
 | Earpiece route | At the start of a take, with the mic open: output SK18 (A2DP), input iPhone Microphone (built-in mic). The ten-minute run is still to come |

@@ -29,7 +29,7 @@ final class SpikeModel {
 
     // MARK: Script and rendering
 
-    var scriptText = ""
+    var scriptText = SpikeSampleScript.harbourWalk
     private(set) var phrases: [Phrase] = []
     private(set) var renders: [RenderedPhrase] = []
     private(set) var renderProgress: Double?

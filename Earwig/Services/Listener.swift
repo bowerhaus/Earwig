@@ -250,13 +250,28 @@ final class Listener {
         }
         var incoming: [Incoming] = []
         var untimed: [String] = []
+        var runLog: [String] = []
+        defer {
+            // Console only: the shape of each result, to see how words are timed.
+            print(String(format: "result %@ %.2f–%.2f at +%.2f s: ", isFinal ? "final" : "volatile", rangeStart - offset, rangeEnd - offset, receivedAt - (feeder.firstHostTime ?? receivedAt)) + runLog.joined(separator: " | "))
+        }
         for run in result.text.runs {
             let text = String(result.text[run.range].characters)
             let pieces = text.split(whereSeparator: \.isWhitespace).map(String.init)
             guard !pieces.isEmpty else { continue }
             if let timeRange = run.audioTimeRange {
-                for piece in pieces { incoming.append(Incoming(text: piece, start: timeRange.start.seconds + offset, confidence: run.transcriptionConfidence)) }
+                // A run can cover several words with one time range (interim results do).
+                // Spread its words across the range by letter count.
+                let total = Double(pieces.reduce(0) { $0 + $1.count })
+                var before = 0.0
+                for piece in pieces {
+                    let start = timeRange.start.seconds + timeRange.duration.seconds * (total > 0 ? before / total : 0)
+                    incoming.append(Incoming(text: piece, start: start + offset, confidence: run.transcriptionConfidence))
+                    before += Double(piece.count)
+                }
+                runLog.append(String(format: "“%@” %.2f–%.2f", text, timeRange.start.seconds, CMTimeRangeGetEnd(timeRange).seconds))
             } else {
+                runLog.append("“\(text)” untimed")
                 untimed += pieces
             }
         }
@@ -331,6 +346,7 @@ private final class MicFeeder: @unchecked Sendable {
     private var anchors: [(analyzer: TimeInterval, host: TimeInterval)] = []
     private var currentLevel: Float = 0
     private var buffersFed = 0
+    private var firstHost: TimeInterval?
     private var finished = false
 
     init(analyzerFormat: AVAudioFormat, continuation: AsyncStream<AnalyzerInput>.Continuation) {
@@ -353,6 +369,7 @@ private final class MicFeeder: @unchecked Sendable {
         }
         let isFinished: Bool = lock.withLock {
             currentLevel = level
+            if firstHost == nil { firstHost = hostTime }
             anchors.append((Double(framesFed) / analyzerFormat.sampleRate, hostTime))
             buffersFed += 1
             if anchors.count > 4000 { anchors.removeFirst(anchors.count - 4000) }
@@ -370,6 +387,9 @@ private final class MicFeeder: @unchecked Sendable {
         lock.withLock { finished = true }
         continuation.finish()
     }
+
+    /// Host time of the first buffer fed.
+    var firstHostTime: TimeInterval? { lock.withLock { firstHost } }
 
     func hostTime(forAnalyzerTime time: TimeInterval) -> TimeInterval {
         lock.withLock {

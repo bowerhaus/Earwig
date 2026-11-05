@@ -95,6 +95,9 @@ struct SpikeView: View {
                     if let text = strings.first { model.scriptText = text }
                 }
                 .labelStyle(.titleAndIcon)
+                Button("Clear", role: .destructive) { model.scriptText = "" }
+                    .buttonStyle(.borderless)
+                    .disabled(model.scriptText.isEmpty)
                 Spacer()
                 if model.renderProgress != nil {
                     Button("Cancel", role: .cancel) { model.cancelRender() }

@@ -13,9 +13,9 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 - [x] 1. Script words (`Engine/ScriptWords.swift`, `WordNormaliser` change) with tests
 - [x] 2. Parsers (`ScriptParser`: detection, Cutaway, plain) with tests
-- [ ] 3. Phrase list (Codable, cue phrases, parser version, re-derive)
-- [ ] 4. Models and container (Script, Step, Rendering, Take, `ModelJSON`, factory)
-- [ ] 5. Import (`ScriptImporter`, hash, replace by title) with tests
+- [x] 3. Phrase list (Codable, cue phrases, parser version, re-derive)
+- [x] 4. Models and container (Script, Step, Rendering, Take, `ModelJSON`, factory)
+- [x] 5. Import (`ScriptImporter`, hash, replace by title) with tests
 - [ ] 6. Theme and screens; palette candidates shown to Andy (pause for his pick)
 - [ ] 7. Device check (see Manual test)
 - [ ] 8. PRD v0.4, Results

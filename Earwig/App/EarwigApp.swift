@@ -4,7 +4,10 @@ import SwiftUI
 struct EarwigApp: App {
     var body: some Scene {
         WindowGroup {
-            SpikeView()
+            // The Scripts screen arrives in stage 2 (PRD §12).
+            Text("Earwig")
+                .font(.largeTitle.bold())
+                .foregroundStyle(EarwigTheme.accent)
         }
     }
 }

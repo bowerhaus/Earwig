@@ -251,9 +251,7 @@ final class Listener {
         lastResultAt = receivedAt
         if isFinal { finalCount += 1 } else { volatileCount += 1 }
 
-        let (incoming, runLog) = incomingWords(in: result, offset: offset, isFinal: isFinal)
-        // Console only: the shape of each result, to see how words are timed.
-        print(String(format: "result %@ %.2f–%.2f at +%.2f s: ", isFinal ? "final" : "volatile", rangeStart - offset, rangeEnd - offset, receivedAt - (feeder.firstHostTime ?? receivedAt)) + runLog.joined(separator: " | "))
+        let incoming = incomingWords(in: result, offset: offset, isFinal: isFinal)
 
         // Interim results are one block from the end of the last final to now, rewritten
         // each time; finals time every word but come only at pauses (plan 001 Results).
@@ -297,20 +295,18 @@ final class Listener {
         let confidence: Double?
     }
 
-    /// A result's words in order with their estimated or exact start times (offset onto
-    /// this listening's timeline), and a description of its runs for the console.
-    private func incomingWords(in result: SpeechTranscriber.Result, offset: TimeInterval, isFinal: Bool) -> ([Incoming], [String]) {
+    /// A result's words in order with their estimated or exact start times, offset onto
+    /// this listening's timeline.
+    private func incomingWords(in result: SpeechTranscriber.Result, offset: TimeInterval, isFinal: Bool) -> [Incoming] {
         let rangeStart = result.range.start.seconds + offset
         let rangeEnd = CMTimeRangeGetEnd(result.range).seconds + offset
         var incoming: [Incoming] = []
         var untimed: [String] = []
-        var runLog: [String] = []
         for run in result.text.runs {
             let text = String(result.text[run.range].characters)
             let pieces = text.split(whereSeparator: \.isWhitespace).map(String.init)
             guard !pieces.isEmpty else { continue }
             guard let timeRange = run.audioTimeRange else {
-                runLog.append("“\(text)” untimed")
                 untimed += pieces
                 continue
             }
@@ -323,7 +319,6 @@ final class Listener {
                 incoming.append(Incoming(text: piece, start: start + offset, confidence: run.transcriptionConfidence))
                 before += Double(piece.count)
             }
-            runLog.append(String(format: "“%@” %.2f–%.2f", text, timeRange.start.seconds, CMTimeRangeGetEnd(timeRange).seconds))
         }
         if !untimed.isEmpty {
             if !isFinal, !volatileWithoutTimes {
@@ -335,7 +330,7 @@ final class Listener {
                 incoming.append(Incoming(text: piece, start: rangeStart + step * Double(index), confidence: nil))
             }
         }
-        return (incoming, runLog)
+        return incoming
     }
 
     private static func describe(_ status: AssetInventory.Status) -> String {
@@ -373,7 +368,6 @@ private final class MicFeeder: @unchecked Sendable {
     private var anchors: [(analyzer: TimeInterval, host: TimeInterval)] = []
     private var currentLevel: Float = 0
     private var buffersFed = 0
-    private var firstHost: TimeInterval?
     private var finished = false
 
     init(analyzerFormat: AVAudioFormat, continuation: AsyncStream<AnalyzerInput>.Continuation) {
@@ -396,7 +390,6 @@ private final class MicFeeder: @unchecked Sendable {
         }
         let isFinished: Bool = lock.withLock {
             currentLevel = level
-            if firstHost == nil { firstHost = hostTime }
             anchors.append((Double(framesFed) / analyzerFormat.sampleRate, hostTime))
             buffersFed += 1
             if anchors.count > 4000 { anchors.removeFirst(anchors.count - 4000) }
@@ -414,9 +407,6 @@ private final class MicFeeder: @unchecked Sendable {
         lock.withLock { finished = true }
         continuation.finish()
     }
-
-    /// Host time of the first buffer fed.
-    var firstHostTime: TimeInterval? { lock.withLock { firstHost } }
 
     func hostTime(forAnalyzerTime time: TimeInterval) -> TimeInterval {
         lock.withLock {

@@ -11,9 +11,6 @@ struct RenderedPhrase: @unchecked Sendable {
     /// Seconds from the phrase's start to each token's start, from the synthesiser's word
     /// markers. `nil` for a token no marker named.
     let tokenStarts: [TimeInterval?]
-    /// The same, from the `willSpeakRangeOfSpeechString` delegate's wall-clock calls during
-    /// the render. Kept for the spike's comparison only.
-    let delegateTokenTimes: [TimeInterval?]
     /// How the markers' `byteSampleOffset` had to be read to fall inside the audio.
     let markerUnit: MarkerUnit
     /// Where the word markers came from: the `write` marker callback, the `willSpeakMarker`
@@ -92,11 +89,6 @@ final class VoiceRenderer: NSObject {
             let frames = unit == .bytes ? Double(marker.byteSampleOffset) / max(bytesPerFrame, 1) : Double(marker.byteSampleOffset)
             tokenStarts[token] = frames / sourceRate
         }
-        var delegateTimes = [TimeInterval?](repeating: nil, count: phrase.tokens.count)
-        for (location, time) in job.delegateRanges {
-            guard let token = phrase.tokenIndex(containing: location), delegateTimes[token] == nil else { continue }
-            delegateTimes[token] = time.timeIntervalSince(started)
-        }
 
         return RenderedPhrase(
             phraseIndex: index,
@@ -104,7 +96,6 @@ final class VoiceRenderer: NSObject {
             voiceIdentifier: voice.identifier,
             buffer: converted,
             tokenStarts: tokenStarts,
-            delegateTokenTimes: delegateTimes,
             markerUnit: unit,
             markerSource: markerSource,
             renderSeconds: renderSeconds,
@@ -184,14 +175,6 @@ final class VoiceRenderer: NSObject {
 }
 
 extension VoiceRenderer: AVSpeechSynthesizerDelegate {
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, willSpeakRangeOfSpeechString characterRange: NSRange, utterance: AVSpeechUtterance) {
-        let now = Date()
-        MainActor.assumeIsolated {
-            guard let job, job.utterance === utterance else { return }
-            job.delegateRanges.append((characterRange.location, now))
-        }
-    }
-
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, willSpeak marker: AVSpeechSynthesisMarker, utterance: AVSpeechUtterance) {
         MainActor.assumeIsolated {
             guard let job, job.utterance === utterance else { return }
@@ -212,7 +195,6 @@ extension VoiceRenderer: AVSpeechSynthesizerDelegate {
 private final class RenderJob: @unchecked Sendable {
     let utterance: AVSpeechUtterance
     var onFinish: (([AVAudioPCMBuffer]) -> Void)?
-    var delegateRanges: [(Int, Date)] = []
     var delegateMarkers: [AVSpeechSynthesisMarker] = []
 
     private let lock = NSLock()

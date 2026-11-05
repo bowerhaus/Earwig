@@ -96,7 +96,7 @@ Tested on Andy's iPhone 14 Pro (iOS 27.0.1) with his SK18 in-ear earpiece, 2026-
 | Speed change | Pass: 0.85x and 1.2x through the time-pitch node work and sound okay |
 | Earpiece route | At the start of a take, with the mic open: output SK18 (A2DP), input iPhone Microphone (built-in mic). The ten-minute run is still to come |
 | Mic hears the earpiece | Pass: a 26-second straight-through take of Stephanie through the SK18 at Andy's normal volume, Andy silent, with mic audio flowing throughout: no words recognised. Listening picked his voice up again at once afterwards |
-| Recognition delay, first read | Indoors, phone position not noted. Median 0.92 s from the start of a word to its first appearance, p90 1.33 s (0.67 s and 1.01 s from the word's end); 78 words. Computed from the console after the fact, as the app's own figure (0.52 s) was wrong (below) |
+| Recognition delay, first read | Indoors, phone in Andy's hand. Median 0.92 s from the start of a word to its first appearance, p90 1.33 s (0.67 s and 1.01 s from the word's end); 78 words. Computed from the console after the fact, as the app's own figure (0.52 s) was wrong (below) |
 | Recognition, staying on | After fixing the input timestamps (below), listening ran for the whole session; results stopped only when Andy stopped speaking |
 
 **Recognition findings (device, iOS 27.0.1):**

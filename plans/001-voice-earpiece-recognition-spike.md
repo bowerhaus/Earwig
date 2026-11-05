@@ -1,6 +1,6 @@
 # Plan 001: Voice, Earpiece and Recognition Spike
 
-**GitHub Issue:** not yet created (PR must include "Closes #N" once it is)
+**GitHub Issue:** [#1](https://github.com/bowerhaus/Earwig/issues/1) (PR must include "Closes #1")
 **Branch:** `voice-earpiece-recognition-spike` (from `main`)
 **Goal:** Before building any product code, find out on Andy's iPhone 14 Pro whether the three things Earwig rests on hold up: a voice good enough to follow (Personal Voice, or a downloaded Apple voice) rendered fast enough with usable word timings; his in-ear Bluetooth earpieces staying at music quality (A2DP) while the iPhone's own mic is open; and on-device recognition quick and accurate enough to follow him, on a mount and in a pocket. Find the default lead by feel.
 

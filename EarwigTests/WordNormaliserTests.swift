@@ -23,13 +23,8 @@ struct WordNormaliserTests {
         #expect(WordNormaliser.words(in: "… — !") == [])
     }
 
-    @Test func spellsOutNumbers() {
-        #expect(WordNormaliser.words(in: "20 metres") == ["twenty", "metres"])
-        #expect(WordNormaliser.words(in: "120,") == ["one", "hundred", "and", "twenty"])
-        #expect(WordNormaliser.words(in: "1,005") == ["one", "thousand", "and", "five"])
-        #expect(WordNormaliser.words(in: "3,400") == ["three", "thousand", "four", "hundred"])
-        #expect(WordNormaliser.words(in: "0") == ["zero"])
-        #expect(WordNormaliser.words(in: "45") == ["forty", "five"])
+    @Test func keepsDigitsAsWritten() {
+        #expect(WordNormaliser.words(in: "20 metres, 1,500") == ["20", "metres", "1500"])
     }
 
     @Test func leavesMixedTokensAlone() {

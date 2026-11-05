@@ -2,20 +2,35 @@
 
 Scratch state for the plan in flight. Overwritten at the start of a plan, emptied to a stub when it completes.
 
-## State (2026-11-05)
+**Mode: autopilot (/plan_autopilot)**: on "resume", carry on through the checklist to the PR without stopping, except at the palette pick and the manual test.
 
-- **Plan 002 (skeleton, models, parser) is drafted** in `plans/002-skeleton-models-parser.md`, on branch `skeleton-models-parser` (from `main` at `6d2b848`). Reviewed by Andy; issue [#3](https://github.com/bowerhaus/Earwig/issues/3). No code yet. The branch is pushed to origin.
-- Plan 001 is complete (PASS, PR #2, issue #1 closed; PRD v0.3). The project builds clean, SwiftLint is clean, 17 tests pass.
-- The plan follows Cutaway's own parser (`../Cutaway/pipeline/script.py`, `../Cutaway/docs/file-contracts.md`, "The script"), leniently.
+- **Plan:** `plans/002-skeleton-models-parser.md` (approved 2026-11-05)
+- **Branch:** `skeleton-models-parser` (from `main` at `6d2b848`), pushed
+- **Issue:** [#3](https://github.com/bowerhaus/Earwig/issues/3); the PR must include "Closes #3"
+- **Manual test:** device: paste a real Cutaway script on the iPhone 14 Pro by Universal Clipboard (plan step 7)
 
-## Next action: build plan 002
+## Checklist
 
-1. Andy's review is folded in: decisions 4, 5 and 8 agreed; decision 11 is now one distinctive theme, not necessarily dark, with no light and dark variants, picked by Andy from candidates in step 6.
-2. `/plan_autopilot` is recommended: pure Swift and unit-testable in the simulator. It pauses for the palette pick (step 6) and the device paste check (step 7).
-3. The PR must include "Closes #3".
+- [x] 1. Script words (`Engine/ScriptWords.swift`, `WordNormaliser` change) with tests
+- [ ] 2. Parsers (`ScriptParser`: detection, Cutaway, plain) with tests
+- [ ] 3. Phrase list (Codable, cue phrases, parser version, re-derive)
+- [ ] 4. Models and container (Script, Step, Rendering, Take, `ModelJSON`, factory)
+- [ ] 5. Import (`ScriptImporter`, hash, replace by title) with tests
+- [ ] 6. Theme and screens; palette candidates shown to Andy (pause for his pick)
+- [ ] 7. Device check (see Manual test)
+- [ ] 8. PRD v0.4, Results
+- [ ] Tests + lint
+- [ ] Review + fixes
+- [ ] Manual test: device
+- [ ] Complete (commit + PR)
+
+## Notes
+
+- Review decisions: 4, 5, 8 agreed; 11 is one distinctive theme, not necessarily dark, no light and dark variants.
+- Cutaway's parser for reference: `../Cutaway/pipeline/script.py` (`parse`), contract in `../Cutaway/docs/file-contracts.md`.
 
 ## Reminders
 
 - The repo is public: fixtures and examples are made-up scripts, never Andy's unpublished ones. The harbour walk is in commit `7cb9880`, `Earwig/Spike/SpikeSampleScript.swift`.
-- Commit locally at sensible points without asking. Pushing, a PR and an issue each need Andy's yes.
+- Commit locally at sensible points. Merging is Andy's.
 - Install on the iPhone with `devicectl` (CLAUDE.md, Build Commands), never via Xcode.

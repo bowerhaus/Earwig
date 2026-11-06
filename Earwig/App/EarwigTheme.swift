@@ -18,8 +18,8 @@ struct EarwigPalette {
     let good: Color
     let caution: Color
     /// Text on the accent, as on the Start pill: white on a light palette's accent, the
-    /// background on a dark one's.
-    var onAccent: Color { scheme == .light ? .white : background }
+    /// card colour on a dark one's.
+    var onAccent: Color { scheme == .light ? .white : surface }
 }
 
 extension EarwigPalette {
@@ -113,7 +113,37 @@ extension EarwigPalette {
         caution: Color(hex: 0xB86E00)
     )
 
-    static let candidates = [paper, copper, harbour, cobalt, bottle, sky]
+    /// Sky with pale blue cards instead of white.
+    static let skyTint = EarwigPalette(
+        name: "SkyTint",
+        scheme: .light,
+        background: Color(hex: 0x5CB8F3),
+        surface: Color(hex: 0xD6ECFC),
+        text: Color(hex: 0x14222F),
+        secondaryText: Color(hex: 0x4F6578),
+        accent: Color(hex: 0x1468C0),
+        cue: Color(hex: 0xB8601A),
+        warning: Color(hex: 0xC8262E),
+        good: Color(hex: 0x2B8A4E),
+        caution: Color(hex: 0xB86E00)
+    )
+
+    /// Sky with deeper blue cards and white text: no white surfaces at all.
+    static let skyDeep = EarwigPalette(
+        name: "SkyDeep",
+        scheme: .dark,
+        background: Color(hex: 0x5CB8F3),
+        surface: Color(hex: 0x1F6FB8),
+        text: Color(hex: 0xFFFFFF),
+        secondaryText: Color(hex: 0xC6E0F5),
+        accent: Color(hex: 0xFFD24A),
+        cue: Color(hex: 0xFFC9A0),
+        warning: Color(hex: 0xFF8A7A),
+        good: Color(hex: 0x7FE0A4),
+        caution: Color(hex: 0xFFB454)
+    )
+
+    static let candidates = [paper, copper, harbour, cobalt, bottle, sky, skyTint, skyDeep]
 
     /// The chosen palette. While Andy picks one, the `-EarwigPalette <name>` launch argument
     /// shows another.

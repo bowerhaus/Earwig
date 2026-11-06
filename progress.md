@@ -16,7 +16,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - [x] 3. Phrase list (Codable, cue phrases, parser version, re-derive)
 - [x] 4. Models and container (Script, Step, Rendering, Take, `ModelJSON`, factory)
 - [x] 5. Import (`ScriptImporter`, hash, replace by title) with tests
-- [ ] 6. Theme and screens; palette candidates shown to Andy (pause for his pick) — **screens built; WAITING for Andy's palette pick** (Paper, Copper, Harbour (reworked as a full blue ground), Cobalt, Bottle or Sky (sky-blue ground, white cards), in `EarwigPalette` in `App/EarwigTheme.swift`). Then: fix `current` to his pick, delete the other candidates and the `-EarwigPalette` argument, finish the screenshots (empty state, plain paste, landscape)
+- [ ] 6. Theme and screens; palette candidates shown to Andy (pause for his pick) — **screens built; WAITING for Andy's palette pick** (Paper, Copper, Harbour (reworked as a full blue ground), Cobalt, Bottle, Sky (white cards), SkyTint (pale blue cards) or SkyDeep (deep blue cards, white text), in `EarwigPalette` in `App/EarwigTheme.swift`). Then: fix `current` to his pick, delete the other candidates and the `-EarwigPalette` argument, finish the screenshots (empty state, plain paste, landscape)
 - [ ] 7. Device check (see Manual test)
 - [ ] 8. PRD v0.4, Results
 - [ ] Tests + lint

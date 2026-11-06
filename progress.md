@@ -2,4 +2,4 @@
 
 Scratch state for the plan in flight. Overwritten at the start of a plan, emptied to a stub when it completes.
 
-No plan in flight. Plan 003 (follow engine) is complete; see `plans/003-follow-engine.md`. Branch `follow-engine` carries it to `main` for issue #7 (`gh pr list --repo bowerhaus/Earwig --head follow-engine --state all --json number,state`: `OPEN` means not merged yet, `MERGED` means `main` has it). Next is stage 4 of PRD §12 (renderer and player), from `main` once it has plan 003.
+No plan in flight. Plan 003 (follow engine) is merged to `main` (PR #8, issue #7 closed); see `plans/003-follow-engine.md`. Next is stage 4 of PRD §12, renderer and player: pre-rendering to files with timings, the rendering store, the audio session, the time-pitch player on the audio clock, tones. It starts with writing `plans/004-…md` on a new branch from `main`. Open follow-ups for stage 5: #9 (mic input level to tell a pause from a late first result), #10 (slate reply: a shot ID said as letters and numbers).

@@ -2,15 +2,6 @@ import AVFoundation
 @testable import Earwig
 import Testing
 
-/// A silent buffer of a length, in the player's format.
-func silence(seconds: TimeInterval) -> AVAudioPCMBuffer {
-    let format = VoiceRenderer.outputFormat
-    let frames = AVAudioFrameCount(max(seconds * format.sampleRate, 1))
-    let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames)!
-    buffer.frameLength = frames
-    return buffer
-}
-
 /// Renders instantly, a word a third of a second, and records what it was asked for.
 @MainActor
 final class FakeRenderer: PhraseRendering {
@@ -103,27 +94,52 @@ struct ScriptRendererTests {
         #expect(renderer.rendered(list(0)) == nil)
     }
 
-    @Test func progressIsReportedAndAFailureShown() async {
+    /// Three spoken phrases, made up for these tests.
+    private let three = PhraseList(lines: ["The kettle is on.", "The toast is nearly done.", "The tea is poured."])
+
+    @Test func progressIsReportedAsEachPhraseRenders() async {
         let renderer = renderer()
         var seen: [ScriptRenderer.State] = []
         fake.afterRender = { seen.append(renderer.state) }
-        fake.failOn = "breakfast"
-        await renderer.render(script: "a", step: 0, phrases: list(0))
-        #expect(seen.first == .rendering(step: 0, done: 0, total: list(0).phrases.count))
-        #expect(seen.contains(.rendering(step: 0, done: 1, total: list(0).phrases.count)))
+        await renderer.render(script: "a", step: 0, phrases: three)
+        #expect(seen == [.rendering(step: 0, done: 0, total: 3), .rendering(step: 0, done: 1, total: 3), .rendering(step: 0, done: 2, total: 3)])
+        #expect(renderer.state == .ready(step: 0))
+    }
+
+    @Test func aFailureIsShownAndARetryRendersOnlyTheRest() async {
+        let renderer = renderer()
+        fake.failOn = "toast"
+        await renderer.render(script: "a", step: 0, phrases: three)
         guard case .failed(0, let message) = renderer.state else {
             Issue.record("expected a failure, got \(renderer.state)")
             return
         }
-        #expect(message.contains("breakfast"))
-        // Render again once it would succeed: only the rest is rendered.
+        #expect(message.contains("toast"))
         fake.failOn = nil
-        fake.afterRender = nil
-        let succeeded = seen.count
-        let before = fake.calls.count
-        await renderer.render(script: "a", step: 0, phrases: list(0))
+        fake.calls = []
+        await renderer.render(script: "a", step: 0, phrases: three)
         #expect(renderer.state == .ready(step: 0))
-        #expect(fake.calls.count - before == list(0).phrases.count - succeeded)
+        #expect(fake.calls.map(\.text) == ["The toast is nearly done.", "The tea is poured."])
+    }
+
+    @Test func aRenderSupersededByAnotherStepLeavesNothingOfItself() async {
+        let renderer = renderer()
+        renderer.prepare(script: "a", step: 0, phrases: list(0))
+        renderer.prepare(script: "a", step: 1, phrases: list(1))
+        await renderer.finished()
+        #expect(renderer.state == .ready(step: 1))
+        #expect(renderer.rendered(list(1)) != nil)
+        #expect(renderer.rendered(list(0)) == nil)
+    }
+
+    @Test func anotherScriptStartsIdleAtOnce() async {
+        let renderer = renderer()
+        await renderer.render(script: "a", step: 0, phrases: list(0))
+        renderer.prepare(script: "b", step: 0, phrases: list(0))
+        #expect(renderer.target == AnyHashable("b"))
+        #expect(renderer.state == .idle)
+        await renderer.finished()
+        #expect(renderer.state == .ready(step: 0))
     }
 
     @Test func cancelStopsARenderUnderWay() async {

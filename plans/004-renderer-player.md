@@ -85,3 +85,177 @@ Andy asked why rendered audio is saved at all. With Stephanie rendering at about
 ## Results
 
 To come.
+
+## Review pass — 2026-11-06
+
+Findings from `/review-branch` on branch `renderer-player`, **unresolved as written**. Each is a claim
+from a review on that date, not an established fact, and each verdict under *Assessment* is a
+recommendation, not a decision. Work through them and annotate each with what was done — fixed,
+or rejected and why. A finding that turns out to be wrong should say so here rather than be
+deleted.
+
+### Code
+
+Review of `renderer-player` against `main` (plan 004, issue #11). Everything is committed and there are no untracked files. Steps 1–4 of the plan are covered, including both simulator tests: the real-voice render and the tones smoke test. Steps 5–6 (device check, Results, PRD v0.6) are still to do, so their absence is not flagged.
+
+**C1 — WARNING: renders can overlap on the one shared `VoiceRenderer`, and the second loses its word timings.**
+- **Where:** `Earwig/Services/ScriptRenderer.swift:92-95` (`prepare`), and the `ScriptRenderer.cancel()` that follows. They collide with `Earwig/Services/VoiceRenderer.swift:51,64`.
+- **Cause:** `prepare` and `cancel` only cancel the `Task`. `VoiceRenderer.render` waits in `withCheckedContinuation`, ignores cancellation, and `VoiceRenderer.cancel()` is never called. So picking another step, pasting a new version, or reopening the screen while a step is rendering starts a second `render` while the first is still in flight.
+- **Effect:**
+  - The new call sets `self.job = newJob`.
+  - When the old one finishes it runs `self.job = nil`, which wipes out the new job.
+  - From then on the delegate's `willSpeakMarker` and `didFinish` callbacks for the new utterance are dropped (`guard let job, job.utterance === utterance`).
+  - On voices that send markers only through the delegate, as the simulator does, those phrases lose their word timings and silently fall back to even spacing. That breaks the highlight check and, in stage 5, the engine.
+- **Fix:** call `VoiceRenderer.cancel()` when a render is superseded, or wait for the previous task to finish before starting the next.
+
+**C2 — WARNING: Stop or dismissing the sheet while Listen is preparing does nothing, and the audio then plays with no screen.**
+- **Where:** `Earwig/Services/StepPreview.swift:62-89, 100-101`.
+- **Cause:** `start()` sets `status = .preparing`, then waits on `renderer.renderCue(slateText)`. It assigns `self.player` only after that. `stop()` begins with `guard player != nil else { return }`.
+- **Effect:**
+  - Tapping Stop (shown during `.preparing`) does nothing.
+  - If the sheet is dismissed in that window, `onDisappear` → `stop()` also does nothing. `start()` then resumes, since it holds `self` strongly, and plays the whole step with no UI. The session stays active and the host is never stopped.
+- **Fix:** `stop()` should work from any playing status (for example, guard on `isPlaying`), and `start()` should check after each `await` that it has not been stopped.
+
+**C3 — WARNING: a hardware configuration change during playback leaves the engine stopped.**
+- **Where:** `Earwig/Services/AudioEngineHost.swift:70-76` (`configurationChanged`).
+- **Cause:** the engine is restarted only when a mic tap is installed. This branch adds playback with no tap (Listen, and the `Player` path generally).
+- **Effect:** a route or sample-rate change mid-play (earpiece connecting or dropping, or the A2DP rate change) stops the engine and it stays down. Listen then either goes silent or carries on only if the stopped node happens to fire its completion. Either way the behaviour now depends on chance.
+- **Fix:** restart the engine whenever it was running, tap or not.
+
+**C4 — SUGGESTION: the rendering state does not say which script it belongs to.**
+- **Where:** `Earwig/Services/ScriptRenderer.swift` (`State`) and `Earwig/ViewModels/ScriptDetailViewModel.swift:52-59` (`renderState`).
+- **Cause:** `renderState` compares only the step index with `script.lastStep`.
+- **Effect:** when a second script is opened, its row briefly shows the previous script's `.ready(step:)` state, Listen button included, until the new `prepare` task runs. The DEBUG `-EarwigListen` `onChange` can fire on it too. Tapping Listen in that moment gets "The step is not rendered yet."
+- **Fix:** carry the script id in `State`, or reset to `.idle` synchronously in `prepare`.
+
+**C5 — SUGGESTION: many plan-decision numbers in code comments are off by one.**
+- **Cause:** they look like they follow an earlier draft of the plan.
+- **Where, and the correct number:**
+  - `Earwig/Models/PhraseTiming+Rendered.swift:4` says decision 5; it is 4.
+  - `Earwig/Services/AudioEngineHost.swift:3` says 9; it is 8.
+  - `AudioEngineHost.swift:14` says 10; it is 9.
+  - `AudioEngineHost.swift:85` says 11; it is 10.
+  - `AudioEngineHost.swift:180` says 12; it is 11.
+  - `Earwig/Services/Player.swift:4` says 10; it is 9.
+  - `Player.swift:17` says "9 to 11"; it is 8 to 10.
+  - `Earwig/Services/Tones.swift:3` says 8; it is 7.
+
+**C6 — SUGGESTION: the new `-EarwigListen YES` Debug launch flag is not documented.**
+- **Where:** `Earwig/Views/ScriptDetail/ScriptDetailView.swift:74-86`.
+- **Fix:** add it next to `-EarwigDemo` in CLAUDE.md's Build Commands, so the simulator workflow is discoverable.
+
+**C7 — SUGGESTION: each Listen leaves `NotificationCenter` observers behind.**
+- **Where:** `Earwig/Services/AudioEngineHost.swift` init.
+- **Cause:** the new `routeChangeNotification` observer has `object: nil`, and the observer tokens are never removed (there is no `deinit`). A new `AudioEngineHost` is built for every `StepPreview`.
+- **Effect:** observers pile up across Listen sessions. They do nothing, since they capture `weak self`, but they are never released.
+- **Fix:** remove them in a `deinit`.
+
+### Tests
+
+I read all six new test files in full: PhraseTiming, Player, ScriptRenderer, Slate, Tones and VoiceCatalogue. Nothing is staged, unstaged or untracked under EarwigTests/. I compared each against its source. I did not run the suite. Most of the new code has focused tests, and the volume (about 556 lines for about 700 lines of source) is reasonable. Two tests give more confidence than they earn, and two pieces of logic have no tests.
+
+**T1. WARNING: `aNewPhraseReplacesTheOneBefore` would pass even if the player's logic were broken.**
+- **Where:** `/Users/andybower/Projects/Earwig/EarwigTests/PlayerTests.swift:110-116`
+- **Why it proves nothing:** `FakeOutput.play` overwrites `completions[channel]`. So when one voice phrase follows another on the same channel, only the second can ever end, whatever `Player` does.
+- **What goes untested:** the logic that matters is `play()` calling `stopVoice()` first, which drops an older completion on another channel (`/Users/andybower/Projects/Earwig/Earwig/Services/Player.swift:86`).
+- **Fix:** play cue phrase 1, then voice phrase 2, call `output.end(.cue)`, and expect no event. This one change exercises the "never reported after a stop" rule for real.
+
+**T2. WARNING: if audio fails to start, the real-engine tones test hangs for a minute instead of failing.**
+- **Where:** `/Users/andybower/Projects/Earwig/EarwigTests/PlayerTests.swift:184-198`
+- **Why:** when `output.play` throws, `Player.start` only passes the error to `onLog` (`/Users/andybower/Projects/Earwig/Earwig/Services/Player.swift:104-110`). `tonesEnded` then never arrives, and the continuation waits until the one-minute limit.
+- **Fix:** set `player.onLog` to record an `Issue` and resume, or call `try host.start()` before `handle(.playTones)` so the error surfaces at once.
+
+**T3. WARNING: the view model's new rendering logic has no tests.**
+- **Where:** `/Users/andybower/Projects/Earwig/Earwig/ViewModels/ScriptDetailViewModel.swift:27-31, 40-44, 52-60, 62-71`
+- **What is untested:**
+  - `renderState`, which hides the shared renderer's state when it is for another step.
+  - The early return in `select` when the step picked is already the start step.
+  - The `startStep` fallback when `lastStep` is out of range.
+  - The next take's number in `listen`.
+- **Note:** `renderState` compares only the step index, not the script, which is easy to get wrong.
+- **Fix:** one test using an in-memory container and `ScriptRenderer(renderer: FakeRenderer(), ...)`, covering pick step 1, the state shown for step 0 versus step 1, and picking the same step twice. That would pin it cheaply.
+
+**T4. SUGGESTION: `progressIsReportedAndAFailureShown` is hard to follow.**
+- **Where:** `/Users/andybower/Projects/Earwig/EarwigTests/ScriptRendererTests.swift:106-127`
+- **Why:**
+  - It tests three things at once: progress, failure and resuming after a failure.
+  - It counts successes indirectly, through `seen.count` from the hook.
+  - It depends on "breakfast" appearing at phrase 2 or later of the sample's step 1.
+- **Fix:** split it into a progress test and a failure-then-retry test that states the expected number of renders. A small `PhraseList(lines:)` written in the test would replace the dependence on the sample script.
+
+**T5. SUGGESTION: a render superseded by a newer one is not tested.**
+- **Where:** `/Users/andybower/Projects/Earwig/Earwig/Services/ScriptRenderer.swift:92-95, 127, 135`
+- **What is missing:** the common real case, where another step is picked mid-render and the stale render must not write its state or cache. Only the `cancel()` case is covered, at `/Users/andybower/Projects/Earwig/EarwigTests/ScriptRendererTests.swift:129-136`. The guard after a failure (line 135) is also untested.
+- **Fix:** worth one test if it can be written without awkward async plumbing.
+
+**T6. SUGGESTION: Listen's playback order is untested.**
+- **Where:** `/Users/andybower/Projects/Earwig/Earwig/Services/StepPreview.swift:113-134`
+- **What is untested:**
+  - The sequence: slate, then tones, then the first phrase, then each phrase after the one that ended.
+  - Cue phrases being skipped when cues are off.
+- **Why it can't be tested today:** the class creates its own `AudioSessionManager` and `AudioEngineHost`.
+- **Judgement:** Listen is a device-check tool that may go after stage 5, so leaving it untested is defensible. If it stays, pass in a `PlayerOutput` and add one cues-off test.
+
+**T7. SUGGESTION: two Player tests overlap.**
+- **Where:** `/Users/andybower/Projects/Earwig/EarwigTests/PlayerTests.swift:139-145` and `:100-108`
+- **Why:** `aStoppedSlateNeverEnds` checks the same thing as `stopVoiceStopsBothAndNoEndIsReported`: that `stopVoice` stops the cue channel and the fake then drops its completion.
+- **Fix:** fold the slate case into the stop test, or drop it.
+
+**T8. SUGGESTION: `aNumberInWordsIsOneWord` duplicates other tests.**
+- **Where:** `/Users/andybower/Projects/Earwig/EarwigTests/PhraseTimingTests.swift:21-26`
+- **Why:** the token-count check repeats `PhraseSplitterTests.swift:70-71`. The timing check is the same one-start-per-word mapping as `eachScriptWordTakesItsTokensStart`.
+- **Fix:** fold it into the dash test as a single phrase, for example "about three hundred feet — up".
+
+**T9. SUGGESTION: the Tones tests could be smaller and less noisy.**
+- **Where:** `/Users/andybower/Projects/Earwig/EarwigTests/TonesTests.swift:22-39`
+- **Why:**
+  - `noLouderThanMinusTwelve` is a one-line bound that could join the first test.
+  - `eachBeepFadesInAndOut` runs `#expect` inside a loop of about 720 samples, so one envelope bug floods the output with hundreds of failures.
+- **Fix:** use a single `allSatisfy` per beep instead.
+
+**T10. SUGGESTION: a shared test helper lives in another test's file.**
+- **Where:** `/Users/andybower/Projects/Earwig/EarwigTests/ScriptRendererTests.swift:5-12`
+- **Why:** `silence(seconds:)` is used by `PlayerTests.swift` as well, which couples the two files.
+- **Fix:** move it beside the other shared test data in `/Users/andybower/Projects/Earwig/EarwigTests/Fixtures.swift`.
+
+### Assessment
+
+- C1 — FIX: real (`VoiceRenderer.swift:51,64` sets and clears one shared `job`; `ScriptRenderer.prepare` only cancels the Task). Serialise `VoiceRenderer.render` so one write runs at a time, and clear `job` only if it is still this call's; the generation check already drops a superseded result.
+- C2 — FIX: real (`StepPreview.stop` guards on `player`, set only after the slate's `await`). `stop()` works whenever playing or preparing, and `start()` gives up after the `await` if it was stopped.
+- C3 — FIX (part): restart the engine after a configuration change whenever it was running, tap or not, and log it. Not resuming the interrupted phrase: that is the take host's re-anchor in stage 5.
+- C4 — FIX: `prepare` records the script it is for synchronously, and `renderState` shows nothing for another script.
+- C5 — FIX: renumber the decision references (the plan lost three decisions at review).
+- C6 — FIX: one line in CLAUDE.md's Build Commands beside `-EarwigDemo`.
+- C7 — FIX: remove the observers in `deinit` (the spike's configuration observer was never removed either; this branch made it one per Listen).
+- T1 — FIX: play a cue phrase then a voice phrase, end the cue channel, expect nothing.
+- T2 — FIX: resume and record an issue from `onLog`.
+- T3 — FIX (part): one view-model test of `renderState` (another step, another script) and of picking the start step again; not the `startStep` fallback or the take number, which are one-liners.
+- T4 — FIX: split into a progress test and a failure-then-retry test on a small phrase list of its own.
+- T5 — FIX: one test that a render superseded by `prepare` for another step leaves the new step's state and nothing of the old one's; cheap once C1's serialising is in.
+- T6 — SKIP: Listen builds its own audio and exists for the device check, which covers its order by ear; injecting an output for a tool that may go after stage 5 costs more than it saves.
+- T7 — FIX: fold the stopped-slate case into the stop test.
+- T8 — FIX: fold the number into the dash test.
+- T9 — FIX: loudness into the first test; one `allSatisfy` per beep for the fades.
+- T10 — FIX: move `silence(seconds:)` to `Fixtures.swift`.
+
+### Outcome — 2026-11-06
+
+- C1 — fixed: `VoiceRenderer.render` runs one call at a time, in order, and clears its job only if it is still that call's.
+- C2 — fixed: `StepPreview.stop()` works while preparing, and `start()` gives up after the slate's `await` if it was stopped.
+- C3 — fixed (part): after a configuration change the engine is restarted whenever it was started and not stopped, mic tap or not. A buffer cut off by the change is not resumed (stage 5's re-anchor).
+- C4 — fixed: `ScriptRenderer.target` names the script, set synchronously by `prepare`, which also resets the state for a new script; `renderState` shows nothing for another script.
+- C5 — fixed: decision references renumbered.
+- C6 — fixed: `-EarwigListen YES` documented in CLAUDE.md beside `-EarwigDemo`.
+- C7 — fixed: `AudioEngineHost` removes its observers in `deinit`.
+- T1 — fixed: `aNewPhraseStopsTheOneBeforeOnTheOtherChannel` plays a cue phrase then a voice phrase and ends the cue: nothing is reported.
+- T2 — fixed: the real-engine tones test ends on a logged failure.
+- T3 — fixed (part): `ScriptDetailViewModelTests` covers the state shown for another step and another script and re-picking the start step; not the `startStep` fallback or the take number.
+- T4 — fixed: split into `progressIsReportedAsEachPhraseRenders` and `aFailureIsShownAndARetryRendersOnlyTheRest`, on a three-phrase list of their own.
+- T5 — fixed: `aRenderSupersededByAnotherStepLeavesNothingOfItself`, and `anotherScriptStartsIdleAtOnce` for C4.
+- T6 — not done: Listen is covered by ear in the device check and may go after stage 5.
+- T7 — fixed: the stopped slate folded into the stop test.
+- T8 — fixed: the number folded into the dash test.
+- T9 — fixed: loudness in the first test; one `allSatisfy` per beep for the fades.
+- T10 — fixed: `silence(seconds:)` moved to `Fixtures.swift`.
+
+188 tests pass, no warnings, SwiftLint clean. Listen rechecked in the simulator.

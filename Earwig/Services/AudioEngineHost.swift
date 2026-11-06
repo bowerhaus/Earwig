@@ -1,6 +1,6 @@
 import AVFoundation
 
-/// Where a buffer plays (plan 004, decision 9).
+/// Where a buffer plays (plan 004, decision 8).
 enum AudioChannel: CaseIterable, Sendable {
     /// Phrases in the presenter's voice, through the time-pitch node at the engine's speed.
     case voice
@@ -11,7 +11,7 @@ enum AudioChannel: CaseIterable, Sendable {
 }
 
 /// The player's audio work, behind a protocol so the player's logic is tested with a fake
-/// (plan 004, decision 10). The real one is `AudioEngineHost`.
+/// (plan 004, decision 9). The real one is `AudioEngineHost`.
 @MainActor
 protocol PlayerOutput: AnyObject {
     /// Plays a buffer from its start, `delay` seconds from now on the audio clock. `completion`
@@ -38,7 +38,11 @@ final class AudioEngineHost: PlayerOutput {
     private let timePitch = AVAudioUnitTimePitch()
     private var micTapInstalled = false
     private var micBlock: (@Sendable (AVAudioPCMBuffer, TimeInterval) -> Void)?
-    private var observers: [NSObjectProtocol] = []
+    /// Removed in `deinit`, which is not on the main actor.
+    nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
+    /// Whether the engine should be running: started and not stopped. A configuration change
+    /// stops it, and it is restarted if so, mic tap or not.
+    private var wanted = false
 
     /// Called with a one-line description of engine events (configuration changes, restarts).
     var onEvent: ((String) -> Void)?
@@ -67,11 +71,26 @@ final class AudioEngineHost: PlayerOutput {
         readLatency()
     }
 
+    deinit {
+        for observer in observers { NotificationCenter.default.removeObserver(observer) }
+    }
+
     private func configurationChanged() {
         let wasRunning = engine.isRunning
         readLatency()
         guard let micBlock, micTapInstalled else {
-            onEvent?("engine configuration changed (running \(wasRunning)); no mic tap to restore")
+            // Playback alone: restart the engine so the next buffer plays. A buffer cut off by
+            // the change is not resumed; in a take the engine re-anchors (stage 5).
+            guard wanted else {
+                onEvent?("engine configuration changed (running \(wasRunning)); not wanted, left stopped")
+                return
+            }
+            do {
+                try start()
+                onEvent?("engine configuration changed (running \(wasRunning)); restarted for playback")
+            } catch {
+                onEvent?("engine configuration changed; restart failed: \(error.localizedDescription)")
+            }
             return
         }
         do {
@@ -82,7 +101,7 @@ final class AudioEngineHost: PlayerOutput {
         }
     }
 
-    /// The output latency as the session reports it for the current route (decision 11).
+    /// The output latency as the session reports it for the current route (decision 10).
     private func readLatency(always: Bool = false) {
         let session = AVAudioSession.sharedInstance()
         let latency = session.outputLatency + session.ioBufferDuration
@@ -101,6 +120,7 @@ final class AudioEngineHost: PlayerOutput {
     }
 
     func start() throws {
+        wanted = true
         guard !engine.isRunning else { return }
         engine.prepare()
         try engine.start()
@@ -108,6 +128,7 @@ final class AudioEngineHost: PlayerOutput {
     }
 
     func stop() {
+        wanted = false
         for channel in AudioChannel.allCases { stop(channel) }
         removeMicTap()
         engine.stop()
@@ -177,7 +198,7 @@ final class AudioEngineHost: PlayerOutput {
 }
 
 /// Host time in seconds, the clock the audio engine stamps buffers with and the follow
-/// engine's clock (plan 004, decision 12).
+/// engine's clock (plan 004, decision 11).
 enum HostClock {
     static var now: TimeInterval { AVAudioTime.seconds(forHostTime: mach_absolute_time()) }
 }

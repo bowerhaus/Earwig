@@ -74,6 +74,8 @@ final class StepPreview: Identifiable {
             try session.configure()
             try host.start()
             let slate = try await renderer.renderCue(slateText)
+            // Stopped (or the sheet dismissed) while the slate rendered.
+            guard status == .preparing else { return }
             guard let tones = Tones.buffer() else { throw VoiceRenderer.RenderError.conversion }
             script = FollowScript(phraseList: phraseList) { index in
                 PhraseTiming(phrase: rendered[index].phrase, tokenStarts: rendered[index].tokenStarts, duration: rendered[index].duration)
@@ -98,7 +100,7 @@ final class StepPreview: Identifiable {
     }
 
     func stop() {
-        guard player != nil else { return }
+        guard player != nil || status == .preparing else { return }
         ticker?.cancel()
         ticker = nil
         player?.stopAll()

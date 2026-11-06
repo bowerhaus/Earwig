@@ -13,16 +13,11 @@ struct PhraseTimingTests {
         #expect(timing.duration == 1.5)
     }
 
-    @Test func aDashIsTimedButHasNoScriptWord() {
-        let timing = PhraseTiming(phrase: phrase("the path — steep"), tokenStarts: [0, 0.3, 0.7, 0.9], duration: 1.4)
-        #expect(timing.wordStarts == [0, 0.3, 0.9])
-    }
-
-    @Test func aNumberInWordsIsOneWord() {
-        let spoken = phrase("about three hundred feet")
-        #expect(spoken.tokens.count == 3)
-        let timing = PhraseTiming(phrase: spoken, tokenStarts: [0, 0.4, 1.1], duration: 1.6)
-        #expect(timing.wordStarts == [0, 0.4, 1.1])
+    @Test func aDashHasNoScriptWordAndANumberInWordsIsOne() {
+        // Tokens: "about", "three hundred", "feet", "—", "up".
+        let spoken = phrase("about three hundred feet — up")
+        let timing = PhraseTiming(phrase: spoken, tokenStarts: [0, 0.4, 1.1, 1.4, 1.5], duration: 2)
+        #expect(timing.wordStarts == [0, 0.4, 1.1, 1.5])
     }
 
     @Test func aMissingMarkerIsSpacedBetweenItsNeighbours() {

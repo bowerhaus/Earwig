@@ -103,14 +103,20 @@ struct PlayerTests {
         player.handle(.stopVoice)
         #expect(output.stopped.contains(.voice) && output.stopped.contains(.cue))
         output.end(.voice)
-        #expect(events.list.isEmpty)
         #expect(player.progress() == nil)
+        // The slate too: it is on the cue channel.
+        player.handle(.playCue(.slate))
+        player.handle(.stopVoice)
+        output.end(.cue)
+        #expect(events.list.isEmpty)
     }
 
-    @Test func aNewPhraseReplacesTheOneBefore() {
+    @Test func aNewPhraseStopsTheOneBeforeOnTheOtherChannel() {
         let (player, events) = player()
-        player.handle(.play(phrase: 0, speed: 1.0))
+        player.handle(.play(phrase: 1, speed: 1.0))
         player.handle(.play(phrase: 2, speed: 1.0))
+        output.end(.cue)
+        #expect(events.list.isEmpty)
         output.end(.voice)
         #expect(events.list == [.phraseEnded(2)])
     }
@@ -134,14 +140,6 @@ struct PlayerTests {
         player.onEvent = { events.append($0) }
         player.handle(.playCue(.slate))
         #expect(events == [.cueEnded])
-    }
-
-    @Test func aStoppedSlateNeverEnds() {
-        let (player, events) = player()
-        player.handle(.playCue(.slate))
-        player.handle(.stopVoice)
-        output.end(.cue)
-        #expect(events.list.isEmpty)
     }
 
     @Test func progressIsWhereTheVoiceIsHeard() {
@@ -190,6 +188,11 @@ struct PlayerTests {
         await withCheckedContinuation { continuation in
             player.onEvent = { event in
                 if event == .tonesEnded { continuation.resume() }
+            }
+            // A failure to play is only logged; end the wait on it rather than at the time limit.
+            player.onLog = { message in
+                Issue.record("\(message)")
+                continuation.resume()
             }
             player.handle(.playTones)
         }

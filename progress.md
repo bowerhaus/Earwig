@@ -15,7 +15,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - [x] 3. Tones and player: `Tones`, `AudioEngineHost` nodes, `Player`, tests
 - [x] 4. Screen: rendering row, render on open and on a new start step, Listen sheet
 - [x] Tests + lint
-- [ ] Review + fixes
+- [x] Review + fixes (pass and outcome in the plan; comment on #11)
 - [ ] Manual test: device check on the iPhone 14 Pro (one check at a time)
 - [ ] Complete (Results, PRD v0.6, commit + PR)
 
@@ -24,5 +24,8 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - Built: `ScriptRenderer`, `VoiceCatalogue`, `Slate`, `Tones`, `PhraseTiming(phrase:tokenStarts:duration:)`, `AudioEngineHost` (voice, cue, tone channels; `PlayerOutput`), `Player`, `StepPreview`, the rendering row and `ListenView`. 187 tests pass, SwiftLint clean.
 - Slate signature changed for SwiftLint's parameter count: `Slate.text(number:shotID:take:directions:)`, `directions` nil with cues off.
 - Debug flag `-EarwigListen YES` (with `-EarwigDemo YES`) opens Listen once the start step is ready, for the simulator.
+- Review: 7 code, 10 test findings, none critical; all fixed except T6 (skipped) and C3/T3 in part. 188 tests pass.
 - Simulator (Daniel compact): step 1 renders 10 phrases, 21.7 s of audio in 0.7 s, 74 of 74 words timed (delegate markers). Listen runs slate, tones, all phrases; next phrase starts < 0.5 ms after an end; ends arrive about 145 ms after the audio length; output latency 10 ms on the speaker.
 
+
+**Next:** manual test on the iPhone 14 Pro, one check at a time (plan's Verification 1–4). Install with `devicectl`, launch with `--console` in the background and read `Earwig:` lines.

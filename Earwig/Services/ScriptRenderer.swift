@@ -52,6 +52,8 @@ final class ScriptRenderer {
     }
 
     private(set) var state: State = .idle
+    /// The script the state is for, set as soon as a render is asked for.
+    private(set) var target: AnyHashable?
     /// The voices in use, `nil` when there is no English voice.
     private(set) var voices: VoiceChoice?
     let rate: Float
@@ -77,6 +79,11 @@ final class ScriptRenderer {
         return renderer
     }
 
+    /// Waits for the render `prepare` started, for tests.
+    func finished() async {
+        await task?.value
+    }
+
     /// Phrases held in memory, for tests and the log.
     var cachedCount: Int { cache.count }
 
@@ -90,6 +97,8 @@ final class ScriptRenderer {
     /// Starts rendering a step of a script in the background, replacing any render under way.
     /// Opening another script lets the previous one's phrases go.
     func prepare(script id: AnyHashable, step: Int, phrases: PhraseList) {
+        if target != id { state = .idle }
+        target = id
         task?.cancel()
         task = Task { await render(script: id, step: step, phrases: phrases) }
     }
@@ -97,6 +106,8 @@ final class ScriptRenderer {
     /// Renders what a step is missing, in order, and returns when it is done, failed or was
     /// superseded.
     func render(script id: AnyHashable, step: Int, phrases: PhraseList) async {
+        if target != id { state = .idle }
+        target = id
         generation += 1
         let generation = generation
         if script != id {

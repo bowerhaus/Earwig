@@ -17,10 +17,7 @@ struct TonesTests {
             let gap = samples[(start + Int(Tones.beepLength * rate) + 1)..<(start + Int(Tones.spacing * rate))]
             #expect(gap.allSatisfy { $0 == 0 })
         }
-    }
-
-    @Test func noLouderThanMinusTwelve() {
-        #expect(Tones.samples(sampleRate: rate).map(abs).max()! <= Tones.amplitude)
+        #expect(samples.map(abs).max()! <= Tones.amplitude)
     }
 
     @Test func eachBeepFadesInAndOut() {
@@ -32,9 +29,7 @@ struct TonesTests {
             #expect(samples[start] == 0)
             #expect(abs(samples[start + beepFrames - 1]) < 1e-6)
             // Within the fade the level never exceeds the envelope.
-            for frame in 0..<fadeFrames {
-                #expect(abs(samples[start + frame]) <= Tones.amplitude * Float(frame) / Float(fadeFrames) + 1e-6)
-            }
+            #expect((0..<fadeFrames).allSatisfy { abs(samples[start + $0]) <= Tones.amplitude * Float($0) / Float(fadeFrames) + 1e-6 })
         }
     }
 

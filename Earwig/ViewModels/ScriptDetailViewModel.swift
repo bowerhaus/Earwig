@@ -50,7 +50,8 @@ final class ScriptDetailViewModel {
 
     /// The rendering state for this script's start step.
     func renderState(_ renderer: ScriptRenderer) -> ScriptRenderer.State {
-        switch renderer.state {
+        guard renderer.target == AnyHashable(script.persistentModelID) else { return .idle }
+        return switch renderer.state {
         case .rendering(let step, _, _), .ready(let step), .failed(let step, _):
             step == script.lastStep ? renderer.state : .idle
         case .idle:

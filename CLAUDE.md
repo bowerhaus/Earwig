@@ -23,7 +23,7 @@ xcodebuild -scheme Earwig -destination 'platform=iOS Simulator,name=iPhone 17' -
 swiftlint lint --quiet
 ```
 
-Tests use Swift Testing (`import Testing`). Keep the build free of warnings and SwiftLint clean. A test that uses an in-memory `ModelContainer` must hold the container for as long as it uses its context, or the test host crashes. In the simulator, launch with `-EarwigDemo YES` (Debug builds) to add the sample script and open it without taps.
+Tests use Swift Testing (`import Testing`). Keep the build free of warnings and SwiftLint clean. A test that uses an in-memory `ModelContainer` must hold the container for as long as it uses its context, or the test host crashes. In the simulator, launch with `-EarwigDemo YES` (Debug builds) to add the sample script and open it without taps; add `-EarwigListen YES` to open Listen on its start step once it is rendered.
 
 Audio, Bluetooth routing, Personal Voice, speech recognition and lock-screen behaviour cannot be verified in the simulator. Anything in the audio path must be checked on the author's iPhone 14 Pro. Claude installs it there directly, without opening Xcode (find the phone's UDID with `xcrun devicectl list devices`):
 

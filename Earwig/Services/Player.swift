@@ -1,7 +1,7 @@
 import AVFoundation
 
 /// A take's audio, loaded before it starts: the step's phrases by phrase index, the slate and
-/// the tones (plan 004, decision 10).
+/// the tones (plan 004, decision 9).
 struct TakeAudio {
     struct Phrase {
         var kind: PhraseKind
@@ -14,7 +14,7 @@ struct TakeAudio {
 }
 
 /// Turns the follow engine's commands into sound and sound back into its events (PRD §5.2,
-/// §7.2; plan 004, decisions 9 to 11). A spoken phrase plays on the voice channel at the
+/// §7.2; plan 004, decisions 8 to 10). A spoken phrase plays on the voice channel at the
 /// engine's speed; a cue phrase and the slate on the cue channel at 1.0x; the tones on their own.
 /// Progress is reported where the presenter hears the voice, the output latency allowed for.
 @MainActor

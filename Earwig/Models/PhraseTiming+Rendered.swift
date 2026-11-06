@@ -1,7 +1,7 @@
 import Foundation
 
 extension PhraseTiming {
-    /// A phrase's timings from its rendering (plan 004, decision 5): one start per script word,
+    /// A phrase's timings from its rendering (plan 004, decision 4): one start per script word,
     /// from the token it was read from. A token no marker named takes a start spaced evenly
     /// between its timed neighbours (or the phrase's start and end), so a missing marker never
     /// shifts the other words. A token with no word (a dash) is timed but has no script word.

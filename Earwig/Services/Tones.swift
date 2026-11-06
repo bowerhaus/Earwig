@@ -1,6 +1,6 @@
 import AVFoundation
 
-/// The three start tones (PRD §4.5; plan 004, decision 8): one buffer, so the beats are
+/// The three start tones (PRD §4.5; plan 004, decision 7): one buffer, so the beats are
 /// sample-exact, padded with silence to the fourth beat, where phrase 1 starts.
 enum Tones {
     static let beats = 3

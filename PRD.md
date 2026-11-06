@@ -1,6 +1,6 @@
 # Earwig - Product Requirements Document (PRD)
 
-**Status:** Draft v0.4, 2026-11-06. Changes by version are in the Document History at the end.
+**Status:** Draft v0.5, 2026-11-06. Changes by version are in the Document History at the end.
 **Name:** Earwig (decided 2026-11-05: UK slang for listening in). Bundle identifier `com.bowerhaus.Earwig`.
 
 ## Executive Summary
@@ -101,7 +101,7 @@ None at run time. Development needs Xcode 27 or later, `xcodegen`, `swiftlint`.
 | **Direction** | Text in a step that is not spoken by the presenter: a step's title and `Shows:` field, anything in brackets inside a line, a `Footage:` or `Open:` field. Directions are never matched against what the presenter says. Some are read as cues (section 4.2). |
 | **Phrase** | The unit of playback and gating: a line split at sentence ends and at clause breaks (commas, dashes, semicolons) so no phrase is longer than about twelve words. The voice can only wait at a phrase boundary. |
 | **Rendering** | A phrase's audio in one voice, with the start time of every word in it. All of a script's phrases are rendered before a take, and cached by script hash and voice. |
-| **Lead** | How far ahead of the presenter the voice runs, set in words (default 5, found in plan 001), with the equivalent in seconds shown. |
+| **Lead** | How far ahead of the presenter the voice runs, set in words, with the equivalent in seconds shown: the head start the presenter feels, since the engine allows for the recogniser's delay itself (5.4). Default 3 (plan 003), about what lead 5 felt like in plan 001 when the delay was not allowed for; to be tried against 5 by ear in stage 5. |
 | **Position** | Two positions in the script, both as a word index: the voice's (where playback is) and the presenter's (the last script word confidently heard). The engine's job is to keep the difference near the lead. |
 | **Cue voice** | A second, clearly different voice (an Apple voice, never the presenter's) that reads directions and slates so the presenter knows at once that it is not a line. |
 | **Take** | One attempt at a step, numbered from 1 for that step within the script. The slate says it. |
@@ -161,13 +161,13 @@ stream of heard words, and decides what the player does.
 
 | Feature | Priority | Notes |
 |---|---|---|
-| Hold the lead | P0 | The voice stays about `lead` words ahead of the presenter. Default 5 words, the author's preference in plan 001; shorter leads left a gap at every phrase end. Five words is about two words of felt head start plus the recogniser's delay, so the engine should measure that delay and add it itself (5.4), and the setting can then come down to the felt head start. |
-| Hybrid pacing | P0 | Playback speed is nudged between bounds (default 0.85x to 1.2x, in Settings) to keep the lead; a phrase boundary is a gate: the next phrase starts only when the presenter is within `lead` words of the end of the current one. Phrase-gated only, with speed fixed at 1.0x, is the first milestone and remains available as a setting. |
+| Hold the lead | P0 | The voice stays about `lead` words ahead of where the presenter is estimated to be now. In plan 001 lead 5, counted from the last word heard, felt best; that is about two words of felt head start plus the recogniser's delay. The engine now measures the delay and adds it (5.4), so the setting is the felt head start: default 3, to be judged against 5 in stage 5. In plan 003's simulated clean read the voice stayed within two words of the lead 99% of the time. |
+| Hybrid pacing | P0 | Playback speed is nudged between bounds (default 0.85x to 1.2x, in Settings) to keep the lead; a phrase boundary is a gate: the next phrase starts only when the presenter is within `lead` words of the end of the current one (counted to the boundary after its last word, so the next phrase starts exactly a lead ahead). Phrase-gated only, with speed fixed at 1.0x, is the first milestone and remains available as a setting. |
 | Wait | P0 | When the voice reaches a gate and the presenter is not there, it waits silently. No filler, no repeat. |
-| Pick up again | P0 | While waiting, every heard word is matched first near the expected position, then across the whole step, then the script. On a confident match the voice resumes from `lead` words past the presenter, at the next phrase start on or after that point. |
+| Pick up again | P0 | While waiting, every heard word is matched near the expected position and, once the presenter is lost, across the whole step (a take is one step). On a confident match the voice re-anchors (5.4): it queues the first phrase the presenter has not begun, released by the usual gate, so it never repeats a word just said or skips one not yet said. |
 | Off piste | P0 | Heard words that match nothing are ignored. The voice waits at its gate for as long as it takes. |
-| Fluffs and restarts | P0 | A presenter who goes back and says a phrase again is matched where they are, so the voice steps back with them. In plan 001, without stepping back, the gates already held while the presenter repeated a line, and the author "could live with" every fluff; the one awkward case is a restart after the gate has opened, when the voice is already into the next phrase. Stepping back should be simple: replay from the phrase the presenter is in. |
-| Manual controls | P0 | On screen, large: Hold (toggle), Back a phrase, Forward a phrase, Restart the step, Stop. Where else they live (an earpiece button, a Watch) is open (section 15). |
+| Fluffs and restarts | P0 | A presenter who goes back and says a phrase again is matched where they are, so the voice steps back with them. In plan 001, without stepping back, the gates already held while the presenter repeated a line, and the author "could live with" every fluff; the one awkward case is a restart after the gate has opened, when the voice is already into the next phrase. Plan 003: on a step back of three words or more, heard as new words, a voice already into a later phrase stops and re-anchors to the phrase after the one the presenter is in; in simulation the third fluff of plan 001, which waited 5.4 s, gave no wait. |
+| Manual controls | P0 | On screen, large: Hold (toggle), Back a phrase, Forward a phrase, Restart the step, Stop. Hold stops the voice at once; listening goes on, and release re-anchors to where the presenter got to. Back and Forward play that phrase now; with nothing heard the voice then waits at the next gate. Restart goes back through the tones, not the slate. Where else the controls live (an earpiece button, a Watch) is open (section 15). |
 | Fixed pace (no listening) | P1 | The voice reads at 1.0x and never waits; the presenter keeps up. For rehearsal and for noisy places. |
 
 ### 4.5 Starting a take
@@ -194,6 +194,11 @@ Alternatives, kept for the first plan to try:
   stray speech.
 - **First phrase, then gate.** Press Start and the first phrase plays at once; every later
   phrase is gated as normal. Nothing to say first, but no slate.
+
+Plan 003 builds three start modes, chosen in Settings: **slate with a reply** (the default: the
+slate is read and the take starts when two of its three parts are heard repeated, or on a tap),
+**slate alone** (the slate is read, then a 3 s pause to say it to the camera, nothing listened
+for; a tap skips it) and **tones only**. Which to use is judged on the phone in stage 5.
 
 The slate flow is the recommended default; tones-only is a setting for shoots that slate
 another way.
@@ -226,7 +231,7 @@ slate) is a roadmap item (section 13): cheap once the microphone is open, but sc
 - Cue voice, cues on or off by default.
 - Lead, in words, with seconds shown for the chosen voice and rate.
 - Pacing: hybrid or phrase-gated; speed bounds.
-- Start ritual: slate or tones only.
+- Start ritual: slate with a reply, slate alone, or tones only.
 - Screen: font size, fixed-pace words per minute.
 - Diagnostics: the Listening check (4.3) and the route check.
 
@@ -253,59 +258,102 @@ engine. Every rule here is unit-tested with fixture word streams.
   with its value, with one reading per run; a run never crosses a comma, full stop or dash,
   so "fifteen, sixteen" is two numbers; a decimal or a time ("2.5", "9:30") is a plain
   word. Folding compounds, contractions and spellings against what is heard is the
-  matcher's (stage 3).
+  matcher's (plan 003, 5.3).
 - Each phrase's rendering duration and per-word start times.
-- **Heard words**: from the recogniser, each with its normalised text, whether it is
-  volatile or final, and for finals its start time on the engine's clock. Volatile words
-  have no times of their own (4.3): they are matched by order and move the position
-  tentatively; final words commit it.
-- The player's reported playback position (phrase and word).
-- Settings: lead, pacing mode, speed bounds, and the thresholds in 5.3.
+- **Heard words**: the recogniser's interim text, the whole untimed block since the last
+  final, rewritten on every result, and its final words with their start times on the
+  engine's clock. The engine stamps each interim word with when it first appeared and
+  re-aligns the whole block from the position at the last final on every result, so a
+  rewrite needs no bookkeeping; a final settles the block. Pairing first appearances with
+  the finals' start times measures the recogniser's delay; the finals' spacing measures the
+  presenter's rate.
+- The player's reported playback position (phrase and offset into its rendering) and the
+  end of each phrase, cue and the tones.
+- The manual controls and a tap; settings: lead, pacing mode, speed bounds, start mode and
+  the thresholds in 5.3.
+- Time: every input carries a time on one engine clock and the host ticks the engine about
+  ten times a second; the engine never reads a clock, so its behaviour is deterministic.
 
 ### 5.2 Outputs
 
-Commands to the player and the screen: play phrase n at speed r; set speed r; wait at the
-end of phrase n; jump to phrase m; and position updates (voice position, presenter
-position, confidence) for the screen and the diagnostics.
+Commands to the player: play the slate cue, play the tones, play phrase n at speed r (a
+cue phrase in the cue voice), set speed r, stop the voice, and the take finished
+(completed or stopped). Waiting is not a command: the voice simply gets no next phrase. A
+snapshot for the screen and diagnostics: the status (slate, tones, speaking, waiting,
+lost, held, finished), the voice's phrase and word, the presenter's confident word and
+estimated position, the speed, the lead error, and the measured delay and rate.
 
 ### 5.3 Matching
 
-- The engine keeps an **expected position**: the last committed presenter position
-  advanced by the words heard since.
+- The engine keeps an **expected position**: the last matched script word advanced by the
+  words heard since.
 - A heard word is matched within a **window** of script words around the expected
-  position (default 8 words behind to 12 ahead). A match is exact on the normalised form,
-  or within a small edit distance for words of five letters or more.
-- Runs count: two consecutive heard words matching two consecutive script words in the
-  window commit the position; a single match only moves it tentatively. This stops a
-  common word ("the", "and") jumping the position.
-- When nothing has matched for `lostWords` heard words (default 6) or `lostSeconds`
-  (default 4) the presenter is **lost**: the window widens to the current step, then the
-  whole script, and a run of three consecutive matches is needed to commit. Once committed
-  the voice resumes as 4.4 "Pick up again" says.
+  position (12 words behind, a whole phrase, so a restart from a phrase's start is seen at
+  once; 12 ahead). It matches when the normalised forms are equal; when both are the same
+  number, or the last word of an interim result is digits still building up to the
+  script's number; within an edit distance (transpositions counting one) of 1 for words of
+  five to seven letters and 2 for eight or more, which covers most British and American
+  spellings; or as a pair in a short spelling table ("grey" and "gray", "tyre" and
+  "tire"). Compounds and contractions match across a word boundary both ways, a
+  contraction from a table ("theres" is "there is").
+- Runs decide **confidence**: two consecutive matches (three when lost) make the position
+  confident; a single match only moves it tentatively, and no gate, step back or jump acts
+  on it. Within a run one script word may be dropped or one heard word misheard; an
+  inserted heard word breaks it. A final makes a block **settled**; an interim block may
+  still be rewritten. Among candidates: one continuing the run, then one confirmed by the
+  next heard word, then an exact match over a near one, then the nearest, ahead before
+  behind.
+- When `lostWords` heard words (default 6) match nothing, or `lostSeconds` (default 4)
+  pass from the first of them with words still arriving, the presenter is **lost**: the
+  window widens to the whole step and a run of three is needed. A single stray match ("the")
+  does not reset the count. Silence is never lost. Once found the voice re-anchors (5.4).
 - Heard words that match nothing are dropped. The engine never guesses a position.
 
 ### 5.4 Pacing
 
 - The **presenter position** used for pacing and gates is an estimate of where the
-  presenter is now: the last heard word advanced by their speaking rate over the time since
-  it was heard, plus the recogniser's measured delay (about 0.9 s in plan 001). Waiting for
-  the recogniser alone stalls a gate, worst on a short phrase just after a final, when the
-  first interim result can arrive 1.5 s late.
-- Error `e` = (voice position − presenter position) − lead, in words.
-- Hybrid: speed = clamp(1 + k·e, minSpeed, maxSpeed), with k such that one word of error
-  changes speed by about 0.05x; speed changes are rate-limited so the voice never lurches.
+  presenter is now: the last confident word advanced by their measured speaking rate over
+  the recogniser's measured delay plus the time since that word appeared, for at most
+  0.5 s with nothing new (the median of the last 20 delays, default 0.9 s, kept within 0.3
+  to 2 s; the rate over the last 10 s of finals, pauses over a second left out, default 2.5
+  words a second). Off script it stays at the last confident word. After a final the
+  presenter has paused, so it stays there, unless the voice has since started a phrase the
+  presenter has not begun: a lead's worth of time later they are taken to have begun it,
+  and no further, which bridges a first interim result that is late after a pause while
+  letting silence through a gate only for a phrase of `lead + 1` words or fewer. It never
+  passes what the voice has given. Telling a late result from silence needs a speech signal
+  (the input level), a possible stage 5 refinement.
+- Error `e` = (voice position − presenter position) − lead, in words: positive when the
+  voice is too far ahead.
+- Hybrid: speed = clamp(1 − k·e, minSpeed, maxSpeed), k = 0.05 (one word of error is
+  0.05x), changing by at most 0.1x a second and sent only when it moves by 0.02 or reaches
+  a bound; only once the presenter has been heard. (Before v0.5 this read 1 + k·e, which
+  would speed up a voice already too far ahead.)
 - Phrase-gated: speed stays at 1.0x.
 - At the end of phrase n the voice **waits** unless the presenter's position is at least
-  (end of phrase n − lead). While waiting the speed logic is off. On release the next
-  phrase starts at speed 1.0x.
-- When the presenter is ahead of the voice (e < −lead), the engine jumps to the phrase
-  containing (presenter position + lead) rather than speeding up past maxSpeed.
+  (end of phrase n − lead), the end counted as the boundary after its last word, so a
+  released phrase starts a lead ahead. While waiting the speed logic is off. On release the
+  next phrase starts at speed 1.0x. A cue phrase is gated by the spoken phrase before it,
+  and the spoken phrase after a cue follows it at once.
+- **Re-anchoring** replaces the jump: the voice stops and queues the first phrase the
+  presenter has not begun, released by the usual gate. It happens on a step back (a
+  confident position, from newly heard words, three or more words behind the last, with
+  the voice already past the phrase it would queue), when the presenter is ahead of the
+  voice (in place of speeding up past maxSpeed), when the presenter is found after being
+  lost, and when Hold is released. With the presenter in the last phrase there is nothing
+  to queue, and the voice stops and is finished.
+- The take **completes** when the last word is heard, or 3 s after the voice finished the
+  last phrase with the presenter in it.
 
 ### 5.5 Start
 
-The engine starts in **slate** state: it plays the slate cue, then listens for the slate
-words (a step number or shot ID, "take", a number). On hearing them, or on a tap, it emits
-the tones and plays phrase 1. In tones-only mode it skips the slate.
+By the start mode (4.5). **Slate with a reply**: the engine plays the slate cue, then,
+once it has ended, listens for the slate's words (the step number or shot ID, "take", the
+take number, numbers by value); two of them heard, or a tap, emits the tones, and phrase 1
+plays when they end. Words heard before the tones are not followed. **Slate alone**: the
+cue, a 3 s pause, the tones. **Tones only**: the tones. A shot ID said as letters and
+numbers ("W three one") is matched only as well as the matcher already can; better handling
+waits for real scripts in stage 5.
 
 ---
 
@@ -381,7 +429,8 @@ Views (SwiftUI) → ViewModels (@Observable) → Models (SwiftData)
 Earwig/
   App/           EarwigApp, AppState
   Models/        SwiftData models, PhraseList, ModelJSON, Settings
-  Engine/        FollowEngine, Matcher, Pacer, WordNormaliser, ScriptWords (pure Swift)
+  Engine/        FollowEngine, Matcher, PresenterEstimate, Pacer, WordFolding, WordNormaliser,
+                 ScriptWords, FollowScript (pure Swift)
   Services/      ScriptParser, ScriptImporter, PhraseSplitter, VoiceRenderer, RenderingStore,
                  AudioSessionManager, Listener, Player, Slater, ModelContainerFactory
   ViewModels/    ScriptsViewModel, ScriptDetailViewModel, …
@@ -486,7 +535,7 @@ decorative. SF Symbols. All colours in `EarwigTheme`; views never define their o
 | The lead is wrong for the presenter | It is a setting; plan 001 found 5 words by trial. The recogniser's delay is part of it, so the engine measures and adds that delay itself (5.4). |
 | Speech recognition stops in the background or on lock | Retired: background audio mode kept the session alive with the screen locked for 8 min 20 s of looping takes in plan 001, with mic audio continuous throughout. Listening also restarts itself if its results fail. |
 | en-GB on-device transcription assets are missing | Downloaded once through `AssetInventory` with a prompt; Settings shows the state. |
-| Numbers, years and compounds stall the follower | Plan 001 saw a year at a phrase end hold a gate for 2.8 s at every lead, and "sea wall" heard as "seawall". The normaliser rules in 5.1 cover them; the engine's fixture word streams (stage 3) include years, numbers, compounds and contractions. |
+| Numbers, years and compounds stall the follower | Plan 001 saw a year at a phrase end hold a gate for 2.8 s at every lead, and "sea wall" heard as "seawall". The matcher folds them (5.3); in plan 003's simulated take with "seawall" and 1890 building up as digits, no gate held (longest voice gap 1.1 s, no wait felt by the presenter). |
 | An incoming call | Pauses the take; the presenter restarts the step. Not tested in the spike (calls are rare; waived as in PhysiMate). |
 | Earpiece audio heard by the Osmo | One listen on the first real take at the chosen volume. Expected inaudible. |
 | Filming on the iPhone with Earwig running | Out of v1 (section 13). The stock Camera app stops Earwig's audio; the later mode films inside Earwig. |
@@ -507,7 +556,7 @@ Each stage is one plan, one branch, one issue and one PR.
 2. **Skeleton, models, parser** (plan 002, done: see its Results). Project, theme,
    SwiftData, the Cutaway and plain parsers with tests, the Scripts and Script screens,
    paste import.
-3. **Follow engine.** Pure, with the matcher, the pacer, the gates, lost and resume,
+3. **Follow engine** (plan 003, done: see its Results). Pure, with the matcher, the pacer, the gates, lost and resume,
    tested against fixture word streams (a clean read, a slow read, a fluff and restart, a
    stop and resume, a wander off script).
 4. **Renderer and player.** Pre-rendering to files with timings, the rendering store,
@@ -584,8 +633,8 @@ shared between recording and listening.
 
 ## 15. Open Questions
 
-1. The start ritual: the slate flow (4.5) is recommended; confirmed or not after the
-   spike.
+1. The start ritual: plan 003 builds all three modes (4.5), slate with a reply by default;
+   which to use is judged on the phone in stage 5.
 2. Manual controls beyond the screen: whether the earpieces have a button worth mapping,
    or a Watch is wanted. Decide after a few real takes.
 3. Commit policy for this repo: Cutaway's (Claude commits at sensible points, never
@@ -604,6 +653,7 @@ shared between recording and listening.
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.5 | 2026-11-06 | Plan 003 results: the lead is the felt head start, default 3 (3, 4.4); the gate counted to the phrase boundary (4.4, 5.4); re-anchoring in place of the three targets for stepping back, picking up and jumping, and a lost search over the take's step only (4.4, 5.3, 5.4); the manual controls as built (4.4); three start modes in Settings (4.5, 4.8, 5.5, question 1); the engine's inputs and outputs as built, with time passed in (5.1, 5.2); matching with its folds, confidence and a 12-word window behind (5.3); the presenter estimate as built and the hybrid speed's sign fixed to 1 − k·e (5.4); completion (5.4); folders (7.3); the numbers risk (11); stage 3 done (12). |
 | 0.4 | 2026-11-06 | Plan 002 results: paste import confirmed on the iPhone with no Allow Paste prompt, and a file copied in Finder pastes only its name (4.1, P1 row); the Cutaway and plain parsing rules as built, square brackets as the only inline directions, re-paste by stated title (4.1); script words read at parse time, a number run never crossing punctuation (5.1); the entities as built, with the phrase list's parser version (6.1); folders (7.3); screens (8.1, 8.2); the theme, one sky-blue look not split into light and dark (10); stage 2 done (12). |
 | 0.3 | 2026-11-05 | Plan 001 results (spike on the iPhone 14 Pro with the SK18 earpiece): Stephanie (Enhanced) is the default voice until Personal Voice is judged; the default lead is 5 words; the earpiece holds A2DP with the mic open and recognition runs locked, so those risks are retired; recognition is about 0.9 s behind, untimed in its interim results, and fed untimed audio (4.3); the engine estimates the presenter's place and adds the delay (5.4) and treats numbers, compounds and contractions as said (5.1); render and rate details (4.2); fluffs (4.4); open question 6. |
 | 0.2 | 2026-11-05 | The App Store Connect key lives in the Keychain under a team-level name, not in a file; the app itself has no keys (section 2). MIT licence; repo public. |

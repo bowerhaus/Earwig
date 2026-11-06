@@ -2,4 +2,10 @@
 
 Scratch state for the plan in flight. Overwritten at the start of a plan, emptied to a stub when it completes.
 
-No plan in flight. Plan 003 (follow engine) is merged to `main` (PR #8, issue #7 closed); see `plans/003-follow-engine.md`. Next is stage 4 of PRD §12, renderer and player: pre-rendering to files with timings, the rendering store, the audio session, the time-pitch player on the audio clock, tones. It starts with writing `plans/004-…md` on a new branch from `main`. Open follow-ups for stage 5: #9 (mic input level to tell a pause from a late first result), #10 (slate reply: a shot ID said as letters and numbers).
+**Plan:** 004, renderer and player (`plans/004-renderer-player.md`), stage 4 of PRD §12.
+**Branch:** `renderer-player`, from `main` at `a382ac8`. Not pushed.
+**State:** plan drafted, waiting for Andy's review. No code yet.
+
+**Next:** Andy reviews the plan (decisions 1, 3, 7, 11 and 14 most want his eye). Then `/plan_create_issue` and push on his yes, then `/plan_approved` (a device-heavy stage, checked one step at a time on the iPhone 14 Pro).
+
+**Open follow-ups outside this plan:** #5 (a `script.md` copied as a file), #6 (a full Cutaway fixture), #9 (mic level to tell a pause from a late result), #10 (a shot ID said as letters and numbers).

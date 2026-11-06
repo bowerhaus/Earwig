@@ -1,6 +1,6 @@
 # Plan 004: Renderer and Player
 
-**GitHub Issue:** not yet created (after review: `/plan_create_issue`)
+**GitHub Issue:** [#11](https://github.com/bowerhaus/Earwig/issues/11) (PR must include "Closes #11")
 **Branch:** `renderer-player` (from `main` at `a382ac8`, after plan 003 merged)
 **Status:** Draft for review (2026-11-06).
 **Manual test:** yes, on Andy's iPhone 14 Pro with the SK18: a step rendered, then listened to through the earpiece with each word highlighted as it is spoken (Verification).

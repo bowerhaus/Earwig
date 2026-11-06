@@ -24,7 +24,7 @@ struct StepView: View {
                         .font(.caption.weight(.bold))
                         .textCase(.uppercase)
                         .tracking(1)
-                        .foregroundStyle(EarwigTheme.background)
+                        .foregroundStyle(EarwigTheme.onAccent)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(EarwigTheme.accent, in: Capsule())

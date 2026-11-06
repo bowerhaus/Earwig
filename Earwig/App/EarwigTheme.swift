@@ -17,6 +17,9 @@ struct EarwigPalette {
     let warning: Color
     let good: Color
     let caution: Color
+    /// Text on the accent, as on the Start pill: white on a light palette's accent, the
+    /// background on a dark one's.
+    var onAccent: Color { scheme == .light ? .white : background }
 }
 
 extension EarwigPalette {
@@ -95,7 +98,22 @@ extension EarwigPalette {
         caution: Color(hex: 0xFFC857)
     )
 
-    static let candidates = [paper, copper, harbour, cobalt, bottle]
+    /// A clear sky blue as the ground with white cards on it, deep blue slates, clay cues.
+    static let sky = EarwigPalette(
+        name: "Sky",
+        scheme: .light,
+        background: Color(hex: 0x5CB8F3),
+        surface: Color(hex: 0xFFFFFF),
+        text: Color(hex: 0x14222F),
+        secondaryText: Color(hex: 0x5B7083),
+        accent: Color(hex: 0x1468C0),
+        cue: Color(hex: 0xB8601A),
+        warning: Color(hex: 0xC8262E),
+        good: Color(hex: 0x2B8A4E),
+        caution: Color(hex: 0xB86E00)
+    )
+
+    static let candidates = [paper, copper, harbour, cobalt, bottle, sky]
 
     /// The chosen palette. While Andy picks one, the `-EarwigPalette <name>` launch argument
     /// shows another.
@@ -120,6 +138,7 @@ enum EarwigTheme {
     static var warning: Color { palette.warning }
     static var good: Color { palette.good }
     static var caution: Color { palette.caution }
+    static var onAccent: Color { palette.onAccent }
 }
 
 extension Color {

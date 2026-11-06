@@ -6,7 +6,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 Branch `follow-engine` from `main` at `25e2d53` (plan 002 merged as PR #4, closing #3; PRD v0.4). Not pushed. No issue yet.
 
-**State:** the plan is reviewed (2026-11-06; its Review section has Andy's answers: decisions 3, 9 and 11 agreed, the start ritual left to stage 5). Nothing built.
+**State:** the plan is reviewed (2026-11-06; its Review section has Andy's answers: decisions 3, 9 and 11 agreed; the start built now with a setting for whether the slate must be repeated, decision 12). Nothing built.
 
 **Next:**
 

@@ -6,15 +6,15 @@
 **Manual test:** none. The engine is pure Swift with no audio; the feel of following is judged on the phone in stage 5, when the listener and player drive it.
 **Goal:** Build the engine that decides what the voice does. Given a step's phrases with word timings, the words the recogniser hears and the player's position, it says when to play, how fast, when to wait, when to step back or jump, and where the presenter is. It is pure Swift with time passed in, so every rule of PRD §5 is tested here against fixture word streams and a simulated take, before any of it reaches an earpiece.
 
-**PRD references:** §3 Core Concepts (lead, position), §4.4 Following, §5 Follow Engine Specification, §11 (numbers, years and compounds), §12 stage 3, §14 Success Criteria.
+**PRD references:** §3 Core Concepts (lead, position), §4.4 Following, §4.5 Starting a take, §4.8 Settings (start), §5 Follow Engine Specification, §11 (numbers, years and compounds), §12 stage 3, §14 Success Criteria.
 
 ---
 
 ## Scope
 
-**In:** the matcher (window, runs, folding of spellings, compounds, contractions and numbers against what is heard, lost and found); the presenter estimate (measured recogniser delay and speaking rate); the pacer (hybrid and phrase-gated speed, gates, waiting, stepping back, jumping ahead); the engine's state machine with a plain begin (phrase 1 at once), manual controls (Hold, Back, Forward, Restart, Stop) and the end of the step; the engine's settings as a value; an adapter from a step's `PhraseList` to the engine's input; unit tests per rule and a simulated take (presenter, recogniser and player on a fake clock) for the scenarios of PRD §12 stage 3.
+**In:** the matcher (window, runs, folding of spellings, compounds, contractions and numbers against what is heard, lost and found); the presenter estimate (measured recogniser delay and speaking rate); the pacer (hybrid and phrase-gated speed, gates, waiting, stepping back, jumping ahead); the engine's state machine with the three starts (slate with a reply, slate alone, tones only), manual controls (Hold, Back, Forward, Restart, Stop) and the end of the step; the engine's settings as a value; an adapter from a step's `PhraseList` to the engine's input; unit tests per rule and a simulated take (presenter, recogniser and player on a fake clock) for the scenarios of PRD §12 stage 3.
 
-**Out:** rendering and real word timings (stage 4; tests use made-up timings); the player and its audio clock (stage 4); the `Listener` feeding the engine, the Slater's audio, the Prompt screen and route check (stage 5); Screen mode (stage 6); the settings screen and its `UserDefaults` wrapper (stage 7); fixed pace (P1); the start ritual, slate and tones-only alike, with the engine's slate state and the matching of the slate words (stage 5, Andy at review). Issue #6 (a parser fixture shaped like a full Cutaway script) stays open: it needs Andy's list of the kinds of section his scripts have.
+**Out:** rendering and real word timings (stage 4; tests use made-up timings); the player and its audio clock (stage 4); the `Listener` feeding the engine, the Slater's audio, the Prompt screen and route check (stage 5); Screen mode (stage 6); the settings screen and its `UserDefaults` wrapper (stage 7); fixed pace (P1). The slate's wording, the cue voice and the tones' sound are stages 4 and 5; the start setting's place on the Settings screen is stage 7. Issue #6 (a parser fixture shaped like a full Cutaway script) stays open: it needs Andy's list of the kinds of section his scripts have.
 
 ## Design decisions
 
@@ -51,11 +51,16 @@
     
     So the voice never repeats a word the presenter has just said, and never skips one they have not.
 
-12. **The start waits for stage 5** (PRD §4.5, §5.5; Andy at review). The slate flow is still open question 1 and is tried on the phone first, so neither the slate nor tones-only is built here. The engine has one plain start: `.begin` plays phrase 1 at once and following starts, as PRD §4.5's "first phrase, then gate". Stage 5 puts its ritual in front of that and adds any engine state it needs then.
+12. **The start, with a setting for the reply** (PRD §4.5, §5.5; Andy at review). Built now because it is small, pure and tested like the rest, and easy to drop if the phone says otherwise (the slate flow is still open question 1). A start mode in the settings chooses one of three:
+    - **Slate with a reply** (the default): the engine emits the slate cue (its text built by the host), and once the cue has ended it matches what is heard against the slate's words (the step number or shot ID, "take", the take number, numbers by value) with the same matcher. Two of the three heard, or a tap, emits the tones and then phrase 1 after the tones' duration. Repeating the slate also gives the engine its first measure of the recogniser's delay.
+    - **Slate alone**: the slate cue, then a pause (`slateGap`, default 3 s) for the presenter to say it to the camera if they want, then the tones and phrase 1. Nothing is listened for; a tap skips the pause.
+    - **Tones only**: the tones, then phrase 1.
+    
+    The audio of the cue and the tones is stages 4 and 5's; the engine only orders them. A shot ID said as letters and numbers ("W three one") is matched only as far as the matcher already can; better handling waits for real scripts in stage 5.
 
-13. **Manual controls and the end.** Hold stops the voice at once and freezes it; matching goes on, and releasing Hold re-anchors. Back and Forward stop the voice and play the previous or next phrase now, and the presenter's position follows the voice until the next confident match. Restart returns to the step's first phrase, as `.begin` does. Stop ends the take as `stopped`. The take completes when the voice has finished the last phrase and the presenter's estimate reaches the last word, or 3 s after the voice finished with the presenter in the last phrase.
+13. **Manual controls and the end.** Hold stops the voice at once and freezes it; matching goes on, and releasing Hold re-anchors. Back and Forward stop the voice and play the previous or next phrase now, and the presenter's position follows the voice until the next confident match. Restart returns to the step's first phrase, through the tones, not the slate. Stop ends the take as `stopped`. The take completes when the voice has finished the last phrase and the presenter's estimate reaches the last word, or 3 s after the voice finished with the presenter in the last phrase.
 
-14. **Commands and the snapshot** (PRD §5.2). Commands: `play(phrase:speed:)`, `setSpeed(_)`, `stopVoice`, `finished(outcome)`. The player reports `.voiceProgress(phrase:offset:)` (time into the rendering) and `.phraseEnded(phrase)`; the engine maps an offset to a word with the phrase's word start times. Queuing the next phrase gaplessly is the player's concern in stage 4. The snapshot holds the status (speaking, waiting, lost, held, finished), voice position, presenter position (confident and estimated), confidence, speed, error, and the measured delay and rate, for the Prompt screen, Screen mode and the Listening check.
+14. **Commands and the snapshot** (PRD §5.2). Commands: `playCue(.slate)`, `playTones`, `play(phrase:speed:)`, `setSpeed(_)`, `stopVoice`, `finished(outcome)`. The player reports `.voiceProgress(phrase:offset:)` (time into the rendering) and `.phraseEnded(phrase)`; the engine maps an offset to a word with the phrase's word start times. Queuing the next phrase gaplessly is the player's concern in stage 4. The snapshot holds the status (slate, speaking, waiting, lost, held, finished), voice position, presenter position (confident and estimated), confidence, speed, error, and the measured delay and rate, for the Prompt screen, Screen mode and the Listening check.
 
 15. **A simulated take for the scenario tests.** A test harness (not shipped) runs a fake clock in 50 ms steps with: a presenter who speaks a script of their own (words at a rate, pauses, repeats, off-script words, numbers said as words); a recogniser that turns it into interim blocks about 0.9 s late and a final after each pause, writing numbers as digits that build up ("18", "189", "1890") and compounds joined ("seawall"); and a player that plays the commanded phrase at the commanded speed from made-up word timings and reports progress and phrase ends. Each scenario asserts the commands and measures that matter: the lead error, waits at gates, words repeated or skipped by the voice. The fixtures are made-up text (the repo is public), with the sample harbour walk as the main one.
 
@@ -64,13 +69,13 @@
 | File | Purpose |
 |------|---------|
 | `Engine/FollowScript.swift` | `FollowPhrase`, `FollowScript`: phrases, kinds, script words with flat indices, word start times, durations |
-| `Engine/FollowSettings.swift` | Lead, pacing mode, speed bounds, k, window, run lengths, lost thresholds, coast; defaults (lead 3) |
-| `Engine/FollowEvent.swift` | Events (begin, interim, final, voice progress, phrase ended, Hold, Back, Forward, Restart, Stop) and commands |
+| `Engine/FollowSettings.swift` | Lead, pacing mode, speed bounds, k, window, run lengths, lost thresholds, coast, start mode and slate gap; defaults (lead 3, slate with a reply) |
+| `Engine/FollowEvent.swift` | Events (start, interim, final, voice progress, cue ended, tones ended, phrase ended, tap, Hold, Back, Forward, Restart, Stop) and commands |
 | `Engine/WordFolding.swift` | Edit distance, the spelling table, contractions, compound joins, number value and digit prefix |
 | `Engine/Matcher.swift` | Block alignment from a base position: window, candidates, runs, confidence, lost and found |
 | `Engine/PresenterEstimate.swift` | Measured delay and rate; the estimate with its coast limit |
 | `Engine/Pacer.swift` | Error, hybrid speed with its rate limit, gates, re-anchor targets |
-| `Engine/FollowEngine.swift` | The state machine: speaking, waiting, lost, held, finished; manual controls; snapshot |
+| `Engine/FollowEngine.swift` | The state machine: slate, tones, speaking, waiting, lost, held, finished; manual controls; snapshot |
 | `Models/FollowScript+PhraseList.swift` | The adapter from a step's `PhraseList` and a rendering's timings |
 | `EarwigTests/WordFoldingTests.swift`, `MatcherTests.swift`, `PresenterEstimateTests.swift`, `PacerTests.swift`, `FollowEngineTests.swift` | One test or more per rule |
 | `EarwigTests/Simulation/` | `SimulatedPresenter`, `SimulatedRecogniser`, `SimulatedPlayer`, `TakeSimulation` and `FollowScenarioTests` |
@@ -81,7 +86,7 @@
 2. **Matcher.** `Matcher` with tests from fixture word streams: a clean read is all confident; a common word alone ("the") moves nothing; one dropped script word inside a run; an inserted heard word breaks a run; a block rewritten mid-word re-aligns; six unmatched words make it lost; four seconds of unmatched speech make it lost; silence does not; a lost search finds a run of three elsewhere in the step and not a run of two; candidates prefer the run, then nearness, ahead before behind.
 3. **Presenter estimate.** Tests: the delay and rate measured from finals paired with first appearances; defaults before any; the clamps; the coast limit; no advance after a final until the next interim result, except just after the voice starts a phrase; never past the voice's phrase end.
 4. **Pacer.** Tests: speed from the error with the corrected sign; the bounds; the rate limit; the 0.02 threshold; phrase-gated at 1.0x; the gate opens at (end − lead) and not before; a released phrase starts at 1.0x; a cue phrase follows its gate and the next spoken phrase follows it; re-anchor targets for a step back, ahead and found.
-5. **Engine.** `FollowEngine` with tests: begin plays phrase 1 at once; Hold, Back, Forward, Restart and Stop; completion at the end of the step both ways; the snapshot's status through a take. The adapter from `PhraseList`, tested on the sample script.
+5. **Engine.** `FollowEngine` with tests: slate with a reply (slate, the reply matched by two of three words with the step number said as a word or digits, then tones, then phrase 1; a tap in place of the reply; nothing heard before the cue ends counts); slate alone (the gap, then tones, and a tap skipping it); tones only; Hold, Back, Forward, Restart and Stop; completion at the end of the step both ways; the snapshot's status through a take. The adapter from `PhraseList`, tested on the sample script.
 6. **Scenarios.** The simulated take and `FollowScenarioTests`, from PRD §12 stage 3 and §14:
    - a clean read at presenting pace: lead error within two words throughout once under way (§14), no wait longer than half a second, no word repeated or skipped;
    - a slow read: the voice slows within the bounds and waits at gates, never runs more than a phrase ahead;
@@ -91,7 +96,7 @@
    - the presenter skipping a phrase ahead: the voice jumps, not races;
    - the 1890 phrase and "sea wall": no gate held by a year or a compound (plan 001's 2.8 s wait gone);
    - a short phrase after a pause with its first interim result 1.5 s late: the gate does not stall.
-7. `swiftlint lint` clean (including `engine_purity` on every new file), no build warnings, all tests pass; Results filled; PRD §4.4, §5.3 and §5.4 updated where the decisions above pin them (the step as the search, finals and confidence, the estimate, the speed sign, re-anchoring, the lead's meaning), as v0.5 with a Document History row; `progress.md` emptied to its stub.
+7. `swiftlint lint` clean (including `engine_purity` on every new file), no build warnings, all tests pass; Results filled; PRD §4.4, §4.5, §4.8, §5.3, §5.4 and §5.5 updated where the decisions above pin them (the step as the search, finals and confidence, the estimate, the speed sign, re-anchoring, the lead's meaning, the start modes), as v0.5 with a Document History row; `progress.md` emptied to its stub.
 
 ## Verification
 
@@ -101,7 +106,7 @@
 
 ## Review (2026-11-06)
 
-Andy agreed decisions 3 (a lost search widens to the take's step only), 9 (the default lead comes down to 3 now the engine adds the recogniser's delay, tried against 5 by ear in stage 5) and 11 (one re-anchor rule for stepping back, jumping ahead and picking up again). On decision 12 he chose to leave the start ritual to stage 5 whole: the engine has only a plain begin, phrase 1 at once.
+Andy agreed decisions 3 (a lost search widens to the take's step only), 9 (the default lead comes down to 3 now the engine adds the recogniser's delay, tried against 5 by ear in stage 5) and 11 (one re-anchor rule for stepping back, jumping ahead and picking up again). On decision 12 he first chose to leave the start to stage 5, then decided to build it now, since it can be dropped later, with a setting for whether the presenter has to repeat the slate to start the take: decision 12's three start modes.
 
 Process: `/plan_create_issue`, push on Andy's yes, then `/plan_autopilot` (a pure, unit-testable stage with no device check).
 

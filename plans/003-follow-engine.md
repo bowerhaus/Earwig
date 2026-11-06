@@ -1,8 +1,8 @@
 # Plan 003: Follow Engine
 
-**GitHub Issue:** to be created after review (`/plan_create_issue`)
+**GitHub Issue:** [#7](https://github.com/bowerhaus/Earwig/issues/7) (PR must include "Closes #7")
 **Branch:** `follow-engine` (from `main` at `25e2d53`, after plan 002 merged)
-**Status:** Reviewed by Andy (2026-11-06); waiting for its issue
+**Status:** Reviewed by Andy (2026-11-06); issue #7 open; not started
 **Manual test:** none. The engine is pure Swift with no audio; the feel of following is judged on the phone in stage 5, when the listener and player drive it.
 **Goal:** Build the engine that decides what the voice does. Given a step's phrases with word timings, the words the recogniser hears and the player's position, it says when to play, how fast, when to wait, when to step back or jump, and where the presenter is. It is pure Swift with time passed in, so every rule of PRD §5 is tested here against fixture word streams and a simulated take, before any of it reaches an earpiece.
 

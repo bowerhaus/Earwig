@@ -4,13 +4,13 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 ## Plan 003: Follow engine (`plans/003-follow-engine.md`)
 
-Branch `follow-engine` from `main` at `25e2d53` (plan 002 merged as PR #4, closing #3; PRD v0.4). Not pushed. No issue yet.
+Branch `follow-engine` from `main` at `25e2d53` (plan 002 merged as PR #4, closing #3; PRD v0.4). Pushed to `origin/follow-engine`. Issue [#7](https://github.com/bowerhaus/Earwig/issues/7) (the PR must say "Closes #7").
 
 **State:** the plan is reviewed (2026-11-06; its Review section has Andy's answers: decisions 3, 9 and 11 agreed; the start built now with a setting for whether the slate must be repeated, decision 12). Nothing built.
 
 **Next:**
 
-1. `/plan_create_issue` on Andy's yes; push the branch on his yes.
+1. Done: issue #7 created and the branch pushed (2026-11-06).
 2. `/plan_autopilot` (pure, unit-testable, no device check), working through steps 1 to 7.
 
 **Checklist (plan steps):**

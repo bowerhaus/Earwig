@@ -270,7 +270,6 @@ struct TakeSimulation {
     let step: TimeInterval = 0.05
 
     private(set) var time: TimeInterval = 0
-    private(set) var commands: [(time: TimeInterval, command: FollowCommand)] = []
     private(set) var statuses: [FollowStatus] = []
     /// The voice's word less the presenter's, less the lead, while both are under way.
     private(set) var leadErrors: [(time: TimeInterval, error: Int)] = []
@@ -286,7 +285,7 @@ struct TakeSimulation {
 
     var outcome: FollowOutcome? { engine.snapshot.outcome }
 
-    mutating func run(for limit: TimeInterval = 240, stopWhenPresenterIsDone: Bool = false) {
+    mutating func run(for limit: TimeInterval = 240) {
         apply(engine.handle(.start, at: 0))
         while time < limit, outcome == nil {
             time += step
@@ -297,13 +296,11 @@ struct TakeSimulation {
             for event in events { apply(engine.handle(event, at: time)) }
             apply(engine.tick(at: time))
             measure()
-            if stopWhenPresenterIsDone, presenter.isDone, time > (presenter.spoken.last?.end ?? 0) + 5 { break }
         }
     }
 
     private mutating func apply(_ new: [FollowCommand]) {
         for command in new {
-            commands.append((time, command))
             player.apply(command, at: time)
             if case .play = command { presenter.begin(at: time) }
         }
@@ -321,8 +318,6 @@ struct TakeSimulation {
     /// Script words the voice said more than once, and never.
     var repeatedWords: [Int] { player.said.filter { $0.value.count > 1 }.keys.sorted() }
     var unsaidWords: [Int] { engine.script.words.indices.filter { player.said[$0] == nil } }
-    var longestPresenterWait: TimeInterval { presenter.waits.map(\.length).max() ?? 0 }
-    var worstLeadError: Int { leadErrors.map { abs($0.error) }.max() ?? 0 }
     var played: [Int] { player.plays.map(\.phrase) }
 }
 

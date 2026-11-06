@@ -113,3 +113,155 @@ Process: `/plan_create_issue`, push on Andy's yes, then `/plan_autopilot` (a pur
 ## Results
 
 To be filled in when the plan completes.
+
+## Review pass — 2026-11-06
+
+Findings from `/review-branch` on branch `follow-engine`, **unresolved as written**. Each is a claim
+from a review on that date, not an established fact, and each verdict under *Assessment* is a
+recommendation, not a decision. Work through them and annotate each with what was done — fixed,
+or rejected and why. A finding that turns out to be wrong should say so here rather than be
+deleted.
+
+### Code
+
+Review of branch `follow-engine` against `main`, for plan 003 and issue #7. I read the code and did not build or run tests. The branch covers the plan's scope: folding, matcher, estimate, pacer, engine with three start modes, controls, the adapter, unit tests and the simulated scenarios. `engine_purity` holds: every new `Engine/` file imports only Foundation. I found no American spellings in new names or text. Changes from the plan made during the build (window 12, `maxCoast` 0.5, gate at the phrase boundary, completion on the last word heard) are recorded in progress.md for Results. The findings below are the gaps.
+
+**C1. WARNING: re-anchoring does nothing when the presenter is in the last phrase, so the voice repeats words they have already said** (`Earwig/Engine/FollowEngine.swift` lines 274–276, plus `toggleHold` lines 419–421 and `afterHearing` lines 242–245)
+- `reanchor` returns `[]` whenever `script.firstPhrase(after: current.confident)` is nil, which is true once the presenter's confident position is in the last phrase.
+- **Ahead:** a presenter who skips to the last phrase from memory leaves the voice playing the earlier phrases. Each gate opens because the estimate is past it, so the voice plays phrases they skipped at up to 1.2x. The take cannot complete until that finishes, because `isComplete` is only checked in `.done`.
+- **Found:** a presenter found again in the last phrase gets the same result.
+- **Hold:** pressing Hold mid-way through the last phrase sets `voice = .waiting(last)`. On release the target is nil, the gate for the last phrase is already open, and the whole last phrase replays from its start.
+- The code comment says "the voice finishes or stays finished", and decision 11 says the voice never repeats a word the presenter has just said. Neither holds here.
+- Fix: when the target is nil and the presenter is in the last phrase, stop the voice if needed and set `voice = .done(now)`.
+
+**C2. WARNING: Back and Forward don't do what decision 13 says, and the change isn't recorded** (`Earwig/Engine/FollowEngine.swift` lines 432–459)
+- The plan says that after Back or Forward, "the presenter's position follows the voice until the next confident match".
+- The code instead puts the presenter at `firstWord[target] - 1`, with no `confidentAt`. The after-final branch of the estimate stops at the phrase's first word. So after a manual move with nothing heard, the voice plays that one phrase and then waits at the next gate.
+- That may be the better behaviour, but it is not among the decisions in progress.md, and no test covers what happens after the moved phrase ends.
+- Either implement the plan's rule or record the change for Results and the PRD.
+
+**C3. SUGGESTION: after the voice jumps ahead or is re-anchored ahead, the estimate stays capped at the old phrase** (`Earwig/Engine/FollowEngine.swift` lines 252–258 and 276–282; `Earwig/Engine/PresenterEstimate.swift` line 91)
+- `presenterNow()` caps the estimate at the last word of `voicePhrase`. `reanchor` changes only `voice`, not `voicePhrase`, so the cap is still the phrase that was stopped, which is behind the presenter.
+- `min(estimate, cap)` then `max(estimate, base)` leaves the estimate at the raw confident word, with no allowance for the recogniser's delay.
+- As a result, the first phrase after a jump opens its gate about one recogniser delay late (about 2 words), so the presenter's lead on that phrase is close to zero.
+- The skip scenario (`FollowScenarioTests.aPresenterWhoSkipsAPhraseIsJumpedToNotRacedAfter`) uses `.recite`, which never waits, so it cannot catch this.
+- Fix: base the cap on the phrase that gates the queued target, or set `voicePhrase` when re-anchoring.
+
+**C4. SUGGESTION: a rewritten recogniser result can look like a step back** (`Earwig/Engine/FollowEngine.swift` lines 203–205, 233–236 and 244)
+- `afterHearing` compares the new confident position with the previous one. Both are re-aligned from `settled`, so the comparison also fires when the recogniser rewrites words, not only when the presenter goes back.
+- If an interim block is rewritten, or a final reads differently from its last interim, a confident run can break and the position drop by 3 or more. That counts as a step back and stops the voice.
+- The interim and final filters also differ: the interim filters on `heardAt >= ignoreHeardBefore`, the final on `start >= ignoreSpokenBefore`. Around tones, Back and Forward, the same block can therefore align differently.
+- Consider only treating new words that match further back as a step back, or comparing against the highest confident position in this block.
+
+**C5. SUGGESTION: the code that starts a phrase is written twice** (`Earwig/Engine/FollowEngine.swift` lines 320–326 and 452–457)
+- `advance()` and `move(by:)` both set `voice = .playing`, `voicePhrase`, `voiceStartedAt` and `voiceWord`, call `pacer.reset` and emit `.play(phrase:speed: 1)`.
+- One `startPhrase(_:)` helper would keep the two in step, which also matters for C3.
+
+**C6. SUGGESTION: plan completion items are still open** (`plans/003-follow-engine.md`, `progress.md`)
+- Results is not filled in, the PRD is not at v0.5 (§4.4, §4.5, §4.8, §5.3–5.5, including the speed-sign fix), and progress.md is not yet back to its stub.
+- The plan's Status line still says "not started".
+- The adapter's signature is `FollowScript(phraseList:secondsPerWord:timing:)`, where decision 2 names `FollowScript(phraseList:timings:)`. Note this in Results.
+- These are expected at completion, but the PR should not go up without them.
+
+### Tests
+
+Review of the test changes on `follow-engine` against `main`: 8 new test files and about 1,180 lines. There are no unstaged, staged or untracked test files. Overall the suite is well shaped. Each rule has a unit test, and the scenarios on a simulated take measure behaviour against PRD §14. The findings below are mostly gaps in how the engine wires the parts together. The pure parts themselves are tested well.
+
+**T1. WARNING: No test checks that the engine measures the recogniser's delay and the presenter's rate.**
+`heardFinal` lines up interim first-appearance stamps with the final's word starts by index, then feeds `estimate.recordDelay` and `recordFinalStarts`. Nothing asserts the result.
+- `snapshot.delay` and `snapshot.rate` are asserted nowhere.
+- The simulated recogniser's defaults (0.9 s delay, 2.5 words a second) equal `FollowSettings.defaultDelay` and `defaultRate`. A broken pairing (off-by-one stamps, a wrong group index) would leave every scenario passing on the defaults.
+- Plan step 3 lists "the delay and rate measured from finals paired with first appearances".
+- Fix: one scenario with, say, `recogniser.delay = 1.4`, asserting `take.engine.snapshot.delay` is close to 1.4. Or one engine unit test with an interim block and then its final.
+- Code: `Earwig/Engine/FollowEngine.swift:208-225`, `EarwigTests/Simulation/TakeSimulation.swift:191`, `EarwigTests/Simulation/FollowScenarioTests.swift`
+
+**T2. WARNING: Hold, Back and Forward are tested only from the "voice playing, nothing heard" state.**
+- The release case is a no-op: `holdStopsTheVoiceAndReleaseReAnchors` releases with nothing heard, so the target is phrase 0, which is already queued. The branch that moves the voice to where the presenter got to while held is never exercised. That branch is `moves(waiting:to:.release)` (`target != next`), and it is what Hold is for. Also untested:
+  - words heard during Hold not re-anchoring (`afterHearing`'s `guard !held`)
+  - Hold while the voice is waiting (it should return `[]`)
+- Back and Forward are never tested from `.waiting` or `.done`. Neither is the rule that words heard before a manual move are ignored (`ignoreHeardBefore` / `ignoreSpokenBefore` in `move`).
+- The `.done` branch of `reanchor` is never hit: a step back after the voice has finished the last phrase.
+- Fix: one test for "hold, presenter carries on into phrase 1, release gives `.play(phrase: 2)`", and one for "Back while waiting". Those cover most of this.
+- Code: `Earwig/Engine/FollowEngine.swift:241, 283-287, 304-309, 417-458`; `EarwigTests/FollowEngineTests.swift:200-215`
+
+**T3. WARNING: The slate filter for finals is untested.**
+- `theSlateIsNotFollowedAsScript` covers only the interim path (`ignoreHeardBefore`).
+- The final that settles "step 3 take 2 morning all" goes through a different filter (`start >= ignoreSpokenBefore`), and that filter has no test.
+- The scenarios always force `.tonesOnly` (`TakeSimulation.init` overrides `settings.start`), so no slate mode reaches a final anywhere.
+- Fix: add a `.final(...)` call to the existing test, asserting `presenterWord == 1` and not lost.
+- Code: `Earwig/Engine/FollowEngine.swift:221`; `EarwigTests/FollowEngineTests.swift:95-105`; `EarwigTests/Simulation/TakeSimulation.swift:280`
+
+**T4. WARNING: The clean-read threshold is looser than the requirement its comment cites.**
+- The comment says "PRD §14 … 99% of samples", and `progress.md` records 99% measured. The assertion is `share(errors, within: 2) >= 0.95`.
+- A regression from 99% to 95% would pass silently.
+- Fix: assert `>= 0.99`, or change the comment to state the margin chosen.
+- Code: `EarwigTests/Simulation/FollowScenarioTests.swift:38-40`
+
+**T5. SUGGESTION: Dead code in the simulation harness.**
+- Never used: `TakeSimulation.longestPresenterWait`, `worstLeadError`, the `stopWhenPresenterIsDone` parameter of `run`, and the recorded `commands` array.
+- Removing them shrinks the harness the maintainer has to understand.
+- Code: `EarwigTests/Simulation/TakeSimulation.swift:273, 289, 300, 324-325`
+
+**T6. SUGGESTION: Two matcher tie-breaks the plan names have no test.**
+- Plan step 1: "an exact candidate in the window beats a near one ('boats'/'coats')".
+- Plan step 2: "ahead before behind".
+- Neither `Candidate.isBetter` branch (strength, then ahead) is exercised. `theNearestCandidateWins` covers only distance and confirmation.
+- Fix: one assertion each in `theNearestCandidateWins`.
+- Code: `Earwig/Engine/Matcher.swift:55-57`; `EarwigTests/MatcherTests.swift:119-126`
+
+**T7. SUGGESTION: The adapter's fallback for mismatched timings is untested.**
+- `FollowScript(phraseList:timing:)` falls back to even spacing when a rendering's word count differs from the phrase's. That guards against a rendering out of step with its text.
+- The test passes only matching timings.
+- Fix: one extra `#expect` with a wrong-length `wordStarts`.
+- Code: `Earwig/Models/FollowScript+PhraseList.swift:25`; `EarwigTests/FollowScriptTests.swift:54-56`
+
+**T8. SUGGESTION: The Pacer's "send on reaching a bound or 1.0x" rule is never asserted.**
+- In `theSpeedChangesNoFasterThanItsLimit`, the update that reaches 0.85 discards its return value (`_ = pacer.update(error: 10, at: 2)`).
+- Fix: assert it returns 0.85. That covers the `atBound` branch at no extra cost.
+- Code: `Earwig/Engine/Pacer.swift:48-49`; `EarwigTests/PacerTests.swift:35-36`
+
+**T9. SUGGESTION: A small overlap and a stale fixture comment.**
+- Overlap: `theSlateAloneWaitsItsGapThenTheTones` taps in `.slateGap`, and `aTapStartsTheTakeFromTheSlate` taps in `.slateReply`. Both go through the same `case .slateReply, .slateGap` branch, so one of the two tap checks can go.
+  - `EarwigTests/FollowEngineTests.swift:76-79, 89-92`
+- Stale comment: the `FollowScriptTests` fixture's doc comment describes "one two three" / "four five" / "six". The words are actually alpha…foxtrot.
+  - `EarwigTests/FollowScriptTests.swift:6`
+
+On proportion, the size of the suite is about right for an engine of about 1,200 lines. The overlap between the re-anchoring unit tests and the scenarios (restart after the gate, skip ahead, lost then found) is deliberate in the plan. Each side pins something different: exact commands in the unit tests, measures in the scenarios. Neither should be cut.
+
+### Assessment
+
+- C1 — FIX: real (`FollowEngine.swift` `reanchor` returns `[]` when `firstPhrase(after:)` is nil). For ahead, found and release with the presenter in the last phrase, stop the voice if it is playing and set it `.done`; a step back inside the last phrase leaves the voice playing (it is still ahead).
+- C2 — FIX (part): keep the behaviour (the voice plays the chosen phrase, then waits at the next gate until the presenter is heard, which is the gate rule; following the voice blindly would let it run away in silence). Record it in Results and the PRD, and add a test that the voice waits after a moved phrase with nothing heard.
+- C3 — FIX: real (`presenterNow` caps at `voicePhrase`, which re-anchoring leaves at the stopped phrase). Take the cap from the voice's state: the end of the playing phrase, or the word before the queued phrase when waiting.
+- C4 — FIX (part): real in principle. Count a step back only when the latest match is itself confident and 3 or more words behind the last confident position, so a rewrite that breaks a run (the latest match still near the front) does not stop the voice; add a test. The interim and final filters differing around manual moves: skip (a final reaches back over words said before the move only when the move came mid-block; small and self-correcting).
+- C5 — FIX: one `startPhrase(_:)` used by `advance()` and `move(by:)`.
+- C6 — FIX (part): the completion items are the completion step, not a defect; record the adapter's signature in Results then.
+- T1 — FIX: a scenario with a 1.4 s recogniser delay and a presenter at 2 words a second, asserting the engine's measured delay and rate.
+- T2 — FIX: tests for Hold released after the presenter carried on, and Back while waiting (with C2's wait after a move).
+- T3 — FIX: add the final to `theSlateIsNotFollowedAsScript`.
+- T4 — FIX: assert 0.98 and say in the comment that 99% was measured.
+- T5 — FIX: remove the unused measures and parameter; keep `commands` (useful when a scenario fails) — no, remove it too, nothing reads it.
+- T6 — FIX: one assertion each for exact over near and ahead over behind.
+- T7 — FIX: one expectation for a wrong-length timing.
+- T8 — FIX: assert the bound is sent.
+- T9 — FIX (part): fix the stale comment; keep both tap checks (they cover the two slate modes).
+
+### Outcome — 2026-11-06
+
+- C1 — fixed: with the presenter in the last phrase, ahead, found or Hold released, the voice stops and is finished (`finishVoice`); a step back inside the last phrase leaves it playing. Test `aPresenterInTheLastPhraseFinishesTheVoice`.
+- C2 — fixed (part): behaviour kept (after Back or Forward with nothing heard the voice plays the phrase and then waits at the next gate); recorded in Results and the PRD; test `backWhileWaitingReplaysThePhraseThenWaitsForThePresenter`.
+- C3 — fixed: the estimate's cap comes from the voice's state (the playing phrase's end, or the word before the queued phrase). The ahead test now expects the next phrase at once, two words in.
+- C4 — fixed (part): a step back needs the confident word to have been heard later than the last one, so a rewrite that breaks a run does not stop the voice; test `aRewriteOfWordsAlreadyHeardIsNotAStepBack`. The interim/final filter difference around manual moves: not done (small, self-correcting).
+- C5 — fixed: `startPhrase(_:)` used by `advance()` and `move(by:)`.
+- C6 — fixed (part): Results records the adapter's signature; the rest is the completion step.
+- T1 — fixed: `theEngineMeasuresTheRecognisersDelayAndThePresentersRate` (1.4 s delay, 2 words a second).
+- T2 — fixed: `releasingHoldPicksUpWhereThePresenterGotTo`, `holdWhileWaitingStopsNothing`, `backWhileWaitingReplaysThePhraseThenWaitsForThePresenter`.
+- T3 — fixed: the slate test sends the final too.
+- T4 — fixed: threshold 0.98, the comment says 99% was measured.
+- T5 — fixed: `longestPresenterWait`, `worstLeadError`, `stopWhenPresenterIsDone` and the `commands` record removed.
+- T6 — fixed: `exactBeatsNearAndAheadBeatsBehind`.
+- T7 — fixed: a wrong-length timing keeps even spacing.
+- T8 — fixed: reaching 0.85 is asserted as sent.
+- T9 — fixed (part): the stale fixture comment; both tap checks kept (two slate modes).
+
+Tests: 143 pass; SwiftLint clean; no build warnings.

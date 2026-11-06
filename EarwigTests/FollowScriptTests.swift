@@ -3,7 +3,7 @@ import Testing
 
 struct FollowScriptTests {
 
-    /// Phrases: 0 "one two three" (spoken), 1 a cue, 2 "four five" (spoken), 3 "six" (spoken).
+    /// Phrases: 0 "alpha bravo charlie", 1 a cue, 2 "delta echo", 3 "foxtrot".
     private let script = FollowScript(phrases: [
         FollowPhrase(kind: .spoken, words: ScriptWords.words(in: "alpha bravo charlie"), wordStarts: [0, 0.4, 0.8], duration: 1.4),
         .cue(duration: 1),
@@ -54,5 +54,8 @@ struct FollowScriptTests {
         let timed = FollowScript(phraseList: list) { $0 == 0 ? PhraseTiming(wordStarts: [0.1], duration: 0.9) : nil }
         #expect(timed.phrases[0].wordStarts == [0.1])
         #expect(timed.phrases[0].duration == 0.9)
+        // A rendering whose word count differs from the phrase's keeps even spacing.
+        let mismatched = FollowScript(phraseList: list) { $0 == 0 ? PhraseTiming(wordStarts: [0.1, 0.2], duration: 0.9) : nil }
+        #expect(mismatched.phrases[0].wordStarts == [0])
     }
 }

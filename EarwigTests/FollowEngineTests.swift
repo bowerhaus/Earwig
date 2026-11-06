@@ -102,6 +102,11 @@ struct FollowEngineTests {
         _ = engine.handle(.interim("step 3 take 2 morning all"), at: 6)
         #expect(engine.snapshot.presenterWord == 1)
         #expect(engine.snapshot.status != .lost)
+        // The final that settles the block is filtered by when its words were said.
+        let said = [("step", 1.6), ("3", 1.9), ("take", 2.1), ("2", 2.3), ("morning", 4.6), ("all", 4.9)]
+        _ = engine.handle(.final(said.map { FinalWord(text: $0.0, start: $0.1) }), at: 7)
+        #expect(engine.snapshot.presenterWord == 1)
+        #expect(engine.snapshot.status != .lost)
     }
 
     // MARK: - Gates
@@ -174,10 +179,10 @@ struct FollowEngineTests {
     @Test func aPresenterAheadMakesTheVoiceJumpNotRace() {
         var engine = following()
         _ = engine.handle(.voiceProgress(phrase: 0, offset: 0.5), at: 2.5)
-        // The presenter has skipped ahead to phrase 3 from memory.
-        let commands = engine.handle(.interim("gulls wheel over"), at: 3)
-        #expect(commands.first == .stopVoice)
-        #expect(commands.contains(.play(phrase: 4, speed: 1)))
+        // The presenter has skipped ahead to phrase 3 from memory. Two words in, they are
+        // estimated near its end (the recogniser's delay added), so phrase 4 plays at once.
+        let commands = engine.handle(.interim("gulls wheel"), at: 3)
+        #expect(commands == [.stopVoice, .play(phrase: 4, speed: 1)])
     }
 
     @Test func lostThenFoundPicksUpWhereThePresenterIs() {
@@ -195,6 +200,22 @@ struct FollowEngineTests {
         #expect(commands == [.play(phrase: 4, speed: 1)])
     }
 
+    @Test func aRewriteOfWordsAlreadyHeardIsNotAStepBack() {
+        var engine = intoPhraseThree()
+        // The recogniser rewrites the block so that the run breaks after "the".
+        let commands = engine.handle(.interim("morning all here we are the tied hiss aught tow day"), at: 8.6)
+        #expect(!commands.contains(.stopVoice))
+    }
+
+    @Test func aPresenterInTheLastPhraseFinishesTheVoice() {
+        var engine = following()
+        for time in [2.1, 2.2, 2.3] { _ = engine.handle(.forward, at: time) }
+        _ = engine.handle(.voiceProgress(phrase: 3, offset: 0.5), at: 2.8)
+        // Skipped to the last phrase: nothing to queue, so the voice stops and is finished.
+        #expect(engine.handle(.interim("breakfast waits at"), at: 3) == [.stopVoice])
+        #expect(engine.handle(.interim("breakfast waits at the end"), at: 4) == [.finished(.completed)])
+    }
+
     // MARK: - Controls
 
     @Test func holdStopsTheVoiceAndReleaseReAnchors() {
@@ -204,6 +225,32 @@ struct FollowEngineTests {
         #expect(engine.tick(at: 3) == [])
         // Release with nothing heard: phrase 0 again.
         #expect(engine.handle(.hold, at: 4) == [.play(phrase: 0, speed: 1)])
+    }
+
+    @Test func releasingHoldPicksUpWhereThePresenterGotTo() {
+        var engine = following()
+        _ = engine.handle(.voiceProgress(phrase: 0, offset: 1.6), at: 3.4)
+        #expect(engine.handle(.hold, at: 3.5) == [.stopVoice])
+        // The presenter carries on while held: nothing moves.
+        #expect(engine.handle(.interim("morning all here we are the tide"), at: 5) == [])
+        #expect(engine.handle(.hold, at: 5.5) == [.play(phrase: 2, speed: 1)])
+    }
+
+    @Test func holdWhileWaitingStopsNothing() {
+        var engine = following()
+        _ = engine.handle(.phraseEnded(0), at: 3.8)
+        #expect(engine.handle(.hold, at: 4) == [])
+        #expect(engine.snapshot.status == .held)
+    }
+
+    @Test func backWhileWaitingReplaysThePhraseThenWaitsForThePresenter() {
+        var engine = following()
+        _ = engine.handle(.phraseEnded(0), at: 3.8)
+        #expect(engine.handle(.back, at: 4) == [.play(phrase: 0, speed: 1)])
+        // Nothing heard: after the moved phrase the voice waits at the gate.
+        #expect(engine.handle(.phraseEnded(0), at: 6) == [])
+        #expect(engine.tick(at: 9) == [])
+        #expect(engine.snapshot.status == .waiting)
     }
 
     @Test func backAndForwardPlayAPhraseNow() {

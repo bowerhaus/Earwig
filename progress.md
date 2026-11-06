@@ -23,8 +23,8 @@ Branch `follow-engine` from `main` at `25e2d53` (plan 002 merged as PR #4, closi
 - [x] 4. Pacer
 - [x] 5. Engine and the `PhraseList` adapter
 - [x] 6. Scenarios (simulated take)
-- [ ] Tests + lint
-- [ ] Review + fixes
+- [x] Tests + lint (136 tests pass, SwiftLint clean, no build warnings)
+- [x] Review + fixes (review pass and outcome in the plan; issue comment posted)
 - [ ] Complete (commit + PR): Results, PRD v0.5, this file to its stub
 
 **Decided while building (for Results):**

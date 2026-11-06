@@ -241,7 +241,12 @@ struct FollowEngine: Sendable {
         guard !held else { return [] }
         if previous.lost && !current.lost { return reanchor(.found) }
         guard current.confident >= 0 else { return [] }
-        if current.confident <= previous.confident - settings.stepBackWords { return reanchor(.stepBack) }
+        // A step back is newly heard words matching behind, not a rewrite of words already heard
+        // that breaks a run (which leaves the confident word one heard earlier).
+        if current.confident <= previous.confident - settings.stepBackWords,
+           (current.confidentAt ?? -.infinity) > (previous.confidentAt ?? -.infinity) {
+            return reanchor(.stepBack)
+        }
         if let word = voiceWord, current.confident > word, voice != .idle { return reanchor(.ahead) }
         return []
     }
@@ -250,12 +255,17 @@ struct FollowEngine: Sendable {
 
     /// Where the presenter is estimated to be now.
     private func presenterNow() -> Double {
+        // Never past what the voice has given: the end of the phrase it plays, or the word
+        // before the phrase it waits to play (which, after a re-anchor, is not the phrase it
+        // last started).
         var cap: Int?
-        var start: Int?
-        if let phrase = voicePhrase {
-            start = script.firstWord[phrase]
-            cap = script.lastWord(of: phrase) ?? script.firstWord[phrase] - 1
+        switch voice {
+        case .playing(let phrase): cap = script.lastWord(of: phrase) ?? script.firstWord[phrase] - 1
+        case .waiting(let next): cap = script.firstWord[next] - 1
+        case .done: cap = script.lastSpokenWord
+        case .idle: cap = nil
         }
+        let start = voicePhrase.map { script.firstWord[$0] }
         let pausedSince = lastFinalAt.map { (current.confidentAt ?? -.infinity) <= $0 } ?? false
         let basis = PresenterEstimate.Basis(
             confident: current.confident,
@@ -272,8 +282,8 @@ struct FollowEngine: Sendable {
     /// Re-anchoring (plan 003, decision 11): the voice stops and queues the first phrase the
     /// presenter has not begun, released by the usual gate.
     private mutating func reanchor(_ reason: Reason) -> [FollowCommand] {
-        // In the last phrase there is nothing to queue: the voice finishes or stays finished.
-        guard phase == .following, let target = script.firstPhrase(after: current.confident) else { return [] }
+        guard phase == .following else { return [] }
+        guard let target = script.firstPhrase(after: current.confident) else { return finishVoice(reason) }
         switch voice {
         case .playing(let phrase):
             guard Self.stops(playing: phrase, for: target, reason) else { return [] }
@@ -285,6 +295,24 @@ struct FollowEngine: Sendable {
         case .done:
             if reason == .stepBack || reason == .found { voice = .waiting(target) }
         case .idle:
+            break
+        }
+        return []
+    }
+
+    /// The presenter is in the last phrase, so there is nothing to queue: ahead of the voice,
+    /// found there or released from Hold, the voice stops and is finished. A step back within
+    /// the last phrase leaves it playing, as it is still ahead.
+    private mutating func finishVoice(_ reason: Reason) -> [FollowCommand] {
+        guard reason != .stepBack else { return [] }
+        switch voice {
+        case .playing:
+            voice = .done(now)
+            pacer.pause()
+            return [.stopVoice]
+        case .waiting:
+            voice = .done(now)
+        case .done, .idle:
             break
         }
         return []
@@ -317,17 +345,20 @@ struct FollowEngine: Sendable {
                 voice = .done(now)
                 return []
             }
-            if gateIsOpen(next) {
-                voice = .playing(next)
-                voicePhrase = next
-                voiceStartedAt = now
-                if script.phrases[next].kind == .spoken { voiceWord = script.firstWord[next] }
-                pacer.reset(at: now)
-                return [.play(phrase: next, speed: 1)]
-            }
+            if gateIsOpen(next) { return startPhrase(next) }
         }
         if case .done(let at) = voice, isComplete(voiceDoneAt: at) { return finish(.completed) }
         return []
+    }
+
+    /// The voice starts a phrase, at 1.0x.
+    private mutating func startPhrase(_ phrase: Int) -> [FollowCommand] {
+        voice = .playing(phrase)
+        voicePhrase = phrase
+        voiceStartedAt = now
+        if script.phrases[phrase].kind == .spoken { voiceWord = script.firstWord[phrase] }
+        pacer.reset(at: now)
+        return [.play(phrase: phrase, speed: 1)]
     }
 
     /// A phrase plays when the presenter is within the lead of the end of the spoken phrase
@@ -430,7 +461,8 @@ extension FollowEngine {
     }
 
     /// Back or Forward a phrase: the voice plays it now, and the presenter is taken to be at its
-    /// start until they are heard again.
+    /// start until they are heard again. With nothing heard the voice then waits at the next
+    /// gate, as it would for a presenter who has stopped.
     private mutating func move(by offset: Int) -> [FollowCommand] {
         guard phase == .following, !script.phrases.isEmpty else { return [] }
         var commands: [FollowCommand] = []
@@ -449,12 +481,6 @@ extension FollowEngine {
         current = settled
         ignoreHeardBefore = now
         ignoreSpokenBefore = now - estimate.delay
-        voice = .playing(target)
-        voicePhrase = target
-        voiceStartedAt = now
-        if script.phrases[target].kind == .spoken { voiceWord = script.firstWord[target] }
-        pacer.reset(at: now)
-        commands.append(.play(phrase: target, speed: 1))
-        return commands
+        return commands + startPhrase(target)
     }
 }

@@ -32,8 +32,8 @@ struct PacerTests {
         #expect(pacer.update(error: 10, at: 0.1) == nil)
         let sent = pacer.update(error: 10, at: 0.5)
         #expect(sent.map { abs($0 - 0.95) < 1e-9 } == true)
-        _ = pacer.update(error: 10, at: 2)
-        #expect(pacer.speed == 0.85)
+        // Reaching a bound is always sent.
+        #expect(pacer.update(error: 10, at: 2) == 0.85)
     }
 
     @Test func smallChangesAreNotSent() {

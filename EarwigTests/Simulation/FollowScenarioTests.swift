@@ -35,9 +35,10 @@ struct FollowScenarioTests {
         #expect(take.unsaidWords.isEmpty)
         #expect(take.presenter.waits.isEmpty)
         #expect(!take.statuses.contains(.lost))
-        // PRD §14: within two words through a clean read (99% of samples; none beyond three).
+        // PRD §14: within two words through a clean read. Measured: 99% of samples, none beyond
+        // three; the threshold leaves a little room.
         let errors = underWay(take)
-        #expect(share(errors, within: 2) >= 0.95)
+        #expect(share(errors, within: 2) >= 0.98)
         #expect(errors.allSatisfy { abs($0) <= 3 })
         #expect(take.player.speeds.allSatisfy { (0.85...1.2).contains($0) })
     }
@@ -135,6 +136,17 @@ struct FollowScenarioTests {
         #expect(take.played == everyPhraseOnce)
         #expect(take.presenter.waits.isEmpty)
         #expect(take.player.silences.allSatisfy { $0 < 1.5 })
+    }
+
+    @Test func theEngineMeasuresTheRecognisersDelayAndThePresentersRate() {
+        var recogniser = SimulatedRecogniser()
+        recogniser.delay = 1.4
+        recogniser.firstAfterFinal = 1.4
+        let take = run([.read(0...75)], rate: 2, recogniser: recogniser)
+        #expect(take.outcome == .completed)
+        #expect(abs(take.engine.snapshot.delay - 1.4) < 0.06)
+        #expect(abs(take.engine.snapshot.rate - 2) < 0.15)
+        #expect(take.presenter.waits.isEmpty)
     }
 
     @Test func phraseGatedModeKeepsOneSpeed() {

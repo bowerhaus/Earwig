@@ -124,4 +124,16 @@ struct MatcherTests {
         let ahead = matcher.align(heard("the cottages"), from: MatchState(last: 9, confident: 9, run: 2), prefixLast: false)
         #expect(ahead.confident == 13)
     }
+
+    @Test func exactBeatsNearAndAheadBeatsBehind() {
+        let words = ScriptWords.words(in: "the coats and the boats on the quay")
+        let matcher = Matcher(words: words, settings: FollowSettings())
+        // "boats" is one edit from "coats" (nearer) but exactly "boats".
+        let exact = matcher.align([HeardScriptWord(word: ScriptWord(text: "boats"), heardAt: 0)], from: MatchState(last: 0), prefixLast: false)
+        #expect(exact.last == 4)
+        // Expected at "sat" (2): "the" at 0 and 4 are both two away; ahead wins.
+        let tie = Matcher(words: ScriptWords.words(in: "the cat sat on the mat"), settings: FollowSettings())
+        let ahead = tie.align([HeardScriptWord(word: ScriptWord(text: "the"), heardAt: 0)], from: MatchState(last: 1), prefixLast: false)
+        #expect(ahead.last == 4)
+    }
 }

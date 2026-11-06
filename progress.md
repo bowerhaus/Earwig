@@ -17,11 +17,11 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - [x] 4. Models and container (Script, Step, Rendering, Take, `ModelJSON`, factory)
 - [x] 5. Import (`ScriptImporter`, hash, replace by title) with tests
 - [x] 6. Theme and screens. Andy picked **Sky with mid-blue cards** (`EarwigTheme` is now that one palette; candidates and `-EarwigPalette` removed). Simulator screenshots: empty state, sample, light and dark settings identical. Plain paste (through the simulator clipboard, which shows its own paste prompt) and landscape checked in the simulator. Found and fixed: a plain script's lone title line became Step 1; it now names the script
-- [ ] 7. Device check (see Manual test)
+- [ ] 7. Device check (see Manual test) — **installed on the iPhone 14 Pro (UDID 00008120-000471EE14E0201E) at `1bde028`, launched with `--console`; WAITING for Andy's results** on the five-item checklist given in chat (paste a real Cutaway script from the Mac, steps read right, paste again does not duplicate, theme on the phone, delete)
 - [ ] 8. PRD v0.4, Results
 - [x] Tests + lint (63 tests pass, no warnings, SwiftLint clean)
 - [x] Review + fixes: review pass and outcome in the plan (2026-11-06), comment on #3; 62 tests pass, lint clean; delete checked in the simulator
-- [ ] Manual test: device
+- [ ] Manual test: device (same as step 7)
 - [ ] Complete (commit + PR)
 
 ## Notes

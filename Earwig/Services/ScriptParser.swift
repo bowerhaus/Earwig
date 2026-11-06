@@ -221,7 +221,8 @@ enum CutawayParser {
 }
 
 /// Plain text (PRD §4.1): blank-line-separated blocks are steps; a block's first line is its
-/// title when it is short, has no sentence-ending punctuation and more lines follow it.
+/// title when it is short, has no sentence-ending punctuation and more lines follow it. A
+/// first block that is only such a line is the script's title.
 enum PlainParser {
 
     static let maxTitleWords = 8
@@ -246,6 +247,11 @@ enum PlainParser {
             }
         }
         blocks.removeAll(where: \.isEmpty)
+        // A first block that is one short title-like line names the script, and is not a step.
+        if scriptTitle == nil, let first = blocks.first, first.count == 1, blocks.count > 1, isTitle(first[0]) {
+            scriptTitle = headingText(first[0]) ?? first[0]
+            blocks.removeFirst()
+        }
 
         var steps: [ParsedStep] = []
         for block in blocks {

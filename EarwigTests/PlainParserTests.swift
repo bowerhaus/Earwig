@@ -7,16 +7,16 @@ struct PlainParserTests {
         let script = ScriptParser.parse(Fixtures.plain)
         #expect(script.format == .plain)
         #expect(script.title == "The Ferry Crossing")
-        // The first block is one line, so it is a line, not a title.
-        #expect(script.steps.map(\.title) == ["", "Boarding", "", ""])
-        #expect(script.steps.map(\.number) == [1, 2, 3, 4])
-        #expect(script.steps[1].lines == ["The ferry leaves at ten past the hour.", "Find a seat on the left for the view."])
+        // The first block is one title-like line: the script's title, not a step.
+        #expect(script.steps.map(\.title) == ["Boarding", "", ""])
+        #expect(script.steps.map(\.number) == [1, 2, 3])
+        #expect(script.steps[0].lines == ["The ferry leaves at ten past the hour.", "Find a seat on the left for the view."])
         // "Arriving." ends with a full stop, so it is a line.
-        #expect(script.steps[3].lines == ["Arriving.", "That's the far shore."])
+        #expect(script.steps[2].lines == ["Arriving.", "That's the far shore."])
     }
 
     @Test func squareBracketsAreDirectionsInsideALine() {
-        let line = ScriptParser.parse(Fixtures.plain).steps[2].lines[0]
+        let line = ScriptParser.parse(Fixtures.plain).steps[1].lines[0]
         #expect(LineText.segments(of: line) == [
             .spoken("The crossing takes twenty minutes."),
             .direction("Look out to sea"),
@@ -31,6 +31,12 @@ struct PlainParserTests {
 
     @Test func anUnclosedBracketIsSpoken() {
         #expect(LineText.segments(of: "Mind the [gap") == [.spoken("Mind the [gap")])
+    }
+
+    @Test func aLoneTitleLineWithNothingElseIsStillAStep() {
+        let script = ScriptParser.parse("Just a title")
+        #expect(script.title == "Just a title")
+        #expect(script.steps.count == 1)
     }
 
     @Test func noBlankLinesIsOneStep() {

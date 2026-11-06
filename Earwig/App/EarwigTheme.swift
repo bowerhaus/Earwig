@@ -143,7 +143,22 @@ extension EarwigPalette {
         caution: Color(hex: 0xFFB454)
     )
 
-    static let candidates = [paper, copper, harbour, cobalt, bottle, sky, skyTint, skyDeep]
+    /// Sky with mid-blue cards: between the pale and the deep.
+    static let skyMid = EarwigPalette(
+        name: "SkyMid",
+        scheme: .dark,
+        background: Color(hex: 0x5CB8F3),
+        surface: Color(hex: 0x2B82CC),
+        text: Color(hex: 0xFFFFFF),
+        secondaryText: Color(hex: 0xD2E7F8),
+        accent: Color(hex: 0xFFD24A),
+        cue: Color(hex: 0xFFD3AE),
+        warning: Color(hex: 0xFF8A7A),
+        good: Color(hex: 0x7FE0A4),
+        caution: Color(hex: 0xFFB454)
+    )
+
+    static let candidates = [paper, copper, harbour, cobalt, bottle, sky, skyTint, skyDeep, skyMid]
 
     /// The chosen palette. While Andy picks one, the `-EarwigPalette <name>` launch argument
     /// shows another.

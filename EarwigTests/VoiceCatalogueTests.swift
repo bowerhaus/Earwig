@@ -15,6 +15,13 @@ struct VoiceCatalogueTests {
         #expect(choice.cue.name == "Jamie")
     }
 
+    @Test func theQualityIsTakenOffANamesEnd() {
+        #expect(VoiceInfo.baseName("Stephanie (Enhanced)") == "Stephanie")
+        #expect(VoiceInfo.baseName("Jamie (Premium)") == "Jamie")
+        #expect(VoiceInfo.baseName("Daniel") == "Daniel")
+        #expect(VoiceInfo.baseName("(Odd)") == "(Odd)")
+    }
+
     @Test func aCompactStephanieIsNotThePreferredVoice() throws {
         let voices = [voice("Stephanie", "en-GB", .compact), voice("Kate", "en-GB", .enhanced)]
         let choice = try #require(VoiceCatalogue.choose(from: voices))

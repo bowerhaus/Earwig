@@ -74,8 +74,13 @@ final class ScriptRenderer {
 
     /// The app's renderer: `VoiceRenderer` with the default voices.
     static func live() -> ScriptRenderer {
-        let renderer = ScriptRenderer(renderer: VoiceRenderer(), voices: VoiceCatalogue.choose(from: VoiceCatalogue.installed()))
+        let installed = VoiceCatalogue.installed()
+        let renderer = ScriptRenderer(renderer: VoiceRenderer(), voices: VoiceCatalogue.choose(from: installed))
         renderer.onEvent = { Log.event($0) }
+        for voice in installed where voice.language.hasPrefix("en-GB") {
+            Log.event("voice: \(voice.displayName), \(voice.language), \(voice.gender), \(voice.identifier)")
+        }
+        Log.event("voices: presenter \(renderer.voices?.presenter.displayName ?? "none"), cue \(renderer.voices?.cue.displayName ?? "none")")
         return renderer
     }
 

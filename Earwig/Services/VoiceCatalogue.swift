@@ -38,7 +38,7 @@ struct VoiceInfo: Equatable, Sendable {
 
     init(_ voice: AVSpeechSynthesisVoice) {
         identifier = voice.identifier
-        name = voice.name
+        name = Self.baseName(voice.name)
         language = voice.language
         quality = switch voice.quality {
         case .premium: .premium
@@ -54,6 +54,14 @@ struct VoiceInfo: Equatable, Sendable {
 
     /// "Stephanie (Enhanced)".
     var displayName: String { "\(name) (\(quality.label))" }
+
+    /// The name without a trailing "(Enhanced)" or "(Premium)": iOS 27 puts the quality in a
+    /// voice's name ("Stephanie (Enhanced)"), where iOS 26 did not.
+    static func baseName(_ name: String) -> String {
+        guard name.hasSuffix(")"), let open = name.range(of: " (", options: .backwards) else { return name }
+        let base = name[..<open.lowerBound].trimmingCharacters(in: .whitespaces)
+        return base.isEmpty ? name : base
+    }
 }
 
 /// The presenter's and the cue voice until Settings chooses them (plan 004, decision 5).

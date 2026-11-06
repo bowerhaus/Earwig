@@ -2,6 +2,7 @@
 
 **GitHub Issue:** [#3](https://github.com/bowerhaus/Earwig/issues/3) (PR must include "Closes #3")
 **Branch:** `skeleton-models-parser` (from `main` at `6d2b848`, after plan 001 merged)
+**Manual test:** device (iPhone 14 Pro: paste a real Cutaway script by Universal Clipboard, step 7), after Andy's palette pick in the simulator (step 6)
 **Goal:** Put a script into Earwig and see it as Earwig will follow it. Paste a Cutaway `script.md` or plain text; it is parsed into steps, lines, directions and phrases, stored in SwiftData, listed on the Scripts screen and shown step by step on the Script screen. Every later stage reads its script from here, so the script words and phrase indices this stage stores are the ones the follow engine (stage 3) and the renderer (stage 4) will use.
 
 **PRD references:** §3 Core Concepts, §4.1 Scripts, §5.1 Inputs (script words), §6.1 Entities, §7 Architecture, §8.1 Scripts, §8.2 Script, §10 Design Language, §12 stage 2.

@@ -76,3 +76,125 @@ Andy agreed decisions 4 (square brackets as the only inline directions), 8 (re-p
 ## Results
 
 To be filled in when the plan completes.
+
+## Review pass — 2026-11-06
+
+Findings from `/review-branch` on branch `skeleton-models-parser`, **unresolved as written**. Each is a claim
+from a review on that date, not an established fact, and each verdict under *Assessment* is a
+recommendation, not a decision. Work through them and annotate each with what was done — fixed,
+or rejected and why. A finding that turns out to be wrong should say so here rather than be
+deleted.
+
+### Code
+
+Review of `skeleton-models-parser` against `main`. I read plan 002, CLAUDE.md, the committed diff and all new files. The working tree is clean, with no unstaged, staged or untracked changes. Overall the branch meets the plan's goals: both parsers, script words with a number as one word, a stored `PhraseList` with a parser version, the four models with cascade deletes, paste import with hash and title matching, the two screens, the sample, and a single theme. `Engine/ScriptWords.swift` imports only Foundation, and views use only `EarwigTheme` colours. Findings, most severe first:
+
+**C1 — WARNING: number runs join across punctuation.** `ScriptWords.groups` normalises each token, which strips commas and full stops, and only then groups number words. Words the script separates with punctuation become one number. For example "aged fifteen, sixteen" gives 1516, "ten, twenty years" gives 1020, and "twenty, thirty, forty" gives 2030 then 40. A run is also built across a dash-only token (the empty groups are taken out before grouping), so "nineteen — twenty" gives 1920. The phrase splitter cuts at sentence ends but not at commas inside short sentences, so this reaches the stored phrases. The presenter will say these as separate numbers, so the stored words will not match what is heard in stage 3. A number run should end at a token whose written form ends in clause or sentence punctuation, or at a dash token.
+- `Earwig/Engine/ScriptWords.swift` lines 47–76, together with `readYear` (lines 158–173) and `readCardinal` (lines 141–154).
+
+**C2 — WARNING: deleting from the Script screen may crash.** "Delete Script" calls `model.delete(in:)`, which runs `context.delete(script)` and `save()`, and only then calls `dismiss()`. The detail view's body reads `script.title`, `script.orderedSteps`, `script.takes(forStep:)` and `script.preamble`, and it can be redrawn before the pop finishes. Reading a deleted, saved SwiftData model is a known crash source. The plan's step 6 list includes "delete" and "Paste new version", but `progress.md` records only the empty state, sample, light/dark, plain paste and landscape as checked. A safer order is to dismiss first and then delete, or to hand the delete back to the Scripts screen.
+- `Earwig/Views/ScriptDetail/ScriptDetailView.swift` lines 66–69
+- `Earwig/ViewModels/ScriptDetailViewModel.swift` lines 47–50
+
+**C3 — WARNING: a paste with a derived title can replace an unrelated script.** `paste` replaces any stored script whose title matches the parsed title, ignoring case. That title is often derived rather than written:
+- plain text uses its first line cut to 40 characters, or a lone short first block;
+- Cutaway with no `#` title uses the first step's title, or "Untitled script".
+
+So two different plain scripts that open with the same line, or two untitled Cutaway scripts, silently overwrite each other. The old script's takes are then attached by step index to unrelated steps. Decision 8 says "the same title", but this edge was not considered there. Matching by title only when the title was written explicitly would avoid it.
+- `Earwig/Services/ScriptImporter.swift` lines 802–805
+- `Earwig/Services/ScriptParser.swift` lines 1101–1103 and 1153 of the diff (`CutawayParser.parse` and `PlainParser.parse` title fallbacks)
+
+**C4 — WARNING: stage requirements still outstanding.** Plan step 8 and the CLAUDE.md rules require PRD §4.1, §5.1, §6.1 and §10 to be updated as v0.4 with a Document History row. They also require a filled Results section and `progress.md` emptied to a stub. PRD.md is not touched on this branch, and the plan's Results still reads "To be filled in when the plan completes."
+- `PRD.md`
+- `plans/002-skeleton-models-parser.md` (Results)
+- `progress.md`
+
+**C5 — SUGGESTION: plain-text title rule differs from decision 3 and isn't recorded.** Commit 37cb44e makes a lone, short, unpunctuated first block the script title and drops it as a step. Decision 3 only allows a leading `# ` line or a first-line fallback. Side effect: a one-line spoken opening such as "Morning everyone" is silently dropped from what is said. Record this in the plan (or the PRD §4.1 update), or limit it.
+- `Earwig/Services/ScriptParser.swift`, `PlainParser.parse` (the "A first block that is one short title-like line" branch, around line 1136 of the diff)
+
+**C6 — SUGGESTION: Paste new version is not in the toolbar menu.** Decision 13 puts it in the menu with the cues switch and Delete. It is a `PasteButton` in a list section at the bottom instead. That is reasonable, since `PasteButton` does not sit well inside a `Menu`, but the plan should say so.
+- `Earwig/Views/ScriptDetail/ScriptDetailView.swift` lines 43–55
+
+**C7 — SUGGESTION: decimals and times read as whole numbers.** "2.5 miles" gives 25 and "9:30" gives 930, because the normaliser removes the separator before `digits()` reads the token. Before this branch these were plain words. Now they are wrong number values, which the stage 3 matcher would compare against.
+- `Earwig/Engine/ScriptWords.swift` lines 95–103
+
+**C8 — SUGGESTION: "Step N" fallback repeated.** `StepView` rebuilds the title fallback (`step.title.isEmpty ? "Step \(step.number)" : step.title`) that `Step.displayTitle` already has. A title-only accessor on `Step` would keep one source of truth. Separately, the paste-error alert binding and the empty-text guard are copied between the two view models and the two views.
+- `Earwig/Views/ScriptDetail/StepView.swift` line 18
+- `Earwig/Models/Step.swift` lines 44–46
+- `Earwig/ViewModels/ScriptsViewModel.swift` lines 14–18 and `Earwig/ViewModels/ScriptDetailViewModel.swift` lines 34–38
+
+Nothing in the diff looks likely to break the build. The removed `WordNormaliser.normaliseToken`, `spelledOut`, `normalisedWords` and `EarwigTheme.muted` have no remaining references. `force_try` is disabled in `.swiftlint.yml`, which covers the `try!` uses. I did not run tests, a build or the linter.
+
+### Tests
+
+I found no CRITICAL issues. The two WARNINGs below are the ones worth acting on; the SUGGESTIONs are small gaps and overlaps that would shrink the suite without losing coverage.
+
+T1. WARNING: WordNormaliserTests now test a function nothing in the app calls, and its rule contradicts the one the app uses.
+- The tests exercise `WordNormaliser.words(in:)`. On this branch no production code calls it; the only caller of `WordNormaliser` is `ScriptWords.groups`, which calls `normalise(_:)`.
+- `splitsOnDashesAndSlashes` pins "well-known" as two words ("well", "known"). The production path reads it as one word, "wellknown" (ScriptWordsTests.swift:15-17, plan decision 5).
+- `normalise(_:)` itself has no direct test.
+- Fix: point these tests at `normalise(_:)` (folding, apostrophes, punctuation-only returns nil) and delete `words(in:)`, or delete the dash/slash test.
+- EarwigTests/WordNormaliserTests.swift:6-32; Earwig/Engine/WordNormaliser.swift:12-16
+
+T2. WARNING: Two parts of the re-paste-by-title rule (decision 8) have no test.
+- Title matching is case-insensitive, but the test re-pastes with the identical title, so that branch never runs.
+- The importer says a replace keeps renderings. The test is named "KeepsTakes" and checks only takes, cues and lastStep.
+- Both fit into the existing test at little cost: lower-case the `# The Harbour Walk` line in `shorter`, attach a `Rendering`, and assert `script.renderings?.count == 1`.
+- EarwigTests/ScriptImporterTests.swift:34-52; Earwig/Services/ScriptImporter.swift:41
+
+T3. SUGGESTION: The view models have branching that no test reaches.
+- `ScriptsViewModel.paste`: a nil or empty clipboard sets the error, a refused paste sets the error and stores nothing, a success sets `path`.
+- `ScriptDetailViewModel.pasteNewVersion` picks between "already here" and "Updated" notices.
+- One small test per view model would cover these.
+- Earwig/ViewModels/ScriptsViewModel.swift:14-26; Earwig/ViewModels/ScriptDetailViewModel.swift:33-45
+
+T4. SUGGESTION: No test covers a hyphenated token that reads as two numbers.
+- `groupsMapBackToTheirTokens` covers only number runs that span several tokens.
+- A single hyphenated token such as "one-two" or "nine-eleven" gives two groups with the same token range, so `Phrase` gets two tokens with identical text and range.
+- A test would pin whether that is intended.
+- EarwigTests/ScriptWordsTests.swift:62-66; Earwig/Engine/ScriptWords.swift:46-48
+
+T5. SUGGESTION: Two parts of `refreshIfStale` are untested.
+- It deliberately restores `updatedAt`, and it rebuilds when `steps` is empty. Neither is checked.
+- One `#expect(script.updatedAt == before)` in the existing test would cover the first.
+- EarwigTests/ScriptImporterTests.swift:75-83; Earwig/Services/ScriptImporter.swift:64-72
+
+T6. SUGGESTION: The JSON round trip is tested three times.
+- `PhraseSplitterTests.phrasesRoundTripThroughJSON`, `PhraseListTests.roundTripsThroughModelJSON` (a PhraseList contains Phrases) and `ModelTests.typedAccessorsPersist` all cover it.
+- Keep the PhraseList equality test and the persistence test; drop the Phrase one.
+- EarwigTests/PhraseSplitterTests.swift:79-83; EarwigTests/PhraseListTests.swift:38-41; EarwigTests/ModelTests.swift:43-71
+
+T7. SUGGESTION: Several cases are tested in two files.
+- "3pm": WordNormaliserTests.swift:30-32 and ScriptWordsTests.swift:27-29.
+- "1,500": WordNormaliserTests.swift:26-28 and ScriptWordsTests.swift:21.
+- "there's": both `plainWordsAreNormalisedOneEach` and `contractionsAndCompoundsAreNotSplitOrJoined` (ScriptWordsTests.swift:10-17), which could merge.
+- `PhraseListTests.aYearIsOneScriptWord` (PhraseListTests.swift:31-36) re-checks that 1890 is one word, via its position in the sample script. `cueWordsAreNotScriptWords` already covers `PhraseList.scriptWords`.
+
+T8. SUGGESTION: Two more tests repeat existing ones.
+- `CutawayParserTests.titleWithoutThePrefix` (CutawayParserTests.swift:43-45) repeats the corners fixture, whose `# The Allotment` title is asserted at line 49.
+- `ScriptImporterTests.hashIgnoresLineEndingsAndTrailingSpace` (ScriptImporterTests.swift:85-88) largely repeats `theSameTextAgainAddsNothing` (lines 25-32), which already pastes CRLF text with trailing spaces and expects `.unchanged`.
+
+T9. SUGGESTION: Small gaps in the Script model and the Cutaway parser.
+- `#expect(result.script.phraseCount > 13)` is a vague bound (ScriptImporterTests.swift:21). Assert the exact count or drop it.
+- `Script.takes(forStep:)` (filter by step, newest first) and `lastTake` are used by the views but untested (Earwig/Models/Script.swift:46-50). A few lines in ModelTests would cover them.
+- A Cutaway script with no `#` title takes its title from the first step or "Untitled script". That fallback is untested (Earwig/Services/ScriptParser.swift:216-218).
+
+### Assessment
+
+- C1 — FIX: real (`ScriptWords.groups` strips punctuation before reading runs, and drops dash tokens out of the run, `Earwig/Engine/ScriptWords.swift:45-66`). End a number run at a token whose written form ends in `, ; : . ! ? …` and at a token with no word.
+- C2 — FIX: real ordering risk (`ScriptDetailView.swift:66-69`). Dismiss first, delete after, and guard the body against a deleted script.
+- C3 — FIX: real. Match by title only when the script states its title (a `# ` line, or a plain script's lone title line); a title derived from a first line or a first step never replaces another script. A refinement of decision 8, not a new rule.
+- C4 — NOT REAL: plan step 8 (PRD v0.4, Results, the progress stub) is the completion step and has not been reached yet; it is still on the checklist in `progress.md`.
+- C5 — FIX (part): keep the rule (in the simulator check, a plain script's lone title line showed as Step 1 with the title as its only line); record it in the plan's Results and PRD §4.1.
+- C6 — FIX (part): record in Results that Paste new version is a section on the Script screen because `PasteButton` does not work in a `Menu`. No code change.
+- C7 — FIX: real (`ScriptWords.swift` `digits`). A token with a digit, a `.` or `:`, and a digit is a plain word, not a number.
+- C8 — FIX (part): add `Step.heading` (title or "Step N"), used by `displayTitle` and `StepView`. The duplicated alert binding is two lines in two views: skip.
+- T1 — FIX: `words(in:)` has no caller (only `normalise(_:)` is used, `ScriptWords.swift:46,49`). Delete it and point the tests at `normalise(_:)`; the number cases move out (T7).
+- T2 — FIX: lower-case the title in the replace test and attach a rendering.
+- T3 — SKIP: the view models only route to the importer, whose refusals and outcomes are tested; covered by the simulator checks.
+- T4 — FIX: real (two groups with one token range). Split a hyphenated token into number pieces only when they read as one number ("twenty-one"); otherwise it is one word. Add the case to the tests.
+- T5 — FIX (part): add the `updatedAt` check. The empty-steps branch is not reachable from an import (a script with no steps is refused): skip.
+- T6 — FIX: drop `PhraseSplitterTests.phrasesRoundTripThroughJSON`.
+- T7 — FIX (part): the "3pm" and "1,500" duplicates go with T1; merge the two "there's" tests. Keep `aYearIsOneScriptWord`: it is the one check that stored phrases carry a number as one word.
+- T8 — FIX (part): drop `titleWithoutThePrefix`. Keep the hash test: it also checks that different text hashes differently.
+- T9 — FIX: exact phrase count; a test for `takes(forStep:)` and `lastTake`; the untitled Cutaway fallback joins the C3 test.

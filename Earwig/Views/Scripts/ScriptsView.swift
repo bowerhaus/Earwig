@@ -116,6 +116,7 @@ private struct ScriptRow: View {
     _ = try? ScriptImporter(context: container.mainContext).paste(SampleScript.harbourWalk)
     return ScriptsView()
         .modelContainer(container)
+        .environment(ScriptRenderer.live())
         .tint(EarwigTheme.accent)
         .preferredColorScheme(EarwigTheme.scheme)
 }

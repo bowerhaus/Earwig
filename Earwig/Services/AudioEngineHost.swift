@@ -1,36 +1,75 @@
 import AVFoundation
 
-/// One `AVAudioEngine` for a take (PRD §7.2, "Player"): rendered phrases play through a
-/// time-pitch node, so a change of speed keeps the voice's pitch, and the built-in mic is
-/// tapped for the listener on the same engine.
+/// Where a buffer plays (plan 004, decision 9).
+enum AudioChannel: CaseIterable, Sendable {
+    /// Phrases in the presenter's voice, through the time-pitch node at the engine's speed.
+    case voice
+    /// Cue phrases and the slate, at 1.0x.
+    case cue
+    /// The start tones, at 1.0x.
+    case tone
+}
+
+/// The player's audio work, behind a protocol so the player's logic is tested with a fake
+/// (plan 004, decision 10). The real one is `AudioEngineHost`.
 @MainActor
-final class AudioEngineHost {
+protocol PlayerOutput: AnyObject {
+    /// Plays a buffer from its start, `delay` seconds from now on the audio clock. `completion`
+    /// runs when it has been heard to the end, unless the channel was stopped or given another
+    /// buffer first.
+    func play(_ buffer: AVAudioPCMBuffer, on channel: AudioChannel, delay: TimeInterval, completion: @escaping @MainActor () -> Void) throws
+    func stop(_ channel: AudioChannel)
+    /// Seconds of the channel's current buffer rendered so far, in the buffer's own time (before
+    /// any speed change); `nil` when it is not playing.
+    func position(of channel: AudioChannel) -> TimeInterval?
+    /// The voice channel's speed; 1.0 is as rendered.
+    var speed: Double { get set }
+    /// How long after rendering a sample is heard: the route's output latency and IO buffer.
+    var outputLatency: TimeInterval { get }
+}
+
+/// One `AVAudioEngine` for a take (PRD §7.2, "Player"): the voice through a time-pitch node, so
+/// a change of speed keeps its pitch; the cue and tone nodes straight to the mixer; and the
+/// built-in mic tapped for the listener on the same engine.
+@MainActor
+final class AudioEngineHost: PlayerOutput {
     private let engine = AVAudioEngine()
-    private let player = AVAudioPlayerNode()
+    private let nodes: [AudioChannel: AVAudioPlayerNode]
     private let timePitch = AVAudioUnitTimePitch()
     private var micTapInstalled = false
     private var micBlock: (@Sendable (AVAudioPCMBuffer, TimeInterval) -> Void)?
-    private var configurationObserver: NSObjectProtocol?
+    private var observers: [NSObjectProtocol] = []
 
     /// Called with a one-line description of engine events (configuration changes, restarts).
     var onEvent: ((String) -> Void)?
-    /// Bumped on every `play` and `stopPhrase`, so a stale completion is ignored.
-    private var playToken = 0
+    /// Bumped on every `play` and `stop` of a channel, so a stale completion is ignored.
+    private var tokens: [AudioChannel: Int] = [:]
+    private(set) var outputLatency: TimeInterval = 0
 
     init() {
-        engine.attach(player)
+        nodes = Dictionary(uniqueKeysWithValues: AudioChannel.allCases.map { ($0, AVAudioPlayerNode()) })
+        let format = VoiceRenderer.outputFormat
+        for node in nodes.values { engine.attach(node) }
         engine.attach(timePitch)
-        engine.connect(player, to: timePitch, format: VoiceRenderer.outputFormat)
-        engine.connect(timePitch, to: engine.mainMixerNode, format: VoiceRenderer.outputFormat)
+        engine.connect(nodes[.voice]!, to: timePitch, format: format)
+        engine.connect(timePitch, to: engine.mainMixerNode, format: format)
+        engine.connect(nodes[.cue]!, to: engine.mainMixerNode, format: format)
+        engine.connect(nodes[.tone]!, to: engine.mainMixerNode, format: format)
+        let centre = NotificationCenter.default
         // The engine stops itself when the hardware configuration changes (a route change,
         // a sample-rate change). Restart it and the mic tap, or listening goes silent.
-        configurationObserver = NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in
+        observers.append(centre.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.configurationChanged() }
-        }
+        })
+        observers.append(centre.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.readLatency() }
+        })
+        readLatency()
     }
 
     private func configurationChanged() {
         let wasRunning = engine.isRunning
+        readLatency()
         guard let micBlock, micTapInstalled else {
             onEvent?("engine configuration changed (running \(wasRunning)); no mic tap to restore")
             return
@@ -43,53 +82,67 @@ final class AudioEngineHost {
         }
     }
 
+    /// The output latency as the session reports it for the current route (decision 11).
+    private func readLatency(always: Bool = false) {
+        let session = AVAudioSession.sharedInstance()
+        let latency = session.outputLatency + session.ioBufferDuration
+        guard always || abs(latency - outputLatency) > 0.000_5 else { return }
+        outputLatency = latency
+        let output = session.currentRoute.outputs.map { "\($0.portName) (\(AudioRoute.label($0.portType.rawValue)))" }.joined(separator: ", ")
+        onEvent?(String(format: "output latency %.0f ms (%.0f ms route + %.0f ms buffer) on %@",
+                        latency * 1000, session.outputLatency * 1000, session.ioBufferDuration * 1000, output))
+    }
+
     var isRunning: Bool { engine.isRunning }
 
-    /// Playback speed, 1.0 is as rendered. The time-pitch node keeps the pitch.
-    var speed: Float {
-        get { timePitch.rate }
-        set { timePitch.rate = newValue }
+    var speed: Double {
+        get { Double(timePitch.rate) }
+        set { timePitch.rate = Float(newValue) }
     }
 
     func start() throws {
         guard !engine.isRunning else { return }
         engine.prepare()
         try engine.start()
+        readLatency(always: true)
     }
 
     func stop() {
-        stopPhrase()
+        for channel in AudioChannel.allCases { stop(channel) }
         removeMicTap()
         engine.stop()
     }
 
-    /// Plays one buffer from its start. `completion` runs on the main actor when it has been
-    /// heard to the end, unless another phrase was started or playback stopped first.
-    func play(_ buffer: AVAudioPCMBuffer, completion: @escaping @MainActor () -> Void) throws {
+    func play(_ buffer: AVAudioPCMBuffer, on channel: AudioChannel, delay: TimeInterval, completion: @escaping @MainActor () -> Void) throws {
         try start()
-        player.stop()
-        playToken += 1
-        let token = playToken
-        player.scheduleBuffer(buffer, at: nil, options: [], completionCallbackType: .dataPlayedBack) { [weak self] _ in
+        let node = nodes[channel]!
+        node.stop()
+        let token = (tokens[channel] ?? 0) + 1
+        tokens[channel] = token
+        // `.dataPlayedBack` waits for the render and output latencies, so the end is when the
+        // last sample is heard.
+        node.scheduleBuffer(buffer, at: nil, options: [], completionCallbackType: .dataPlayedBack) { [weak self] _ in
             Task { @MainActor in
-                guard let self, self.playToken == token else { return }
+                guard let self, self.tokens[channel] == token else { return }
                 completion()
             }
         }
-        player.play()
+        if delay > 0 {
+            node.play(at: AVAudioTime(hostTime: mach_absolute_time() + AVAudioTime.hostTime(forSeconds: delay)))
+        } else {
+            node.play()
+        }
     }
 
-    func stopPhrase() {
-        playToken += 1
-        player.stop()
+    func stop(_ channel: AudioChannel) {
+        tokens[channel] = (tokens[channel] ?? 0) + 1
+        nodes[channel]?.stop()
     }
 
-    /// Seconds of the current phrase's source audio played so far (before the speed change),
-    /// for mapping to the rendered word timings.
-    var phrasePosition: TimeInterval? {
-        guard player.isPlaying,
-              let nodeTime = player.lastRenderTime,
-              let playerTime = player.playerTime(forNodeTime: nodeTime) else { return nil }
+    func position(of channel: AudioChannel) -> TimeInterval? {
+        guard let node = nodes[channel], node.isPlaying,
+              let nodeTime = node.lastRenderTime,
+              let playerTime = node.playerTime(forNodeTime: nodeTime) else { return nil }
         return max(0, Double(playerTime.sampleTime) / playerTime.sampleRate)
     }
 
@@ -102,7 +155,7 @@ final class AudioEngineHost {
     func installMicTap(_ block: @escaping @Sendable (AVAudioPCMBuffer, TimeInterval) -> Void) throws {
         removeMicTap()
         // The input node joins the graph on first use; restart so its format is current.
-        stopPhrase()
+        for channel in AudioChannel.allCases { stop(channel) }
         engine.stop()
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
@@ -123,7 +176,8 @@ final class AudioEngineHost {
     }
 }
 
-/// Host time in seconds, the clock the audio engine stamps buffers with.
+/// Host time in seconds, the clock the audio engine stamps buffers with and the follow
+/// engine's clock (plan 004, decision 12).
 enum HostClock {
     static var now: TimeInterval { AVAudioTime.seconds(forHostTime: mach_absolute_time()) }
 }

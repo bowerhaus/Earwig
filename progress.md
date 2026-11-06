@@ -28,4 +28,4 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - Simulator (Daniel compact): step 1 renders 10 phrases, 21.7 s of audio in 0.7 s, 74 of 74 words timed (delegate markers). Listen runs slate, tones, all phrases; next phrase starts < 0.5 ms after an end; ends arrive about 145 ms after the audio length; output latency 10 ms on the speaker.
 
 
-**Next:** manual test on the iPhone 14 Pro, one check at a time (plan's Verification 1–4). Install with `devicectl`, launch with `--console` in the background and read `Earwig:` lines.
+**Next:** manual test on the iPhone 14 Pro, one check at a time (plan's Verification 1–4). Build c1c96ae is installed; launched with `devicectl ... process launch --console` in the background, log in the session scratchpad. Check 1 (Render) handed to Andy; waiting for his verdict. Then checks 2 (Listen), 3 (Highlight), 4 (Locked), Results, PRD v0.6, PR.

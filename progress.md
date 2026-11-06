@@ -6,13 +6,12 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 Branch `follow-engine` from `main` at `25e2d53` (plan 002 merged as PR #4, closing #3; PRD v0.4). Not pushed. No issue yet.
 
-**State:** the plan is written as a draft and waits for Andy's review. Nothing built.
+**State:** the plan is reviewed (2026-11-06; its Review section has Andy's answers: decisions 3, 9 and 11 agreed, the start ritual left to stage 5). Nothing built.
 
 **Next:**
 
-1. Andy answers the four review questions at the end of the plan (the step as the lost search, the default lead with the delay added, one re-anchor rule, the slate in the engine now). Record his answers in a Review section of the plan and adjust the decisions.
-2. `/plan_create_issue`; push the branch on his yes.
-3. `/plan_autopilot` (pure, unit-testable, no device check), working through steps 1 to 7.
+1. `/plan_create_issue` on Andy's yes; push the branch on his yes.
+2. `/plan_autopilot` (pure, unit-testable, no device check), working through steps 1 to 7.
 
 **Checklist (plan steps):**
 

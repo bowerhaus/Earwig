@@ -56,12 +56,23 @@ struct PhraseSplitterTests {
         #expect(texts("She said “stop.” Then we went.") == ["She said “stop.”", "Then we went."])
     }
 
-    @Test func tokensCarryRangesAndNormalisedWords() {
+    @Test func tokensCarryRangesAndScriptWords() {
         let phrase = splitter.phrases(in: "Walk 20 metres, then stop.")[0]
         #expect(phrase.tokens.map(\.text) == ["Walk", "20", "metres,", "then", "stop."])
         #expect(phrase.tokens[1].range == NSRange(location: 5, length: 2))
-        #expect(phrase.normalisedWords == ["walk", "twenty", "metres", "then", "stop"])
+        #expect(phrase.scriptWords.map(\.text) == ["walk", "20", "metres", "then", "stop"])
+        #expect(phrase.scriptWords[1].number == 20)
         #expect(phrase.tokenIndex(containing: 8) == 2)
         #expect(phrase.tokenIndex(containing: 7) == 1)
+    }
+
+    @Test func aNumberInWordsIsOneTokenOverItsWords() {
+        let phrase = splitter.phrases(in: "It climbs three hundred feet — steeply.")[0]
+        #expect(phrase.tokens.map(\.text) == ["It", "climbs", "three hundred", "feet", "—", "steeply."])
+        #expect(phrase.tokens[2].range == NSRange(location: 10, length: 13))
+        #expect(phrase.tokens[2].word == .number(300))
+        #expect(phrase.tokens[4].word == nil)
+        #expect(phrase.scriptWords.count == 5)
+        #expect(phrase.tokenIndex(containing: 16) == 2)
     }
 }

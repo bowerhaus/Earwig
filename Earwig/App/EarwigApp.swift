@@ -1,13 +1,16 @@
+import SwiftData
 import SwiftUI
 
 @main
 struct EarwigApp: App {
+    private let container = ModelContainerFactory.persistent()
+
     var body: some Scene {
         WindowGroup {
-            // The Scripts screen arrives in stage 2 (PRD §12).
-            Text("Earwig")
-                .font(.largeTitle.bold())
-                .foregroundStyle(EarwigTheme.accent)
+            ScriptsView()
+                .tint(EarwigTheme.accent)
+                .preferredColorScheme(EarwigTheme.scheme)
         }
+        .modelContainer(container)
     }
 }

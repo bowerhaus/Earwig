@@ -1,39 +1,41 @@
 import Foundation
 
-/// One word of a phrase as written, with where it sits in the phrase's text and its
-/// normalised form (which a number can expand to several words).
-struct PhraseToken: Equatable, Sendable {
+/// One script word of a phrase as written, with where it sits in the phrase's text. Usually
+/// one written word; a number said in words ("three hundred") is one token over all of them.
+struct PhraseToken: Codable, Equatable, Sendable {
     let text: String
     /// The token's UTF-16 range in its phrase's `text`, as speech synthesis markers report it.
     let range: NSRange
-    let normalised: [String]
+    /// `nil` for a token with no letters or digits, such as a dash.
+    let word: ScriptWord?
 }
 
 /// The unit of playback and gating (PRD §3): part of a line, cut at sentence ends and, where
 /// a sentence is too long, at clause breaks.
-struct Phrase: Equatable, Sendable {
+struct Phrase: Codable, Equatable, Sendable {
     let text: String
     let tokens: [PhraseToken]
 
     init(tokens words: [String]) {
         var text = ""
-        var tokens: [PhraseToken] = []
+        var ranges: [NSRange] = []
         for word in words {
             if !text.isEmpty { text += " " }
             let start = (text as NSString).length
             text += word
-            tokens.append(PhraseToken(
-                text: word,
-                range: NSRange(location: start, length: (word as NSString).length),
-                normalised: WordNormaliser.normaliseToken(word)
-            ))
+            ranges.append(NSRange(location: start, length: (word as NSString).length))
         }
         self.text = text
-        self.tokens = tokens
+        self.tokens = ScriptWords.groups(words).map { group in
+            let first = ranges[group.tokens.lowerBound]
+            let last = ranges[group.tokens.upperBound]
+            let range = NSRange(location: first.location, length: NSMaxRange(last) - first.location)
+            return PhraseToken(text: (text as NSString).substring(with: range), range: range, word: group.word)
+        }
     }
 
-    /// The phrase's words in normalised form, in order.
-    var normalisedWords: [String] { tokens.flatMap(\.normalised) }
+    /// The phrase's script words, in order.
+    var scriptWords: [ScriptWord] { tokens.compactMap(\.word) }
 
     /// The token containing a UTF-16 offset in `text`, for mapping a synthesis marker.
     func tokenIndex(containing location: Int) -> Int? {

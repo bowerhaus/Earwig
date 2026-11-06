@@ -37,7 +37,7 @@ struct ScriptDetailView: View {
                     .buttonStyle(.plain)
                     .accessibilityHint("Starts takes from this step")
                 }
-                .listRowBackground(EarwigTheme.surface)
+                .listRowBackground(rowBackground(isStart: index == script.lastStep))
             }
 
             Section {
@@ -77,6 +77,14 @@ struct ScriptDetailView: View {
         }
         .alert(model.notice ?? "", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil } })) {
             Button("OK", role: .cancel) {}
+        }
+    }
+
+    /// The surface, with an accent bar down the leading edge of the start step.
+    private func rowBackground(isStart: Bool) -> some View {
+        HStack(spacing: 0) {
+            if isStart { EarwigTheme.accent.frame(width: 5) }
+            EarwigTheme.surface
         }
     }
 

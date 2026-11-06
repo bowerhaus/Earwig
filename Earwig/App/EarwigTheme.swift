@@ -50,58 +50,58 @@ extension EarwigPalette {
         caution: Color(hex: 0xF2B544)
     )
 
-    /// Deep harbour blue with a signal yellow, like a studio prompter.
+    /// Harbour blue as the ground, not a tint of black, with a signal yellow.
     static let harbour = EarwigPalette(
         name: "Harbour",
         scheme: .dark,
-        background: Color(hex: 0x0D1B2A),
-        surface: Color(hex: 0x16283B),
+        background: Color(hex: 0x0F2F55),
+        surface: Color(hex: 0x163F70),
         text: Color(hex: 0xF2F5F8),
-        secondaryText: Color(hex: 0x9AAABB),
+        secondaryText: Color(hex: 0xA9BBD0),
         accent: Color(hex: 0xFFC845),
-        cue: Color(hex: 0x7FB8D0),
+        cue: Color(hex: 0x8CD3EA),
         warning: Color(hex: 0xFF6B5E),
         good: Color(hex: 0x6FD39A),
         caution: Color(hex: 0xFF9F43)
     )
 
-    /// Light and airy: a clear sky blue on pale blue-white, with warm clay cues.
-    static let sky = EarwigPalette(
-        name: "Sky",
-        scheme: .light,
-        background: Color(hex: 0xEAF4FB),
-        surface: Color(hex: 0xFFFFFF),
-        text: Color(hex: 0x14212B),
-        secondaryText: Color(hex: 0x5B6D7A),
-        accent: Color(hex: 0x0A84C6),
-        cue: Color(hex: 0xA4612F),
-        warning: Color(hex: 0xC8262E),
-        good: Color(hex: 0x2B8A4E),
-        caution: Color(hex: 0xB86E00)
-    )
-
-    /// Deep indigo with a blue-violet accent and mint cues.
-    static let violet = EarwigPalette(
-        name: "Violet",
+    /// Saturated cobalt all over, like a swatch card, with a buttercup accent.
+    static let cobalt = EarwigPalette(
+        name: "Cobalt",
         scheme: .dark,
-        background: Color(hex: 0x151932),
-        surface: Color(hex: 0x21274A),
-        text: Color(hex: 0xF1F2FA),
-        secondaryText: Color(hex: 0xA3A8C8),
-        accent: Color(hex: 0x7B88FF),
-        cue: Color(hex: 0x7FD3BF),
-        warning: Color(hex: 0xFF6B6B),
-        good: Color(hex: 0x6FD39A),
+        background: Color(hex: 0x1F3FB8),
+        surface: Color(hex: 0x17309A),
+        text: Color(hex: 0xFFFFFF),
+        secondaryText: Color(hex: 0xC2CCF5),
+        accent: Color(hex: 0xFFD24A),
+        cue: Color(hex: 0xA8DBFF),
+        warning: Color(hex: 0xFF8A7A),
+        good: Color(hex: 0x7FE0A4),
         caution: Color(hex: 0xFFB454)
     )
 
-    static let candidates = [paper, copper, harbour, sky, violet]
+    /// Bottle green, the colour of the cliff path, with amber and sea-glass cues.
+    static let bottle = EarwigPalette(
+        name: "Bottle",
+        scheme: .dark,
+        background: Color(hex: 0x0E3B31),
+        surface: Color(hex: 0x0A2E27),
+        text: Color(hex: 0xF1F6F2),
+        secondaryText: Color(hex: 0xA3C4B6),
+        accent: Color(hex: 0xFFB347),
+        cue: Color(hex: 0x9FD9CF),
+        warning: Color(hex: 0xFF6F61),
+        good: Color(hex: 0x8BE0A4),
+        caution: Color(hex: 0xFFC857)
+    )
+
+    static let candidates = [paper, copper, harbour, cobalt, bottle]
 
     /// The chosen palette. While Andy picks one, the `-EarwigPalette <name>` launch argument
     /// shows another.
     static let current: EarwigPalette = {
         let name = UserDefaults.standard.string(forKey: "EarwigPalette")?.lowercased()
-        return candidates.first { $0.name.lowercased() == name } ?? .copper
+        return candidates.first { $0.name.lowercased() == name } ?? .harbour
     }()
 }
 

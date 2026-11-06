@@ -9,15 +9,25 @@ struct StepView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(step.displayTitle)
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                // The slate: the step number large, as it is said at the start of a take.
+                Text(String(step.number))
+                    .font(.system(size: 34, weight: .heavy, design: .rounded))
+                    .foregroundStyle(EarwigTheme.accent)
+                    .monospacedDigit()
+                Text(step.title.isEmpty ? "Step \(step.number)" : step.title)
                     .font(.title3.bold())
-                    .foregroundStyle(isStart ? EarwigTheme.accent : EarwigTheme.text)
-                Spacer()
+                    .foregroundStyle(EarwigTheme.text)
+                Spacer(minLength: 8)
                 if isStart {
-                    Label("Start", systemImage: "play.circle.fill")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(EarwigTheme.accent)
+                    Label("Start", systemImage: "play.fill")
+                        .font(.caption.weight(.bold))
+                        .textCase(.uppercase)
+                        .tracking(1)
+                        .foregroundStyle(EarwigTheme.background)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(EarwigTheme.accent, in: Capsule())
                 }
             }
 
@@ -43,8 +53,9 @@ struct StepView: View {
 
     private func directionText(_ direction: Direction) -> AttributedString {
         guard let label = direction.label else { return AttributedString(direction.text) }
-        var labelText = AttributedString(label + ": ")
-        labelText.font = .subheadline.weight(.semibold)
+        var labelText = AttributedString(label.uppercased() + "  ")
+        labelText.font = .caption.weight(.bold)
+        labelText.tracking = 1.2
         return labelText + AttributedString(direction.text)
     }
 

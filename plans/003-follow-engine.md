@@ -2,7 +2,7 @@
 
 **GitHub Issue:** [#7](https://github.com/bowerhaus/Earwig/issues/7) (PR must include "Closes #7")
 **Branch:** `follow-engine` (from `main` at `25e2d53`, after plan 002 merged)
-**Status:** Reviewed by Andy (2026-11-06); issue #7 open; not started
+**Status:** Complete (2026-11-06), carried by the PR for issue #7.
 **Manual test:** none. The engine is pure Swift with no audio; the feel of following is judged on the phone in stage 5, when the listener and player drive it.
 **Goal:** Build the engine that decides what the voice does. Given a step's phrases with word timings, the words the recogniser hears and the player's position, it says when to play, how fast, when to wait, when to step back or jump, and where the presenter is. It is pure Swift with time passed in, so every rule of PRD §5 is tested here against fixture word streams and a simulated take, before any of it reaches an earpiece.
 
@@ -112,7 +112,50 @@ Process: `/plan_create_issue`, push on Andy's yes, then `/plan_autopilot` (a pur
 
 ## Results
 
-To be filled in when the plan completes.
+### Built
+
+All steps done. 143 Swift Testing tests pass, the build has no warnings and SwiftLint is clean, including `engine_purity` on every new `Engine/` file (Foundation only).
+
+- **Folding** (`Engine/WordFolding.swift`): numbers by value and digits still arriving; edit distance with transpositions (1 for five to seven letters, 2 for eight or more); a short spelling table; compounds and contractions across a word boundary both ways.
+- **Matcher** (`Engine/Matcher.swift`): the window, candidates, runs and confidence, lost and found, as decisions 5 to 7; an interim block is re-aligned whole from the settled state on every result.
+- **Presenter estimate** (`Engine/PresenterEstimate.swift`): measured delay and rate, the estimate with its coast, after-final and off-script rules (decision 8, refined below).
+- **Pacer** (`Engine/Pacer.swift`): hybrid speed 1 − k·e with its bounds, rate limit and send threshold; phrase-gated at 1.0x.
+- **Engine** (`Engine/FollowEngine.swift`, `FollowEvent.swift`, `FollowScript.swift`, `FollowSettings.swift`): the three start modes, gates, re-anchoring, the manual controls, completion and the snapshot. Its heard word is `HeardScriptWord`, as the Listener already has a `HeardWord`.
+- **Adapter** (`Models/FollowScript+PhraseList.swift`): `FollowScript(phraseList:secondsPerWord:timing:)`, where decision 2 named `FollowScript(phraseList:timings:)`. Timings come by phrase index through a closure, since the rendering's JSON is stage 4's; without them, and when a timing's word count does not match the phrase, words are spaced evenly.
+- **Simulated take** (`EarwigTests/Simulation/`): a reactive presenter (says a word only once the voice has, 0.3 s after it), a recogniser 0.9 s late that gives untimed interim blocks and a final after each pause and writes numbers as building digits, and a player on the phrases' timings, on a 50 ms fake clock.
+
+### Decided while building
+
+- **The gate counts to the phrase boundary**: the next phrase plays when the estimate is at least (last word + 1 − lead). With the last word as the end, a released phrase started a lead and one ahead and the simulated clean read ran 1.5 words over the lead on average (82% of samples within two words); counted to the boundary, 99%.
+- **After a final, the presenter is taken to have begun a phrase the voice started a lead's worth of time ago, and no further.** A late first result after a pause and a presenter who has stopped cannot be told apart from the words alone; this bridges the first while letting silence through a gate only for a phrase of `lead + 1` words or fewer. A speech signal from the input level would tell them apart (stage 5).
+- **`maxCoast` is 0.5 s**, not the 1.5 s the plan named: a longer coast ran the estimate several words past a presenter who had stopped. Off script (two heard words since the last match) or lost, the estimate does not advance.
+- **The window behind is 12 words**, not 8: a restart from the start of a long phrase was otherwise matched only after the presenter had been lost.
+- **Within a run**, one dropped script word and one misheard word are allowed; an inserted heard word breaks it. A step back is 3 or more words, and only from newly heard words, so a recogniser rewrite that breaks a run does not stop the voice (review C4).
+- **Speed** follows the presenter only once they have been heard, so the start does not speed the voice up.
+- **Completion** is the last word heard (not estimated), or 3 s after the voice finished with the presenter in the last phrase. With the presenter in the last phrase, a re-anchor stops the voice and finishes it (review C1).
+- **Back and Forward** play the phrase now and, with nothing heard, the voice then waits at the next gate, rather than the presenter's position following the voice (decision 13 as written): following the voice blindly would let it run away in silence (review C2).
+
+### Scenarios
+
+Simulated on the harbour walk's second step (76 words, eight phrases), lead 3, presenter at 2.5 words a second with 0.6 s pauses at phrase ends, recogniser 0.9 s late. Lead error is the voice's word less the presenter's, less the lead, while both are speaking, from phrase 1 on. A presenter wait is time they were ready and the voice had not given them the word.
+
+| Scenario | Outcome | Presenter waits | Lead error within 2 | Notes |
+|----------|---------|-----------------|---------------------|-------|
+| Clean read | completed | none | 99% (−2 to 3) | every phrase once; longest voice gap 0.95 s; speed 0.92x to 1.11x |
+| Slow read (1.6 words/s) | completed | none | 48% (0 to 6) | speed down to 0.85x and waits of 2 to 3.75 s at gates; never more than a phrase ahead |
+| Break off and resume ("blah, blah, blah") | completed | none | 95% | gate held 2.9 s, no phrase repeated |
+| Restart a line from its start | completed | none | 94% | gate held 2.65 s |
+| Restart after the gate opened (plan 001's third fluff) | completed | none | 93% | one stop, the last phrase replayed; the spike waited 5.4 s |
+| Stop 10 s, restart the phrase | completed | none | 95% (−2 to 3) | voice waited 12 s; back in step within a phrase |
+| Wander off script and back | completed | none | 95% | lost, gate held 4.95 s, found, no phrase repeated |
+| Skip a phrase from memory | completed | none | 94% | one stop, the skipped phrase never played, speed within 1.2x |
+| "Seawall" and 1890 building up | completed | none | 99% | longest voice gap 1.1 s; the spike's gate held 2.8 s |
+| First result 1.5 s late after each pause | completed | none | 99% | longest voice gap 0.95 s |
+| Delay 1.4 s, presenter 2 words/s | completed | none | — | measured delay 1.4 s and rate 2.0 |
+
+These are a model's numbers, not a device's: the presenter, recogniser and pauses are made up, and how following feels is judged on the phone in stage 5, with lead 3 against 5.
+
+**Outcome: complete** (2026-11-06). PRD v0.5 records the engine as built: the lead as the felt head start, the gate at the boundary, matching and confidence, the estimate, the speed sign fixed, re-anchoring, the controls, the start modes and completion.
 
 ## Review pass — 2026-11-06
 

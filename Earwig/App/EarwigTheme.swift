@@ -65,7 +65,37 @@ extension EarwigPalette {
         caution: Color(hex: 0xFF9F43)
     )
 
-    static let candidates = [paper, copper, harbour]
+    /// Light and airy: a clear sky blue on pale blue-white, with warm clay cues.
+    static let sky = EarwigPalette(
+        name: "Sky",
+        scheme: .light,
+        background: Color(hex: 0xEAF4FB),
+        surface: Color(hex: 0xFFFFFF),
+        text: Color(hex: 0x14212B),
+        secondaryText: Color(hex: 0x5B6D7A),
+        accent: Color(hex: 0x0A84C6),
+        cue: Color(hex: 0xA4612F),
+        warning: Color(hex: 0xC8262E),
+        good: Color(hex: 0x2B8A4E),
+        caution: Color(hex: 0xB86E00)
+    )
+
+    /// Deep indigo with a blue-violet accent and mint cues.
+    static let violet = EarwigPalette(
+        name: "Violet",
+        scheme: .dark,
+        background: Color(hex: 0x151932),
+        surface: Color(hex: 0x21274A),
+        text: Color(hex: 0xF1F2FA),
+        secondaryText: Color(hex: 0xA3A8C8),
+        accent: Color(hex: 0x7B88FF),
+        cue: Color(hex: 0x7FD3BF),
+        warning: Color(hex: 0xFF6B6B),
+        good: Color(hex: 0x6FD39A),
+        caution: Color(hex: 0xFFB454)
+    )
+
+    static let candidates = [paper, copper, harbour, sky, violet]
 
     /// The chosen palette. While Andy picks one, the `-EarwigPalette <name>` launch argument
     /// shows another.

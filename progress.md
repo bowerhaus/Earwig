@@ -22,7 +22,7 @@ Branch `follow-engine` from `main` at `25e2d53` (plan 002 merged as PR #4, closi
 - [x] 3. Presenter estimate
 - [x] 4. Pacer
 - [x] 5. Engine and the `PhraseList` adapter
-- [ ] 6. Scenarios (simulated take)
+- [x] 6. Scenarios (simulated take)
 - [ ] Tests + lint
 - [ ] Review + fixes
 - [ ] Complete (commit + PR): Results, PRD v0.5, this file to its stub
@@ -36,6 +36,8 @@ Branch `follow-engine` from `main` at `25e2d53` (plan 002 merged as PR #4, closi
 - Speed logic runs only once the presenter has been heard.
 - Within a run one script word may be dropped or one heard word misheard; an inserted heard word breaks it.
 - A step back is 3 or more words behind the last confident position.
+- The gate is the phrase boundary: the next phrase plays when the estimate is at least (last word + 1 − lead). With the last word as the end, the simulated clean read ran 1.5 words over the lead (82% within ±2); with the boundary, 99% within ±2, none beyond 3, and the presenter never waits.
+- Scenario results (simulation, lead 3, 2.5 words/s, 0.9 s delay): every scenario completes; no presenter wait in any; restart after the gate: one stop and the last phrase replayed (spike waited 5.4 s); skip ahead: one stop, the skipped phrase never played, speed within 1.2; year and compound: longest voice gap under 1.5 s (spike 2.8 s); wander: lost, gate held, picked up, no phrase repeated.
 - The take completes when the last word is heard (not estimated), or 3 s after the voice finished with the presenter in the last phrase.
 
 **Notes for building:**

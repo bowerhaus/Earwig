@@ -78,14 +78,20 @@ struct FollowEngine: Sendable {
 
     mutating func handle(_ event: FollowEvent, at time: TimeInterval) -> [FollowCommand] {
         now = time
-        var commands: [FollowCommand] = []
+        var commands: [FollowCommand]
         switch event {
-        case .start:
-            commands += begin()
-        case .interim(let text):
-            commands += heardInterim(text)
-        case .final(let words):
-            commands += heardFinal(words)
+        case .interim(let text): commands = heardInterim(text)
+        case .final(let words): commands = heardFinal(words)
+        case .voiceProgress, .phraseEnded, .cueEnded, .tonesEnded: commands = player(event)
+        default: commands = control(event)
+        }
+        commands += advance()
+        return commands
+    }
+
+    /// What the player reports.
+    private mutating func player(_ event: FollowEvent) -> [FollowCommand] {
+        switch event {
         case let .voiceProgress(phrase, offset):
             if voice == .playing(phrase), let word = script.word(in: phrase, at: offset) { voiceWord = word }
         case .phraseEnded(let phrase):
@@ -100,27 +106,32 @@ struct FollowEngine: Sendable {
             guard phase == .tones else { break }
             phase = .following
             voice = .waiting(0)
-        case .tap:
-            commands += tap()
-        case .hold:
-            commands += toggleHold()
-        case .back:
-            commands += move(by: -1)
-        case .forward:
-            commands += move(by: 1)
-        case .restart:
-            guard phase != .idle, phase != .finished else { break }
-            if case .playing = voice { commands.append(.stopVoice) }
-            if phase == .slateCue { commands.append(.stopVoice) }
-            commands += startTones()
-        case .stop:
-            guard phase != .idle, phase != .finished else { break }
-            if case .playing = voice { commands.append(.stopVoice) }
-            if phase == .slateCue { commands.append(.stopVoice) }
-            commands += finish(.stopped)
+        default:
+            break
         }
-        commands += advance()
-        return commands
+        return []
+    }
+
+    /// Start, the tap and the manual controls.
+    private mutating func control(_ event: FollowEvent) -> [FollowCommand] {
+        switch event {
+        case .start: return begin()
+        case .tap: return tap()
+        case .hold: return toggleHold()
+        case .back: return move(by: -1)
+        case .forward: return move(by: 1)
+        case .restart: return isRunning ? stopping() + startTones() : []
+        case .stop: return isRunning ? stopping() + finish(.stopped) : []
+        default: return []
+        }
+    }
+
+    private var isRunning: Bool { phase != .idle && phase != .finished }
+
+    /// Stops whatever is playing, for Restart and Stop.
+    private func stopping() -> [FollowCommand] {
+        if case .playing = voice { return [.stopVoice] }
+        return phase == .slateCue ? [.stopVoice] : []
     }
 
     /// Time-based rules: the slate's pause, speed, gates and the end.
@@ -176,56 +187,6 @@ struct FollowEngine: Sendable {
             if case .playing = voice { return .speaking }
             return .waiting
         }
-    }
-
-    // MARK: - Start
-
-    private mutating func begin() -> [FollowCommand] {
-        guard phase == .idle else { return [] }
-        switch settings.start {
-        case .slateWithReply, .slate:
-            phase = .slateCue
-            return [.playCue(.slate)]
-        case .tonesOnly:
-            return startTones()
-        }
-    }
-
-    private mutating func tap() -> [FollowCommand] {
-        switch phase {
-        case .slateCue: return [.stopVoice] + startTones()
-        case .slateReply, .slateGap: return startTones()
-        default: return []
-        }
-    }
-
-    /// The tones, then phrase 1. What was heard before them (the slate) is not followed.
-    private mutating func startTones() -> [FollowCommand] {
-        phase = .tones
-        voice = .idle
-        held = false
-        voicePhrase = nil
-        voiceStartedAt = nil
-        voiceWord = nil
-        settled = MatchState()
-        current = settled
-        lastFinalAt = nil
-        ignoreSpokenBefore = now
-        ignoreHeardBefore = now + estimate.delay
-        pacer.reset(at: now)
-        pacer.pause()
-        return [.playTones]
-    }
-
-    private mutating func heardSlate(_ heard: [HeardScriptWord], since: TimeInterval) -> [FollowCommand] {
-        slateHeard = slateSettled
-        for word in heard where word.heardAt >= since {
-            if let index = slateWords.indices.first(where: { !slateHeard.contains($0) && WordFolding.match(word.word, slateWords[$0]) != nil }) {
-                slateHeard.insert(index)
-            }
-        }
-        let needed = min(settings.slateWordsNeeded, slateWords.count)
-        return slateHeard.count >= needed && needed > 0 ? startTones() : []
     }
 
     // MARK: - Hearing
@@ -311,35 +272,40 @@ struct FollowEngine: Sendable {
     /// Re-anchoring (plan 003, decision 11): the voice stops and queues the first phrase the
     /// presenter has not begun, released by the usual gate.
     private mutating func reanchor(_ reason: Reason) -> [FollowCommand] {
-        guard phase == .following else { return [] }
-        guard let target = script.firstPhrase(after: current.confident) else {
-            // The presenter is in the last phrase: let the voice finish or stay finished.
-            return []
-        }
+        // In the last phrase there is nothing to queue: the voice finishes or stays finished.
+        guard phase == .following, let target = script.firstPhrase(after: current.confident) else { return [] }
         switch voice {
         case .playing(let phrase):
-            let act: Bool
-            switch reason {
-            case .stepBack: act = target <= phrase
-            case .ahead, .release: act = true
-            case .found: act = target <= phrase || target > phrase + 1
-            }
-            guard act else { return [] }
+            guard Self.stops(playing: phrase, for: target, reason) else { return [] }
             voice = .waiting(target)
             pacer.pause()
             return [.stopVoice]
         case .waiting(let next):
-            switch reason {
-            case .stepBack: if target < next { voice = .waiting(target) }
-            case .ahead: if target > next { voice = .waiting(target) }
-            case .found, .release: voice = .waiting(target)
-            }
-            return []
+            if Self.moves(waiting: next, to: target, reason) { voice = .waiting(target) }
         case .done:
             if reason == .stepBack || reason == .found { voice = .waiting(target) }
-            return []
         case .idle:
-            return []
+            break
+        }
+        return []
+    }
+
+    /// Whether a playing phrase stops for a re-anchor: a step back to it or before it, the
+    /// presenter ahead, found elsewhere, or Hold released.
+    private static func stops(playing phrase: Int, for target: Int, _ reason: Reason) -> Bool {
+        switch reason {
+        case .stepBack: return target <= phrase
+        case .ahead, .release: return true
+        case .found: return target <= phrase || target > phrase + 1
+        }
+    }
+
+    /// Whether a waiting voice queues the target instead of its next phrase.
+    private static func moves(waiting next: Int, to target: Int, _ reason: Reason) -> Bool {
+        switch reason {
+        case .stepBack: return target < next
+        case .ahead: return target > next
+        case .found, .release: return target != next
         }
     }
 
@@ -365,11 +331,14 @@ struct FollowEngine: Sendable {
     }
 
     /// A phrase plays when the presenter is within the lead of the end of the spoken phrase
-    /// before it. A spoken phrase straight after a cue follows the cue.
+    /// before it, the end counted as the boundary after its last word, so that a released
+    /// phrase starts exactly a lead ahead (with the last word as the end it started a lead and
+    /// one ahead, and the simulated clean read ran 1.5 words over the lead). A spoken phrase
+    /// straight after a cue follows the cue.
     private func gateIsOpen(_ phrase: Int) -> Bool {
         if script.phrases[phrase].kind == .spoken, phrase > 0, script.phrases[phrase - 1].kind == .cue { return true }
         guard let gating = script.gatingPhrase(before: phrase), let last = script.lastWord(of: gating) else { return true }
-        return presenterNow() >= Double(last - settings.lead)
+        return presenterNow() >= Double(last + 1 - settings.lead)
     }
 
     /// The take completes when the last word is heard, or a while after the voice finished with
@@ -386,6 +355,61 @@ struct FollowEngine: Sendable {
         held = false
         self.outcome = outcome
         return [.finished(outcome)]
+    }
+}
+
+// MARK: - Start and manual controls
+
+extension FollowEngine {
+
+    // MARK: - Start
+
+    private mutating func begin() -> [FollowCommand] {
+        guard phase == .idle else { return [] }
+        switch settings.start {
+        case .slateWithReply, .slate:
+            phase = .slateCue
+            return [.playCue(.slate)]
+        case .tonesOnly:
+            return startTones()
+        }
+    }
+
+    private mutating func tap() -> [FollowCommand] {
+        switch phase {
+        case .slateCue: return [.stopVoice] + startTones()
+        case .slateReply, .slateGap: return startTones()
+        default: return []
+        }
+    }
+
+    /// The tones, then phrase 1. What was heard before them (the slate) is not followed.
+    private mutating func startTones() -> [FollowCommand] {
+        phase = .tones
+        voice = .idle
+        held = false
+        voicePhrase = nil
+        voiceStartedAt = nil
+        voiceWord = nil
+        settled = MatchState()
+        current = settled
+        lastFinalAt = nil
+        ignoreSpokenBefore = now
+        ignoreHeardBefore = now + estimate.delay
+        pacer.reset(at: now)
+        pacer.pause()
+        return [.playTones]
+    }
+
+    private mutating func heardSlate(_ heard: [HeardScriptWord], since: TimeInterval) -> [FollowCommand] {
+        slateHeard = slateSettled
+        for word in heard where word.heardAt >= since {
+            if let index = slateWords.indices.first(where: { !slateHeard.contains($0) && WordFolding.match(word.word, slateWords[$0]) != nil }) {
+                slateHeard.insert(index)
+            }
+        }
+        let needed = min(settings.slateWordsNeeded, slateWords.count)
+        return slateHeard.count >= needed && needed > 0 ? startTones() : []
     }
 
     // MARK: - Manual controls

@@ -75,10 +75,4 @@ struct PhraseSplitterTests {
         #expect(phrase.scriptWords.count == 5)
         #expect(phrase.tokenIndex(containing: 16) == 2)
     }
-
-    @Test func phrasesRoundTripThroughJSON() throws {
-        let phrase = splitter.phrases(in: "The sea wall was built in 1890.")[0]
-        let decoded = try JSONDecoder().decode(Phrase.self, from: JSONEncoder().encode(phrase))
-        #expect(decoded == phrase)
-    }
 }

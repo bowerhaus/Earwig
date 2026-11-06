@@ -15,7 +15,7 @@ struct StepView: View {
                     .font(.system(size: 34, weight: .heavy, design: .rounded))
                     .foregroundStyle(EarwigTheme.accent)
                     .monospacedDigit()
-                Text(step.title.isEmpty ? "Step \(step.number)" : step.title)
+                Text(step.heading)
                     .font(.title3.bold())
                     .foregroundStyle(EarwigTheme.text)
                 Spacer(minLength: 8)

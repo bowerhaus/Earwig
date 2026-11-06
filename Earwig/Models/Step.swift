@@ -40,8 +40,6 @@ final class Step {
         set { phrasesData = ModelJSON.encode(newValue) }
     }
 
-    /// "3. Rosie up ahead", or "Step 3" with no title.
-    var displayTitle: String {
-        title.isEmpty ? "Step \(number)" : "\(number). \(title)"
-    }
+    /// The title, or "Step 3" when it has none.
+    var heading: String { title.isEmpty ? "Step \(number)" : title }
 }

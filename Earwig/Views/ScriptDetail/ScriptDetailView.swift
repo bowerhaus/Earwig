@@ -16,6 +16,15 @@ struct ScriptDetailView: View {
     private var script: Script { model.script }
 
     var body: some View {
+        // A deleted script must not be read while the screen pops away (SwiftData).
+        if script.isDeleted || script.modelContext == nil {
+            EarwigTheme.background.ignoresSafeArea()
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         List {
             Section {
                 renderingRow
@@ -64,8 +73,8 @@ struct ScriptDetailView: View {
         .onAppear { model.appeared(in: context) }
         .confirmationDialog("Delete \(script.title)?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete Script", role: .destructive) {
-                model.delete(in: context)
                 dismiss()
+                model.delete(in: context)
             }
         } message: {
             Text("Its takes go with it.")

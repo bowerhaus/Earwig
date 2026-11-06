@@ -7,6 +7,7 @@ struct PlainParserTests {
         let script = ScriptParser.parse(Fixtures.plain)
         #expect(script.format == .plain)
         #expect(script.title == "The Ferry Crossing")
+        #expect(script.titleIsStated)
         // The first block is one title-like line: the script's title, not a step.
         #expect(script.steps.map(\.title) == ["Boarding", "", ""])
         #expect(script.steps.map(\.number) == [1, 2, 3])
@@ -56,6 +57,7 @@ struct PlainParserTests {
     @Test func aLongFirstLineIsCutForTheTitle() {
         let script = ScriptParser.parse("This is a rather long first line that runs well past forty characters.")
         #expect(script.title == "This is a rather long first line that…")
+        #expect(!script.titleIsStated)
         #expect(script.title.count <= PlainParser.maxScriptTitleLength + 1)
     }
 

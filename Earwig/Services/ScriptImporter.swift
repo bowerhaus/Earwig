@@ -28,8 +28,9 @@ struct ScriptImporter {
         }
     }
 
-    /// Paste on the Scripts screen: the same text opens its script, the same title replaces
-    /// that script's text, anything else is a new script.
+    /// Paste on the Scripts screen: the same text opens its script, the same stated title
+    /// replaces that script's text, anything else is a new script. A title taken from a first
+    /// line or first step never replaces another script.
     func paste(_ text: String) throws -> Result {
         let cleaned = Self.cleaned(text)
         let parsed = try Self.parsed(cleaned)
@@ -38,7 +39,8 @@ struct ScriptImporter {
         if let same = scripts.first(where: { $0.sourceHash == hash }) {
             return Result(script: same, outcome: .unchanged)
         }
-        if let named = scripts.first(where: { $0.title.caseInsensitiveCompare(parsed.title) == .orderedSame }) {
+        if parsed.titleIsStated,
+           let named = scripts.first(where: { $0.title.caseInsensitiveCompare(parsed.title) == .orderedSame }) {
             apply(parsed, text: cleaned, hash: hash, to: named)
             return Result(script: named, outcome: .replaced)
         }

@@ -18,7 +18,7 @@ struct ScriptImporterTests {
         #expect(result.script.title == "The Harbour Walk")
         #expect(result.script.format == .cutaway)
         #expect(result.script.orderedSteps.count == 3)
-        #expect(result.script.phraseCount > 13)
+        #expect(result.script.phraseCount == 27)
         #expect(count == 1)
     }
 
@@ -31,15 +31,20 @@ struct ScriptImporterTests {
         #expect(count == 1)
     }
 
-    @Test func theSameTitleWithNewTextReplacesAndKeepsTakes() throws {
+    @Test func theSameTitleWithNewTextReplacesAndKeepsTakesAndRenderings() throws {
         let script = try importer.paste(SampleScript.harbourWalk).script
         script.cuesOn = false
         script.lastStep = 2
         let take = Take(stepIndex: 1)
+        let rendering = Rendering(scriptHash: script.sourceHash, voiceIdentifier: "v")
         context.insert(take)
+        context.insert(rendering)
         take.script = script
+        rendering.script = script
 
+        // Shorter, and with the title in another case.
         let shorter = SampleScript.harbourWalk.components(separatedBy: "## 3.")[0]
+            .replacingOccurrences(of: "# The Harbour Walk", with: "# the harbour walk")
         let result = try importer.paste(shorter)
         #expect(result.outcome == .replaced)
         #expect(result.script === script)
@@ -47,8 +52,16 @@ struct ScriptImporterTests {
         #expect(script.orderedSteps.count == 2)
         #expect(try context.fetchCount(FetchDescriptor<Step>()) == 2)
         #expect(script.takes?.count == 1)
+        #expect(script.renderings?.count == 1)
         #expect(!script.cuesOn)
         #expect(script.lastStep == 1)
+    }
+
+    @Test func aTitleTakenFromTheFirstLineNeverReplacesAnotherScript() throws {
+        _ = try importer.paste("Morning, everyone.\nWe start at the harbour.")
+        let second = try importer.paste("Morning, everyone.\nWe start at the station.")
+        #expect(second.outcome == .added)
+        #expect(count == 2)
     }
 
     @Test func anotherTitleIsANewScript() throws {
@@ -76,7 +89,9 @@ struct ScriptImporterTests {
         let script = try importer.paste(SampleScript.harbourWalk).script
         let step = try #require(script.orderedSteps.first)
         step.phraseList = PhraseList(parserVersion: 0)
+        let updatedAt = script.updatedAt
         #expect(importer.refreshIfStale(script))
+        #expect(script.updatedAt == updatedAt)
         #expect(script.orderedSteps.allSatisfy { $0.phraseList.isCurrent })
         #expect(script.orderedSteps.first?.phraseList.spoken.isEmpty == false)
         #expect(!importer.refreshIfStale(script))

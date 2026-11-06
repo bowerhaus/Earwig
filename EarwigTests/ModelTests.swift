@@ -70,8 +70,25 @@ struct ModelTests {
         #expect(stored.renderings?.first?.phrases["p0"]?.wordStarts == [0, nil])
     }
 
-    @Test func displayTitle() {
-        #expect(Step(number: 3, title: "Rosie up ahead").displayTitle == "3. Rosie up ahead")
-        #expect(Step(number: 2).displayTitle == "Step 2")
+    @Test func takesAreFoundPerStepNewestFirst() throws {
+        let container = ModelContainerFactory.inMemory()
+        let context = container.mainContext
+        let script = Script(title: "Takes")
+        context.insert(script)
+        let start = Date(timeIntervalSince1970: 1_000)
+        for (step, minutes) in [(0, 0), (1, 5), (0, 10)] {
+            let take = Take(stepIndex: step, startedAt: start.addingTimeInterval(Double(minutes) * 60))
+            context.insert(take)
+            take.script = script
+        }
+        try context.save()
+        #expect(script.takes(forStep: 0).map(\.startedAt) == [start.addingTimeInterval(600), start])
+        #expect(script.takes(forStep: 2).isEmpty)
+        #expect(script.lastTake?.startedAt == start.addingTimeInterval(600))
+    }
+
+    @Test func headingFallsBackToTheNumber() {
+        #expect(Step(number: 3, title: "Rosie up ahead").heading == "Rosie up ahead")
+        #expect(Step(number: 2).heading == "Step 2")
     }
 }

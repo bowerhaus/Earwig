@@ -4,30 +4,22 @@ import Testing
 struct WordNormaliserTests {
 
     @Test func lowercasesAndStripsPunctuation() {
-        #expect(WordNormaliser.words(in: "Hello, World!") == ["hello", "world"])
+        #expect(WordNormaliser.normalise("World!") == "world")
+        #expect(WordNormaliser.normalise("“stop.”") == "stop")
     }
 
-    @Test func dropsApostrophesAndCurlyQuotes() {
-        #expect(WordNormaliser.words(in: "Don’t say “can't”") == ["dont", "say", "cant"])
+    @Test func dropsApostrophesStraightAndCurly() {
+        #expect(WordNormaliser.normalise("Don’t") == "dont")
+        #expect(WordNormaliser.normalise("can't") == "cant")
     }
 
     @Test func foldsDiacritics() {
-        #expect(WordNormaliser.words(in: "Café naïve") == ["cafe", "naive"])
+        #expect(WordNormaliser.normalise("Café") == "cafe")
+        #expect(WordNormaliser.normalise("naïve") == "naive")
     }
 
-    @Test func splitsOnDashesAndSlashes() {
-        #expect(WordNormaliser.words(in: "well-known up/down — then") == ["well", "known", "up", "down", "then"])
-    }
-
-    @Test func purePunctuationGivesNoWords() {
-        #expect(WordNormaliser.words(in: "… — !") == [])
-    }
-
-    @Test func keepsDigitsAsWritten() {
-        #expect(WordNormaliser.words(in: "20 metres, 1,500") == ["20", "metres", "1500"])
-    }
-
-    @Test func leavesMixedTokensAlone() {
-        #expect(WordNormaliser.words(in: "3pm") == ["3pm"])
+    @Test func punctuationAloneIsNoWord() {
+        #expect(WordNormaliser.normalise("—") == nil)
+        #expect(WordNormaliser.normalise("…") == nil)
     }
 }

@@ -198,3 +198,25 @@ T9. SUGGESTION: Small gaps in the Script model and the Cutaway parser.
 - T7 — FIX (part): the "3pm" and "1,500" duplicates go with T1; merge the two "there's" tests. Keep `aYearIsOneScriptWord`: it is the one check that stored phrases carry a number as one word.
 - T8 — FIX (part): drop `titleWithoutThePrefix`. Keep the hash test: it also checks that different text hashes differently.
 - T9 — FIX: exact phrase count; a test for `takes(forStep:)` and `lastTake`; the untitled Cutaway fallback joins the C3 test.
+
+### Outcome — 2026-11-06
+
+- C1 — fixed: a number run ends at a token ending in `, ; : . ! ? …` and at a dash token (`ScriptWords.groups`); tests for "fifteen, sixteen", "twenty, thirty, forty", "nineteen — twenty".
+- C2 — fixed: Delete dismisses first, then deletes, and the Script screen draws nothing from a deleted script. Checked in the simulator: delete from the Script screen returns to the list with no crash or fault.
+- C3 — fixed: `ParsedScript.titleIsStated`; a paste replaces a stored script by title only when the text states its title (a `# ` line, or a plain script's lone title line). Test: two plain scripts with the same first line stay two scripts.
+- C4 — not done: not a defect; PRD v0.4, Results and the progress stub are the completion step.
+- C5 — fixed (part): the rule is kept; recorded in Results and PRD §4.1 at completion.
+- C6 — fixed (part): recorded in Results at completion; no code change.
+- C7 — fixed: a token with a digit, `.` or `:`, and a digit is a plain word; tested with "2.5" and "9:30".
+- C8 — fixed (part): `Step.heading` is the one "Step N" fallback (`displayTitle` removed, it had no other caller). The repeated alert binding: not done, two lines.
+- T1 — fixed: `WordNormaliser.words(in:)` removed; `WordNormaliserTests` test `normalise(_:)`.
+- T2 — fixed: the replace test uses a lower-case title and checks a rendering is kept.
+- T3 — not done: the view models route to the importer, which is tested.
+- T4 — fixed: a hyphenated token splits into number pieces only when they read as one number; "one-two" is one word.
+- T5 — fixed (part): `refreshIfStale` keeps `updatedAt`, tested. The no-steps branch: not done, unreachable after an import.
+- T6 — fixed: `phrasesRoundTripThroughJSON` removed.
+- T7 — fixed (part): normaliser number cases removed; the two "there's" tests merged. `aYearIsOneScriptWord` kept.
+- T8 — fixed (part): `titleWithoutThePrefix` removed; the hash test kept.
+- T9 — fixed: exact phrase count (27); `takes(forStep:)` and `lastTake` tested; the untitled Cutaway fallback tested.
+
+Tests: 62 pass (three duplicates removed, new cases added); no build warnings; SwiftLint clean.

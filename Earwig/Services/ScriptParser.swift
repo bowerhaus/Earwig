@@ -3,6 +3,10 @@ import Foundation
 /// A script as parsed from pasted text, before it is stored (PRD §4.1).
 struct ParsedScript: Equatable, Sendable {
     var title: String
+    /// Whether the text states its title (a `# ` line, or a plain script's lone title line),
+    /// rather than it being taken from a first line or first step. Only a stated title
+    /// matches a stored script on re-paste.
+    var titleIsStated: Bool
     var format: ScriptFormat
     /// Cutaway text before the first step: kept and shown, never spoken.
     var preamble: String?
@@ -216,7 +220,13 @@ enum CutawayParser {
         let named = title.flatMap { $0.isEmpty ? nil : $0 }
             ?? steps.first.map { $0.title.isEmpty ? "Untitled script" : $0.title }
             ?? "Untitled script"
-        return ParsedScript(title: named, format: .cutaway, preamble: preambleText.isEmpty ? nil : preambleText, steps: steps)
+        return ParsedScript(
+            title: named,
+            titleIsStated: title.map { !$0.isEmpty } ?? false,
+            format: .cutaway,
+            preamble: preambleText.isEmpty ? nil : preambleText,
+            steps: steps
+        )
     }
 }
 
@@ -266,7 +276,7 @@ enum PlainParser {
         }
 
         let fallback = blocks.first?.first.map { shortened(headingText($0) ?? $0) } ?? "Untitled script"
-        return ParsedScript(title: scriptTitle ?? fallback, format: .plain, preamble: nil, steps: steps)
+        return ParsedScript(title: scriptTitle ?? fallback, titleIsStated: scriptTitle != nil, format: .plain, preamble: nil, steps: steps)
     }
 
     /// A Markdown heading's text ("## The sea wall"), which is always a title.

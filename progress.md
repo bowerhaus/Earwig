@@ -19,8 +19,8 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - [x] 6. Theme and screens. Andy picked **Sky with mid-blue cards** (`EarwigTheme` is now that one palette; candidates and `-EarwigPalette` removed). Simulator screenshots: empty state, sample, light and dark settings identical. Plain paste (through the simulator clipboard, which shows its own paste prompt) and landscape checked in the simulator. Found and fixed: a plain script's lone title line became Step 1; it now names the script
 - [ ] 7. Device check (see Manual test)
 - [ ] 8. PRD v0.4, Results
-- [ ] Tests + lint
-- [ ] Review + fixes
+- [x] Tests + lint (63 tests pass, no warnings, SwiftLint clean)
+- [x] Review + fixes: review pass and outcome in the plan (2026-11-06), comment on #3; 62 tests pass, lint clean; delete checked in the simulator
 - [ ] Manual test: device
 - [ ] Complete (commit + PR)
 

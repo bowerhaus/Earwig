@@ -23,7 +23,9 @@ struct ScriptWord: Codable, Equatable, Hashable, Sendable {
 /// value: cardinals ("three hundred", "twenty-one", "one hundred and fifty") and years said
 /// as two pairs ("eighteen ninety", "nineteen oh five", "twenty twenty-four"). A run has one
 /// reading, as Cutaway's normaliser: the longest, a year only when it is longer than the
-/// cardinal. A token with no letters or digits ("—") is no word.
+/// cardinal. A run never crosses a comma, full stop or other clause mark, or a dash, so
+/// "fifteen, sixteen" is two numbers. A decimal or a time ("2.5", "9:30") is a plain word.
+/// A token with no letters or digits ("—") is no word.
 enum ScriptWords {
 
     /// A script word and the tokens it was read from, `tokens` as indices into the input.
@@ -37,36 +39,63 @@ enum ScriptWords {
         groups(text.split(whereSeparator: \.isWhitespace).map(String.init)).compactMap(\.word)
     }
 
+    /// A normalised piece of a token, as the number reader sees it.
+    private struct Part {
+        let token: Int
+        let text: String
+        /// A number run ends here: the token ends a clause or sentence, or a dash follows.
+        var endsRun = false
+        /// Never read as a number: a decimal or a time ("2.5", "9:30").
+        var notANumber = false
+    }
+
     /// One group per script word, plus one with no word for each token that has none.
     static func groups(_ tokens: [String]) -> [Group] {
-        // Each token as normalised parts: one part, or a hyphenated number's pieces.
-        var parts: [(token: Int, text: String)] = []
+        var parts: [Part] = []
         var empty: [Int] = []
         for (index, token) in tokens.enumerated() {
             let pieces = token.split(whereSeparator: { "-‐‑".contains($0) }).compactMap { WordNormaliser.normalise(String($0)) }
-            if pieces.count > 1, pieces.allSatisfy(isNumberWord) {
-                parts += pieces.map { (index, $0) }
+            if pieces.count > 1, pieces.allSatisfy(isNumberWord), readNumber(pieces, at: 0)?.1 == pieces.count {
+                // A hyphenated number ("twenty-one"), which may run on ("twenty-one thousand").
+                parts += pieces.map { Part(token: index, text: $0) }
             } else if let whole = WordNormaliser.normalise(token) {
-                parts.append((index, whole))
+                parts.append(Part(token: index, text: whole, notANumber: token.contains(decimalOrTime)))
             } else {
+                // A dash or other mark: no word, and a number does not run across it.
                 empty.append(index)
+                if !parts.isEmpty { parts[parts.count - 1].endsRun = true }
+                continue
             }
+            if endsClause(token) { parts[parts.count - 1].endsRun = true }
         }
 
         var groups: [Group] = []
-        let texts = parts.map(\.text)
         var i = 0
         while i < parts.count {
-            if let (value, length) = readNumber(texts, at: i) {
+            let runEnd = parts[i...].firstIndex(where: \.endsRun) ?? parts.count - 1
+            let run = parts[i...runEnd].map(\.text)
+            if !parts[i].notANumber, let (value, length) = readNumber(run, at: 0) {
                 groups.append(Group(tokens: parts[i].token...parts[i + length - 1].token, word: .number(value)))
                 i += length
             } else {
-                groups.append(Group(tokens: parts[i].token...parts[i].token, word: ScriptWord(text: texts[i])))
+                groups.append(Group(tokens: parts[i].token...parts[i].token, word: ScriptWord(text: parts[i].text)))
                 i += 1
             }
         }
         groups += empty.map { Group(tokens: $0...$0, word: nil) }
         return groups.sorted { $0.tokens.lowerBound < $1.tokens.lowerBound }
+    }
+
+    /// A digit, a decimal point or colon, a digit.
+    private static var decimalOrTime: Regex<Substring> { #/\d[.:]\d/# }
+
+    /// Whether a written token ends with clause or sentence punctuation, closing quotes and
+    /// brackets aside.
+    private static func endsClause(_ token: String) -> Bool {
+        var trimmed = Substring(token)
+        while let last = trimmed.last, "\"'”’)]".contains(last) { trimmed = trimmed.dropLast() }
+        guard let last = trimmed.last else { return false }
+        return ",;:.!?…".contains(last)
     }
 
     // MARK: - Numbers

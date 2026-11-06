@@ -40,8 +40,12 @@ struct CutawayParserTests {
         ])
     }
 
-    @Test func titleWithoutThePrefix() {
-        #expect(ScriptParser.parse("# Plain Title\n\n## 1. One\nSays:\n- Hello.").title == "Plain Title")
+    @Test func withoutATitleLineTheFirstStepNamesItButDoesNotStateIt() {
+        let named = ScriptParser.parse("## 1. At the gate\nSays:\n- Hello.")
+        #expect(named.title == "At the gate")
+        #expect(!named.titleIsStated)
+        #expect(ScriptParser.parse("## 1.\nSays:\n- Hello.").title == "Untitled script")
+        #expect(ScriptParser.parse(Fixtures.rosie).titleIsStated)
     }
 
     @Test func readsTheOddCorners() {

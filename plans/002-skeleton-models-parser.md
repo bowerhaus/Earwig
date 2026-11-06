@@ -2,6 +2,7 @@
 
 **GitHub Issue:** [#3](https://github.com/bowerhaus/Earwig/issues/3) (PR must include "Closes #3")
 **Branch:** `skeleton-models-parser` (from `main` at `6d2b848`, after plan 001 merged)
+**Status:** Complete (2026-11-06), carried by the PR for issue #3.
 **Manual test:** device (iPhone 14 Pro: paste a real Cutaway script by Universal Clipboard, step 7), after Andy's palette pick in the simulator (step 6)
 **Goal:** Put a script into Earwig and see it as Earwig will follow it. Paste a Cutaway `script.md` or plain text; it is parsed into steps, lines, directions and phrases, stored in SwiftData, listed on the Scripts screen and shown step by step on the Script screen. Every later stage reads its script from here, so the script words and phrase indices this stage stores are the ones the follow engine (stage 3) and the renderer (stage 4) will use.
 
@@ -75,7 +76,42 @@ Andy agreed decisions 4 (square brackets as the only inline directions), 8 (re-p
 
 ## Results
 
-To be filled in when the plan completes.
+### Built
+
+All steps done. 62 Swift Testing tests pass, the build has no warnings and SwiftLint is clean, including `engine_purity` on `Engine/ScriptWords.swift`.
+
+- **Script words** (`Engine/ScriptWords.swift`): each written word is one word; a number in digits or a run of number words is one word with its value, one reading per run, never across a comma, full stop or dash; decimals and times are plain words. `WordNormaliser` now normalises one token; its number expansion is gone. `Phrase` and `PhraseToken` are Codable, a token carrying its script word; a number said in words is one token over its words, so a word marker inside it maps to it.
+- **Parsers** (`Services/ScriptParser.swift`): format detection, `CutawayParser` and `PlainParser`, as decisions 1 to 4.
+- **Phrase list, models, container and import**: as decisions 6 to 10. The sample (`Services/SampleScript.swift`) is the harbour walk.
+- **Screens**: Scripts and Script, as decisions 12 and 13.
+
+### Decided while building
+
+- **Theme (decision 11):** Andy chose from nine candidates, in three rounds. He found the first set too generic, with colour only in the headings, and asked for a heavier ground. The pick is **Sky with mid-blue cards**: a sky-blue ground, mid-blue cards with white text, a buttercup accent, peach cues. `EarwigTheme` is that one palette, with the system scheme set to dark so system controls read on it; it looks the same with the phone in light or dark.
+- **Step rows:** the step number is large in the accent, as the slate says it; direction labels are small caps; the start step has an accent bar and a Start pill.
+- **Plain text:** a first block that is only a short, unpunctuated line is the script's title, not a step (found in the simulator, where the sample's title line showed as Step 1 with the title as its only line). A plain script that opens with a one-line greeting without punctuation would lose it as a title; none seen yet.
+- **Cutaway title:** the first `# ` line before the first step, even after other text (Cutaway takes it only before any preamble).
+- **Re-paste:** by stated title only (review C3); a title taken from a first line or first step never replaces another script.
+- **Paste new version** is a button at the foot of the Script screen, not in the menu (decision 13), because a `PasteButton` cannot sit in a `Menu`.
+- `Step.displayTitle` became `Step.heading`; `Script.lastTake` and `takes(forStep:)` serve the screens.
+- A debug launch argument `-EarwigDemo YES` adds the sample and opens it, for simulator screenshots.
+- Simulator: a stale microphone alert from earlier test-host runs stayed on screen until the simulator was rebooted; the app asks for nothing at launch. The simulator's clipboard bridge shows its own paste prompt.
+
+### Device check (2026-11-06)
+
+On Andy's iPhone 14 Pro, build `1bde028`, with a real Cutaway `script.md` of his (not recorded here). Andy: all five passed.
+
+| Check | Result |
+|-------|--------|
+| Paste by Universal Clipboard, no Allow Paste prompt | Pass, once the text was on the clipboard (below) |
+| Steps, titles, lines and directions read right | Pass |
+| Pasting the same text again opens it, no duplicate | Pass |
+| Theme on the phone as in the simulator | Pass |
+| Delete from the Script screen returns to the list | Pass |
+
+Found: copying `script.md` as a file in Finder put only its file name on the clipboard. Andy had to open it in TextEdit and copy the text. Accepting a pasted file belongs with the share sheet and Files import (PRD §4.1, P1), suggested as a follow-up. Andy also noted that his script carries much else besides the script, so it is not a good example to judge the parser by.
+
+**Outcome: complete** (2026-11-06). PRD v0.4 records the parsing rules, script words, entities, screens and theme as built.
 
 ## Review pass — 2026-11-06
 

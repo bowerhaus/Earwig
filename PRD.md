@@ -1,6 +1,6 @@
 # Earwig - Product Requirements Document (PRD)
 
-**Status:** Draft v0.3, 2026-11-05. Changes by version are in the Document History at the end.
+**Status:** Draft v0.4, 2026-11-06. Changes by version are in the Document History at the end.
 **Name:** Earwig (decided 2026-11-05: UK slang for listening in). Bundle identifier `com.bowerhaus.Earwig`.
 
 ## Executive Summary
@@ -117,13 +117,14 @@ Priorities: P0 is v1, P1 should follow soon, P2 is nice to have.
 
 | Feature | Priority | Notes |
 |---|---|---|
-| Import by paste from the clipboard (Universal Clipboard from the Mac) | P0 | The Scripts screen has a Paste button; Earwig detects the format and names the script from its title or first line. |
-| Parse Cutaway `script.md` (`cutaway/script@1`) | P0 | Steps `## N. Title`; `Says:` items are lines; `Shows:`, `Footage:`, `Open:` are directions; a source span in brackets at the end of a line is stripped; run-on indented lines are joined. Unknown lines are kept as directions. |
-| Parse plain text | P0 | Blank-line-separated blocks are steps; a block's first line is its title if it is short and has no full stop. Bracketed text is a direction. |
+| Import by paste from the clipboard (Universal Clipboard from the Mac) | P0 | The Scripts screen has a Paste button (SwiftUI's `PasteButton`, so no Allow Paste prompt; confirmed on the iPhone in plan 002); Earwig detects the format (Cutaway when the text has a `## ` heading and a `Says:` field) and names the script from its title or first line. The clipboard must hold the script's text: a `script.md` copied as a file in Finder pastes only its name (plan 002). |
+| Parse Cutaway `script.md` (`cutaway/script@1`) | P0 | As Cutaway's own parser, but lenient: a misnumbered or unnumbered step is kept, not an error. Title `# Script: X` (prefix optional), the first such line before the first step; steps `## N. Title`; `Says:` items (`- `, `* `, `+ `) are lines; `Shows:`, `Footage:`, `Open:` and an old `Notes:` are directions; fields may be bold; a source span in round brackets at the end of a line is stripped; run-on indented lines are joined. Text before the first step is kept as a preamble, shown, never spoken. Unknown lines are kept as directions. |
+| Parse plain text | P0 | Blank-line-separated blocks are steps (no blank lines: one step); a block's first line is its title if it has at most eight words, no sentence-ending punctuation and more lines after it. The script's title is a leading `# ` line, or a first block that is only such a title line, or else the first line cut to 40 characters. |
+| Directions inside a line | P0 | Square brackets only, in both formats: `[Gesture to the boats]` is a direction at that point, read in the cue voice. Round brackets are spoken. |
 | Show a script as its steps with each step's lines and directions | P0 | Read-only. The start-from-step picker lives here. |
-| Re-paste replaces a script's text, keeping its takes | P0 | Renderings are re-used for unchanged phrases. |
+| Re-paste replaces a script's text, keeping its takes | P0 | The same text (line endings and trailing spaces aside) opens the stored script. A paste whose stated title (a `# ` line, or a plain script's lone title line) matches a stored script's, ignoring case, replaces that script's text and keeps its takes, renderings, cues setting and start step; a title taken from a first line or first step never replaces another script. The Script screen has Paste new version for a script whose title changed. Renderings are re-used for unchanged phrases (stage 4). |
 | Delete a script | P0 | |
-| Import from the share sheet and Files | P1 | After paste proves the flow. |
+| Import from the share sheet and Files, and a pasted file | P1 | After paste proves the flow. Includes a `script.md` copied as a file in Finder, which today pastes only its name. |
 | Watch an iCloud Drive folder so a Cutaway project's script appears by itself | P2 | Roadmap, section 13. |
 
 ### 4.2 Voice Rendering
@@ -246,6 +247,13 @@ engine. Every rule here is unit-tested with fixture word streams.
   agree and a year does not use up the lead; it matches while its digits are still
   arriving ("18" on the way to "1890"). Compounds and contractions fold both ways
   ("sea wall" and "seawall", "there's" and "there is"). All three cost words in plan 001.
+  Plan 002 reads the script words at parse time: each written word is one script word
+  (`there's` one, `sea wall` two); a number in digits ("1,500", "21st") or a run of number
+  words ("three hundred", "twenty-one", "eighteen ninety", "nineteen oh five") is one word
+  with its value, with one reading per run; a run never crosses a comma, full stop or dash,
+  so "fifteen, sixteen" is two numbers; a decimal or a time ("2.5", "9:30") is a plain
+  word. Folding compounds, contractions and spellings against what is heard is the
+  matcher's (stage 3).
 - Each phrase's rendering duration and per-word start times.
 - **Heard words**: from the recogniser, each with its normalised text, whether it is
   volatile or final, and for finals its start time on the engine's clock. Volatile words
@@ -305,16 +313,21 @@ the tones and plays phrase 1. In tones-only mode it skips the slate.
 
 ### 6.1 SwiftData Entities
 
-- **Script**: title, source text, format (`plain`, `cutaway`), hash, imported at, cues on
-  or off, lastStep. Relationships: steps, takes.
-- **Step**: index, title, shotID (optional), directions (ordered), lines (ordered,
-  each a string). Phrases are derived at parse time and stored as a JSON value on the
-  step (`PhraseList`) so the engine's indices are stable.
-- **Rendering**: script hash, voice identifier, rate, created at, and a JSON map of
-  phrase index to audio file name and word start times. Files live in Application
+- **Script**: title, source text (line endings made `\n`, trailing spaces trimmed), format
+  (`plain`, `cutaway`), source hash (SHA-256), preamble, imported at, updated at, cues on
+  or off, lastStep. Relationships: steps, takes, renderings, all deleted with the script.
+- **Step**: sortOrder, number (as the script numbers it), title, shotID (optional),
+  directions (ordered, each a kind and text), lines (ordered, each a string with any
+  `[direction]` inside it). Phrases are derived at parse time and stored as a JSON value
+  on the step (`PhraseList`) so the engine's indices are stable: each phrase with its line
+  and kind (spoken, or cue for an inline direction) and its tokens' script words. The list
+  carries a parser version; a list from an older parser is rebuilt from the script's
+  source text when the script is opened, so changing the rules needs no migration.
+- **Rendering**: script, script hash, voice identifier, rate, created at, and a JSON map
+  of phrase to audio file name and word start times. Files live in Application
   Support/Renderings/<script hash>/<voice>/.
-- **Take**: script, step index, number, started at, duration, outcome (`completed`,
-  `stopped`).
+- **Take**: script, step index (not a relationship, so a re-paste that rebuilds the steps
+  keeps it), number, started at, duration, outcome (`completed`, `stopped`).
 - **Settings** is `UserDefaults` through a typed wrapper, not a model.
 
 Conventions as the siblings: every relationship optional with an inverse, a default on
@@ -367,10 +380,11 @@ Views (SwiftUI) → ViewModels (@Observable) → Models (SwiftData)
 ```
 Earwig/
   App/           EarwigApp, AppState
-  Models/        SwiftData models, PhraseList, Settings
-  Engine/        FollowEngine, Matcher, Pacer, WordNormaliser (pure Swift)
-  Services/      ScriptParser, PhraseSplitter, VoiceRenderer, RenderingStore,
-                 AudioSessionManager, Listener, Player, Slater
+  Models/        SwiftData models, PhraseList, ModelJSON, Settings
+  Engine/        FollowEngine, Matcher, Pacer, WordNormaliser, ScriptWords (pure Swift)
+  Services/      ScriptParser, ScriptImporter, PhraseSplitter, VoiceRenderer, RenderingStore,
+                 AudioSessionManager, Listener, Player, Slater, ModelContainerFactory
+  ViewModels/    ScriptsViewModel, ScriptDetailViewModel, …
   Views/         Scripts, ScriptDetail, Prompt, Settings, ListeningCheck
   Resources/     Info.plist, Assets, tones
 EarwigTests/     Engine and parser tests with fixture word streams
@@ -385,14 +399,17 @@ docs/            development.md (gotchas), this PRD stays at the root
 
 ### 8.1 Scripts
 
-A list of imported scripts (title, step count, last take). Paste button in the toolbar.
-Swipe to delete. Tap for the script.
+A list of imported scripts (title, step count, format, last take). Paste button in the
+toolbar. Swipe to delete. Tap for the script. When empty: a Paste button and Try the
+sample (a made-up harbour walk in Cutaway's layout).
 
 ### 8.2 Script
 
 The steps, each with its lines and directions in the cue colour. A rendering status row
 ("Rendered in Andy, 42 phrases" or a Render button with progress). Tap a step to start a
-take from it; the takes so far for that step are shown on it.
+take from it; the takes so far for that step are shown on it. Each step shows its number
+large, as the slate says it. A menu holds the cues switch and Delete; Paste new version is
+a button at the foot of the screen (a `PasteButton` cannot sit in a menu).
 
 ### 8.3 Prompt
 
@@ -449,9 +466,12 @@ stay.
 
 ## 10. Design Language
 
-Dark, high-contrast, large type; one accent for the voice's phrase and a muted second
-colour for cues and directions. Few screens, nothing decorative. SF Symbols. All colours
-in `EarwigTheme`; views never define their own.
+One distinctive look, the same whatever the phone's light or dark setting, with no
+separate light and dark variants (plan 002, the author's pick from nine candidates): a
+clear sky blue as the ground, mid-blue cards with white text, a buttercup yellow accent
+for the voice's phrase, the start step and the slate numerals, and peach for cues and
+directions. High contrast and large type for arm's length. Few screens, nothing
+decorative. SF Symbols. All colours in `EarwigTheme`; views never define their own.
 
 ---
 
@@ -484,8 +504,9 @@ Each stage is one plan, one branch, one issue and one PR.
    locked. Records in the plan: the voice verdict, whether the earpieces hold A2DP, the
    recognition delay, and the lead that felt right. Decides 4.2's voice and 4.4's default
    lead.
-2. **Skeleton, models, parser.** Project, theme, SwiftData, the Cutaway and plain
-   parsers with tests, the Scripts and Script screens, paste import.
+2. **Skeleton, models, parser** (plan 002, done: see its Results). Project, theme,
+   SwiftData, the Cutaway and plain parsers with tests, the Scripts and Script screens,
+   paste import.
 3. **Follow engine.** Pure, with the matcher, the pacer, the gates, lost and resume,
    tested against fixture word streams (a clean read, a slow read, a fluff and restart, a
    stop and resume, a wander off script).
@@ -583,6 +604,7 @@ shared between recording and listening.
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.4 | 2026-11-06 | Plan 002 results: paste import confirmed on the iPhone with no Allow Paste prompt, and a file copied in Finder pastes only its name (4.1, P1 row); the Cutaway and plain parsing rules as built, square brackets as the only inline directions, re-paste by stated title (4.1); script words read at parse time, a number run never crossing punctuation (5.1); the entities as built, with the phrase list's parser version (6.1); folders (7.3); screens (8.1, 8.2); the theme, one sky-blue look not split into light and dark (10); stage 2 done (12). |
 | 0.3 | 2026-11-05 | Plan 001 results (spike on the iPhone 14 Pro with the SK18 earpiece): Stephanie (Enhanced) is the default voice until Personal Voice is judged; the default lead is 5 words; the earpiece holds A2DP with the mic open and recognition runs locked, so those risks are retired; recognition is about 0.9 s behind, untimed in its interim results, and fed untimed audio (4.3); the engine estimates the presenter's place and adds the delay (5.4) and treats numbers, compounds and contractions as said (5.1); render and rate details (4.2); fluffs (4.4); open question 6. |
 | 0.2 | 2026-11-05 | The App Store Connect key lives in the Keychain under a team-level name, not in a file; the app itself has no keys (section 2). MIT licence; repo public. |
 | 0.1 | 2026-11-05 | First draft from the author's answers: Osmo as camera with the iPhone in a pocket or on a mount; in-ear Bluetooth earpieces as output only; Personal Voice first with downloaded voices as fallback; on-device recognition; hybrid pacing with phrase gating as the fallback; configurable lead with the default from the spike; paste import first; cues in a second voice; no mirror, pedals or remotes; name Earwig. |

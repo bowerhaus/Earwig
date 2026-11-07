@@ -6,6 +6,9 @@ struct TakeAudio {
     struct Phrase {
         var kind: PhraseKind
         var buffer: AVAudioPCMBuffer
+        /// A sound started with the phrase on the tone channel and left to ring on past its end:
+        /// the chime for a direction, whose `buffer` is then the short hold the voice waits for.
+        var ring: AVAudioPCMBuffer? = nil
     }
 
     var phrases: [Phrase]
@@ -88,6 +91,10 @@ final class Player {
         let item = audio.phrases[phrase]
         let channel: AudioChannel = item.kind == .cue ? .cue : .voice
         if channel == .voice { output.speed = speed }
+        if let ring = item.ring {
+            output.stop(.tone)
+            start(ring, on: .tone) {}
+        }
         current = (phrase, channel)
         start(item.buffer, on: channel) { [weak self] in
             guard let self else { return }

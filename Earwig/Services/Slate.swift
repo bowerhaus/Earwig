@@ -17,46 +17,10 @@ enum Slate {
         return (spoken + [slate]).joined(separator: " ")
     }
 
-    /// The slate for a step of a script. With cues on and inline directions chimed, the step's
-    /// inline directions are read too, before the take, since the chime only marks the point.
-    static func text(for step: Step, take: Int, cuesOn: Bool, inline: InlineDirections) -> String {
+    /// The slate for a step of a script.
+    static func text(for step: Step, take: Int, cuesOn: Bool) -> String {
         let shows = step.directions.first { $0.kind == .shows }?.text ?? ""
-        let ahead = inline == .chime ? inlineDirections(in: step.phraseList) : []
-        return text(number: step.number, shotID: step.shotID, take: take, directions: cuesOn ? [step.title, shows] + ahead : nil)
-    }
-
-    /// Words of the line to place a direction by.
-    static let placeWords = 4
-
-    /// Each inline direction of a step, told where it falls: "At “Most of these boats”, gesture
-    /// to the boats." by the words after it, or "After “…”" by the words before it at a line's end.
-    static func inlineDirections(in list: PhraseList) -> [String] {
-        list.phrases.indices.compactMap { index in
-            let cue = list.phrases[index]
-            guard cue.kind == .cue else { return nil }
-            let direction = lowercasedFirst(cue.phrase.text.trimmingCharacters(in: .whitespacesAndNewlines))
-            guard !direction.isEmpty else { return nil }
-            let line = list.phrases.indices.filter { list.phrases[$0].line == cue.line && list.phrases[$0].kind == .spoken }
-            if let next = line.first(where: { $0 > index }) {
-                return "At “\(words(of: list.phrases[next].phrase, first: true))”, \(direction)."
-            }
-            if let previous = line.last(where: { $0 < index }) {
-                return "After “\(words(of: list.phrases[previous].phrase, first: false))”, \(direction)."
-            }
-            return sentence(direction.prefix(1).uppercased() + direction.dropFirst())
-        }
-    }
-
-    private static func words(of phrase: Phrase, first: Bool) -> String {
-        let tokens = phrase.text.split(whereSeparator: \.isWhitespace)
-        let picked = first ? tokens.prefix(placeWords) : tokens.suffix(placeWords)
-        return picked.joined(separator: " ").trimmingCharacters(in: CharacterSet(charactersIn: ".,;:!?…"))
-    }
-
-    /// Lower case at the start, as it follows a comma. Only heard, never shown, so a name lowered
-    /// is said the same.
-    private static func lowercasedFirst(_ text: String) -> String {
-        text.prefix(1).lowercased() + text.dropFirst()
+        return text(number: step.number, shotID: step.shotID, take: take, directions: cuesOn ? [step.title, shows] : nil)
     }
 
     /// Each letter and digit apart, anything else dropped; `nil` when nothing is left.

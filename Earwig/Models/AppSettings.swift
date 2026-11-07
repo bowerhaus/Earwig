@@ -3,8 +3,7 @@ import Foundation
 /// How a `[direction]` inside a line reaches the presenter during a take (device check 2 of
 /// plan 004: a spoken direction leaves its own length as a gap in the take).
 enum InlineDirections: String, CaseIterable, Sendable {
-    /// A soft chime at that point, the voice carrying straight on; the slate reads the step's
-    /// directions before the take.
+    /// A low chime at that point, ringing on as the voice carries on.
     case chime
     /// Read in the cue voice at that point; the take waits for it.
     case spoken

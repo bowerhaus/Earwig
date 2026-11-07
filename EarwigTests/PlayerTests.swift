@@ -90,6 +90,20 @@ struct PlayerTests {
         #expect(events.list == [.phraseEnded(1)])
     }
 
+    @Test func aChimeRingsOnTheToneChannelAndTheHoldEndsThePhrase() {
+        let ringing = TakeAudio(
+            phrases: [TakeAudio.Phrase(kind: .cue, buffer: silence(seconds: Tones.Chime.hold), ring: silence(seconds: Tones.Chime.length))],
+            slate: nil, tones: audio.tones
+        )
+        let player = Player(output: output, audio: ringing)
+        var events: [FollowEvent] = []
+        player.onEvent = { events.append($0) }
+        player.handle(.play(phrase: 0, speed: 1.0))
+        #expect(output.played.map(\.channel) == [.tone, .cue])
+        output.end(.cue)
+        #expect(events == [.phraseEnded(0)])
+    }
+
     @Test func setSpeedChangesTheVoice() {
         let (player, _) = player()
         player.handle(.play(phrase: 0, speed: 1.0))

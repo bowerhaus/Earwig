@@ -66,7 +66,7 @@ final class ScriptDetailViewModel {
         preview = StepPreview(
             phraseList: step.phraseList,
             renderer: renderer,
-            slateText: Slate.text(for: step, take: take, cuesOn: script.cuesOn, inline: AppSettings.inlineDirections),
+            slateText: Slate.text(for: step, take: take, cuesOn: script.cuesOn),
             cuesOn: script.cuesOn,
             inline: AppSettings.inlineDirections
         )

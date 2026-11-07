@@ -32,9 +32,42 @@ enum Tones {
         return samples
     }
 
+    /// The chime for an inline direction in `.chime` mode: a soft bell, quieter than the tones,
+    /// short enough not to hold the take up.
+    enum Chime {
+        static let length = 0.15
+        static let frequencies = [1_046.5, 1_568.0]
+        /// About −20 dBFS at its peak.
+        static let amplitude: Float = 0.1
+        static let attack = 0.003
+        /// The decay's time constant.
+        static let decay = 0.04
+
+        static func samples(sampleRate: Double) -> [Float] {
+            let total = Int((length * sampleRate).rounded())
+            let attackFrames = max(Int((attack * sampleRate).rounded()), 1)
+            let fadeFrames = max(Int((Tones.fade * sampleRate).rounded()), 1)
+            return (0..<total).map { frame in
+                let time = Double(frame) / sampleRate
+                let envelope = min(1, Double(frame) / Double(attackFrames), Double(total - 1 - frame) / Double(fadeFrames)) * exp(-time / decay)
+                let tone = frequencies.enumerated().reduce(0.0) { sum, item in
+                    sum + sin(2 * Double.pi * item.element * time) / Double(item.offset + 1)
+                } / 1.5
+                return amplitude * Float(envelope * tone)
+            }
+        }
+
+        static func buffer(format: AVAudioFormat = VoiceRenderer.outputFormat) -> AVAudioPCMBuffer? {
+            Tones.buffer(samples(sampleRate: format.sampleRate), format: format)
+        }
+    }
+
     /// The tones in the player's format.
     static func buffer(format: AVAudioFormat = VoiceRenderer.outputFormat) -> AVAudioPCMBuffer? {
-        let samples = samples(sampleRate: format.sampleRate)
+        buffer(samples(sampleRate: format.sampleRate), format: format)
+    }
+
+    private static func buffer(_ samples: [Float], format: AVAudioFormat) -> AVAudioPCMBuffer? {
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)),
               let channels = buffer.floatChannelData else { return nil }
         for channel in 0..<Int(format.channelCount) {

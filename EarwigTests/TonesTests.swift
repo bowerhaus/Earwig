@@ -33,6 +33,16 @@ struct TonesTests {
         }
     }
 
+    @Test func theChimeIsShortSoftAndClickFree() throws {
+        let samples = Tones.Chime.samples(sampleRate: rate)
+        #expect(samples.count == Int((Tones.Chime.length * rate).rounded()))
+        #expect(samples.first == 0)
+        #expect(abs(samples.last!) < 1e-6)
+        let peak = samples.map(abs).max()!
+        #expect(peak > 0.05 && peak <= Tones.Chime.amplitude)
+        #expect(try #require(Tones.Chime.buffer()).format == VoiceRenderer.outputFormat)
+    }
+
     @Test func theBufferIsInThePlayersFormat() throws {
         let buffer = try #require(Tones.buffer())
         #expect(buffer.format == VoiceRenderer.outputFormat)

@@ -27,7 +27,19 @@ struct SlateTests {
     @Test func theSlateForAStoredStep() {
         let step = Step(sortOrder: 0, number: 2, title: "The sea wall")
         step.directions = [Direction(kind: .footage, text: "0004 18.0"), Direction(kind: .shows, text: "Walking shot along the wall.")]
-        #expect(Slate.text(for: step, take: 3, cuesOn: true) == "Step 2. The sea wall. Walking shot along the wall. Step 2, take 3.")
-        #expect(Slate.text(for: step, take: 3, cuesOn: false) == "Step 2, take 3.")
+        #expect(Slate.text(for: step, take: 3, cuesOn: true, inline: .spoken) == "Step 2. The sea wall. Walking shot along the wall. Step 2, take 3.")
+        #expect(Slate.text(for: step, take: 3, cuesOn: false, inline: .chime) == "Step 2, take 3.")
+    }
+
+    @Test func chimedDirectionsAreReadInTheSlateByWhereTheyFall() {
+        let step = Step(sortOrder: 0, number: 1, title: "Setting off")
+        step.phraseList = PhraseList(lines: [
+            "[Gesture to the boats] Most of these boats go out at first light.",
+            "And that is the harbour. [Turn to the path]",
+        ])
+        let text = Slate.text(for: step, take: 1, cuesOn: true, inline: .chime)
+        #expect(text == "Step 1. Setting off. At “Most of these boats”, gesture to the boats. After “that is the harbour”, turn to the path. Step 1, take 1.")
+        // Spoken in place, they are not read ahead.
+        #expect(Slate.text(for: step, take: 1, cuesOn: true, inline: .spoken) == "Step 1. Setting off. Step 1, take 1.")
     }
 }

@@ -7,6 +7,7 @@ struct ScriptDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(ScriptRenderer.self) private var renderer
+    @AppStorage(AppSettings.inlineDirectionsKey) private var inlineDirections: InlineDirections = .chime
     @State private var model: ScriptDetailViewModel
     @State private var confirmingDelete = false
 
@@ -196,6 +197,11 @@ struct ScriptDetailView: View {
     private var menu: some View {
         Menu {
             Toggle("Read Cues", isOn: Binding(get: { script.cuesOn }, set: { model.setCues($0, in: context) }))
+            // An app setting, here until the Settings screen (stage 7).
+            Picker("Directions in a Line", systemImage: "bell", selection: $inlineDirections) {
+                ForEach(InlineDirections.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            .pickerStyle(.menu)
             Button("Delete Script", systemImage: "trash", role: .destructive) { confirmingDelete = true }
         } label: {
             Label("More", systemImage: "ellipsis.circle")

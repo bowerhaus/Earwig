@@ -34,8 +34,9 @@ final class StepPreview: Identifiable {
 
     @ObservationIgnored private let renderer: ScriptRenderer
     @ObservationIgnored private let slateText: String
-    /// With cues off, inline directions are not read (PRD §4.2).
+    /// With cues off, inline directions are not played (PRD §4.2); on, spoken or chimed.
     @ObservationIgnored private let cuesOn: Bool
+    @ObservationIgnored private let inline: InlineDirections
     @ObservationIgnored private let session = AudioSessionManager()
     @ObservationIgnored private let host = AudioEngineHost()
     @ObservationIgnored private var player: Player?
@@ -44,11 +45,12 @@ final class StepPreview: Identifiable {
     @ObservationIgnored private var phraseStartedAt: TimeInterval = 0
     @ObservationIgnored private var lastEndedAt: TimeInterval?
 
-    init(phraseList: PhraseList, renderer: ScriptRenderer, slateText: String, cuesOn: Bool) {
+    init(phraseList: PhraseList, renderer: ScriptRenderer, slateText: String, cuesOn: Bool, inline: InlineDirections) {
         self.phraseList = phraseList
         self.renderer = renderer
         self.slateText = slateText
         self.cuesOn = cuesOn
+        self.inline = inline
         script = FollowScript(phraseList: phraseList)
     }
 
@@ -76,12 +78,15 @@ final class StepPreview: Identifiable {
             let slate = try await renderer.renderCue(slateText)
             // Stopped (or the sheet dismissed) while the slate rendered.
             guard status == .preparing else { return }
-            guard let tones = Tones.buffer() else { throw VoiceRenderer.RenderError.conversion }
+            guard let tones = Tones.buffer(), let chime = Tones.Chime.buffer() else { throw VoiceRenderer.RenderError.conversion }
+            // Chimed, a direction is the chime and lasts as long.
+            let chimed = inline == .chime
             script = FollowScript(phraseList: phraseList) { index in
-                PhraseTiming(phrase: rendered[index].phrase, tokenStarts: rendered[index].tokenStarts, duration: rendered[index].duration)
+                if chimed, phraseList.phrases[index].kind == .cue { return PhraseTiming(wordStarts: [], duration: Tones.Chime.length) }
+                return PhraseTiming(phrase: rendered[index].phrase, tokenStarts: rendered[index].tokenStarts, duration: rendered[index].duration)
             }
             let audio = TakeAudio(
-                phrases: zip(phraseList.phrases, rendered).map { TakeAudio.Phrase(kind: $0.kind, buffer: $1.buffer) },
+                phrases: zip(phraseList.phrases, rendered).map { TakeAudio.Phrase(kind: $0.kind, buffer: chimed && $0.kind == .cue ? chime : $1.buffer) },
                 slate: slate.buffer,
                 tones: tones
             )
@@ -89,7 +94,7 @@ final class StepPreview: Identifiable {
             player.onEvent = { [weak self] in self?.handle($0) }
             player.onLog = { Log.event($0) }
             self.player = player
-            Log.event("listen: \(phraseList.phrases.count) phrases at \(speed)x, slate “\(slateText)”")
+            Log.event("listen: \(phraseList.phrases.count) phrases at \(speed)x, directions \(cuesOn ? inline.rawValue : "off"), slate “\(slateText)”")
             status = .slate
             player.handle(.playCue(.slate))
             startTicking()

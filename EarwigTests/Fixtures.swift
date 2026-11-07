@@ -1,3 +1,6 @@
+import AVFoundation
+@testable import Earwig
+
 /// Made-up scripts for the parser and import tests. The repo is public: never a real one.
 enum Fixtures {
 
@@ -52,4 +55,13 @@ enum Fixtures {
         Arriving.
         That's the far shore.
         """
+}
+
+/// A silent buffer of a length, in the player's format, for the player and renderer tests.
+func silence(seconds: TimeInterval) -> AVAudioPCMBuffer {
+    let format = VoiceRenderer.outputFormat
+    let frames = AVAudioFrameCount(max(seconds * format.sampleRate, 1))
+    let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames)!
+    buffer.frameLength = frames
+    return buffer
 }

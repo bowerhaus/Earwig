@@ -42,8 +42,22 @@ final class VoiceRenderer: NSObject {
         synthesizer.delegate = self
     }
 
-    /// Renders one phrase. `rate` is an `AVSpeechUtterance` rate (0 to 1, default 0.5).
+    /// The render in flight, so the next waits for it: the synthesiser and `job` are shared.
+    private var tail: Task<Void, Never>?
+
+    /// Renders one phrase. `rate` is an `AVSpeechUtterance` rate (0 to 1, default 0.5). Calls
+    /// run one at a time, in order, whoever makes them.
     func render(_ phrase: Phrase, index: Int, voice: AVSpeechSynthesisVoice, rate: Float) async throws -> RenderedPhrase {
+        let previous = tail
+        let task = Task { @MainActor in
+            await previous?.value
+            return try await self.renderNow(phrase, index: index, voice: voice, rate: rate)
+        }
+        tail = Task { _ = await task.result }
+        return try await task.value
+    }
+
+    private func renderNow(_ phrase: Phrase, index: Int, voice: AVSpeechSynthesisVoice, rate: Float) async throws -> RenderedPhrase {
         let utterance = AVSpeechUtterance(string: phrase.text)
         utterance.voice = voice
         utterance.rate = rate
@@ -61,7 +75,7 @@ final class VoiceRenderer: NSObject {
             job.armTimeout(seconds: 60)
         }
         let renderSeconds = Date().timeIntervalSince(started)
-        self.job = nil
+        if self.job === job { self.job = nil }
 
         guard let first = chunks.first else { throw RenderError.noAudio(phrase.text) }
         let sourceFormat = first.format

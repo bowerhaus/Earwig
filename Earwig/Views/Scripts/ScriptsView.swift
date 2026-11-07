@@ -24,6 +24,8 @@ struct ScriptsView: View {
             .toolbar {
                 if !scripts.isEmpty {
                     ToolbarItem(placement: .primaryAction) { pasteButton }
+                        // No glass capsule around the pill (iOS 26 draws one for every item).
+                        .sharedBackgroundVisibility(.hidden)
                 }
             }
             .navigationDestination(for: Script.self) { script in

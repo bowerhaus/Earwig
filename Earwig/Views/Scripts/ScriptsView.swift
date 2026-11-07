@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UIKit
 
 /// The imported scripts (PRD §8.1). Paste from the clipboard, swipe to delete, tap to open.
 struct ScriptsView: View {
@@ -78,13 +79,14 @@ struct ScriptsView: View {
         .frame(maxWidth: 420)
     }
 
+    /// Our own button, not SwiftUI's `PasteButton`: iOS darkens a `PasteButton`'s tint to keep
+    /// its white text legible, which turned the accent gold-brown. Reading the clipboard ourselves
+    /// asks "Allow Paste?" until Settings › Apps › Earwig › Paste from Other Apps is Allow.
     private var pasteButton: some View {
-        PasteButton(payloadType: String.self) { strings in
-            Task { @MainActor in model.paste(strings.first, in: context) }
+        Button { model.paste(UIPasteboard.general.string, in: context) } label: {
+            AccentPill(title: "Paste", systemImage: "doc.on.clipboard")
         }
-        .labelStyle(.titleAndIcon)
-        .buttonBorderShape(.capsule)
-        .tint(EarwigTheme.accent)
+        .buttonStyle(.plain)
     }
 }
 

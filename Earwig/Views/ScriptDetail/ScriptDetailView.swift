@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UIKit
 
 /// One script, step by step (PRD §8.2): lines, directions in the cue colour, the rendering
 /// state, and the step a take will start from.
@@ -52,12 +53,11 @@ struct ScriptDetailView: View {
             }
 
             Section {
-                PasteButton(payloadType: String.self) { strings in
-                    Task { @MainActor in model.pasteNewVersion(strings.first, in: context, renderer: renderer) }
+                // Our own button, as on the Scripts screen, so it is the accent yellow.
+                Button { model.pasteNewVersion(UIPasteboard.general.string, in: context, renderer: renderer) } label: {
+                    AccentPill(title: "Paste New Version", systemImage: "doc.on.clipboard")
                 }
-                .labelStyle(.titleAndIcon)
-                .buttonBorderShape(.capsule)
-                .tint(EarwigTheme.accent)
+                .buttonStyle(.plain)
             } footer: {
                 Text("Paste a new version of this script. Its takes are kept.")
                     .foregroundStyle(EarwigTheme.secondaryText)

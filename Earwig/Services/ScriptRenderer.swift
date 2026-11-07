@@ -147,6 +147,9 @@ final class ScriptRenderer {
                 words += wordTokens.count
                 timed += wordTokens.filter { $0.1 != nil }.count
                 if index == 0 { onEvent?("render: markers from \(rendered.markerSource), \(rendered.sourceFormat)") }
+                let quiet = Self.silence(in: rendered.buffer)
+                onEvent?(String(format: "render: phrase %d silence %.0f ms before, %.0f ms after, of %.2f s: “%@”",
+                                index + 1, quiet.lead * 1000, quiet.tail * 1000, rendered.duration, phrase.phrase.text))
             } catch {
                 guard generation == self.generation else { return }
                 state = .failed(step: step, message: error.localizedDescription)
@@ -158,6 +161,16 @@ final class ScriptRenderer {
         state = .ready(step: step)
         onEvent?(String(format: "render: step %d, %d phrases, %.1f s of audio in %.2f s, %d of %d words timed, %d phrases held",
                         step + 1, missing.count, audioSeconds, HostClock.now - started, timed, words, cache.count))
+    }
+
+    /// The silence at a buffer's start and end, in seconds: samples below about −50 dBFS.
+    static func silence(in buffer: AVAudioPCMBuffer, threshold: Float = 0.003) -> (lead: TimeInterval, tail: TimeInterval) {
+        guard let samples = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return (0, 0) }
+        let count = Int(buffer.frameLength)
+        let rate = buffer.format.sampleRate
+        let first = (0..<count).first { abs(samples[$0]) > threshold } ?? count
+        let last = (0..<count).last { abs(samples[$0]) > threshold } ?? -1
+        return (Double(first) / rate, Double(count - 1 - max(last, first - 1)) / rate)
     }
 
     /// Stops a render under way. The row goes back to idle.

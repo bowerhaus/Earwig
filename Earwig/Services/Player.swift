@@ -27,7 +27,8 @@ final class Player {
     /// The phrase playing and its channel, if any.
     private(set) var current: (phrase: Int, channel: AudioChannel)?
 
-    /// Events for the engine: a phrase's end, the slate's, the tones'.
+    /// Events for the engine: a phrase's end, the slate's, the tones', each when its last sample
+    /// has gone to the output, so what follows plays on with no gap in the ear.
     var onEvent: ((FollowEvent) -> Void)?
     /// One-line descriptions for the console.
     var onLog: ((String) -> Void)?

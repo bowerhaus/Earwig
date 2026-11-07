@@ -15,8 +15,8 @@ enum AudioChannel: CaseIterable, Sendable {
 @MainActor
 protocol PlayerOutput: AnyObject {
     /// Plays a buffer from its start, `delay` seconds from now on the audio clock. `completion`
-    /// runs when it has been heard to the end, unless the channel was stopped or given another
-    /// buffer first.
+    /// runs when its last sample has gone to the output (heard the output latency later), unless
+    /// the channel was stopped or given another buffer first.
     func play(_ buffer: AVAudioPCMBuffer, on channel: AudioChannel, delay: TimeInterval, completion: @escaping @MainActor () -> Void) throws
     func stop(_ channel: AudioChannel)
     /// Seconds of the channel's current buffer rendered so far, in the buffer's own time (before
@@ -140,9 +140,11 @@ final class AudioEngineHost: PlayerOutput {
         node.stop()
         let token = (tokens[channel] ?? 0) + 1
         tokens[channel] = token
-        // `.dataPlayedBack` waits for the render and output latencies, so the end is when the
-        // last sample is heard.
-        node.scheduleBuffer(buffer, at: nil, options: [], completionCallbackType: .dataPlayedBack) { [weak self] _ in
+        // `.dataRendered`: the end is when the last sample has gone to the output, not when it
+        // is heard. The next buffer then follows it with no gap in the ear, as both reach the
+        // earpiece the same output latency later; `.dataPlayedBack` waited out the latency
+        // (356 ms on the SK18) and added it between every two phrases (device check 2).
+        node.scheduleBuffer(buffer, at: nil, options: [], completionCallbackType: .dataRendered) { [weak self] _ in
             Task { @MainActor in
                 guard let self, self.tokens[channel] == token else { return }
                 completion()

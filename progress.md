@@ -2,4 +2,10 @@
 
 Scratch state for the plan in flight. Overwritten at the start of a plan, emptied to a stub when it completes.
 
-No plan in flight. Plan 004 (renderer and player) is complete and the PR for issue #11 carries it (check `gh pr view <n> --json state`: `MERGED` means `main` has it); see `plans/004-renderer-player.md`. Next is stage 5 of PRD §12, listener and the Prompt screen in Ear mode, starting with writing `plans/005-…md` on a new branch from `main` (check `git status -sb` first). Open follow-ups: #5, #6, #9, #10, and those named in the plan 004 PR.
+**Plan:** `plans/005-listener-prompt.md` (stage 5: listener and the Prompt screen, Ear mode), branch `listener-prompt` from `main` at `48844f2`.
+
+**State:** the plan is drafted and committed, waiting for Andy's review. No issue yet (creating one needs his yes: `/plan_create_issue`), no code yet. Device-heavy stage, so `/plan_approved` rather than autopilot.
+
+**Next:** Andy reviews the plan's 14 decisions. Points most worth his eye: Start as a button on the rendering row rather than a tap on the step (decision 8, changes PRD §8.2); a take recorded when its slate plays (6); a first Settings screen now with only lead, pacing, start mode and the Listening check (11); the speaker shown amber, and Hold on a lost earpiece (9); a call ending the take (10); the diagnostics line on the Prompt screen (7).
+
+**Open follow-ups:** #5, #6, #9, #10, #13, #14.

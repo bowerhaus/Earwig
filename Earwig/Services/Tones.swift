@@ -41,8 +41,8 @@ enum Tones {
         static let hold = 0.25
         /// D4 and two partials, falling away.
         static let frequencies = [293.7, 587.3, 880.0]
-        /// About −17 dBFS at its peak.
-        static let amplitude: Float = 0.14
+        /// About −14 dBFS at its peak: louder than first tried (device check: "slightly louder").
+        static let amplitude: Float = 0.2
         static let attack = 0.006
         /// The decay's time constant.
         static let decay = 0.22

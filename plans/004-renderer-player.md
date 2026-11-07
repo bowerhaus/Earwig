@@ -2,7 +2,7 @@
 
 **GitHub Issue:** [#11](https://github.com/bowerhaus/Earwig/issues/11) (PR must include "Closes #11")
 **Branch:** `renderer-player` (from `main` at `a382ac8`, after plan 003 merged)
-**Status:** Draft for review (2026-11-06).
+**Status:** Complete (2026-11-07), carried by the PR for issue #11.
 **Manual test:** yes, on Andy's iPhone 14 Pro with the SK18: a step rendered, then listened to through the earpiece with each word highlighted as it is spoken (Verification).
 **Goal:** Turn a script into audio the follow engine can drive. The phrases of the step a take will start from are rendered in memory with their word timings, in the presenter's voice or the cue voice, as soon as the step is chosen. A player on one audio engine plays what the engine commands (phrases at a speed, the slate, the tones) on the audio clock, and reports where the voice is as the presenter hears it. Nothing listens yet: that is stage 5. To hear the result before then, the Script screen gets Listen, which plays a step straight through.
 
@@ -84,7 +84,34 @@ Andy asked why rendered audio is saved at all. With Stephanie rendering at about
 
 ## Results
 
-To come.
+### Built
+
+All steps done. 192 Swift Testing tests pass, the build has no warnings and SwiftLint is clean.
+
+- **Renderer** (`Services/ScriptRenderer.swift`): the start step rendered in memory when the script opens or another step is picked, phrases kept by voice, rate and text while the app runs, a script's let go when another opens, progress for the row. `VoiceRenderer` now runs one render at a time, so a superseded render cannot take another's word markers (review C1).
+- **Voices** (`Services/VoiceCatalogue.swift`): Stephanie (Enhanced, en-GB) by default, else the best en-GB voice; the cue voice the best en-GB voice that is not the presenter's, the other gender first (Jamie, Premium). A presenter voice can be picked by hand.
+- **Timings** (`Models/PhraseTiming+Rendered.swift`): one start per script word, missing markers spaced between their neighbours.
+- **Slate** (`Services/Slate.swift`), **tones and chime** (`Services/Tones.swift`), **player** (`Services/Player.swift`, `Services/AudioEngineHost.swift`: voice, cue and tone channels behind `PlayerOutput`), **Listen** (`Services/StepPreview.swift`, `Views/ScriptDetail/ListenView.swift`), the rendering row, and the settings in `Models/AppSettings.swift`.
+
+### Decided while building and on the phone
+
+- **Phrase ends are reported on render, not on playback.** With `.dataPlayedBack`, each phrase's end arrived about 520 ms after its length on the SK18 (433 to 533 ms over ten phrases), the next phrase starting only then; Andy heard the pauses at commas as "slightly too long". With `.dataRendered` the ends arrive 68 to 95 ms after the length and the next phrase reaches the earpiece through the same latency, so nothing is added; Andy: "The comma pauses do sound right." Decision 12's fallback was not needed.
+- **iOS 27 puts the quality in a voice's name** ("Stephanie (Enhanced)"), so the first build did not find Stephanie and used Jamie; `VoiceInfo.baseName` strips it. The en-GB voices are logged at launch.
+- **Directions inside a line are a setting (Andy), Chime by default or Spoken.** A spoken direction costs its own length as a gap in the take: "Gesture to the boats" is 1.35 s, about 1.9 s with the old end delay. Andy: "it pauses my overall performance… I'm not sure this is a workable solution." The first chime (0.15 s, high) was "noticeable", but he wanted "an elongated low ping or pong": now D4 with two partials, 0.8 s, about −14 dBFS ("much better", then "slightly louder"), played on the tone channel and ringing on under the next line while the voice waits only 0.25 s. Reading the step's inline directions in the slate was tried and dropped: "If there were several directions, it would be difficult to remember them."
+- **Personal Voice tried and dropped** (open question 6), when Andy's was ready: "The voice quality is actually terrible. It sounds like some cross between me and the built-in voices… It takes longer to render, and it's really not worth it." It rendered step 1's nine spoken phrases (16.8 s of audio) in 7.33 s, about 2.3 times real time against Stephanie's 20, with every word timed (70 of 70, markers from both). Andy would rather put the effort into a better built-in voice, a voice from another source, or his own reading as recorded.
+- **Our own Paste button.** iOS darkens a `PasteButton`'s tint to keep its forced white text legible, which made the accent "goldy brown"; dark text and a light scheme were both ignored. Andy chose our own yellow button, which asks Allow Paste until Paste from Other Apps is set to Allow; in the toolbar its iOS 26 glass capsule is hidden.
+- **The voice and the directions setting sit in the Script screen's ••• menu** until the Settings screen (stage 7).
+
+### Device check (iPhone 14 Pro, iOS 27.0.1, SK18), 2026-11-06 and 07
+
+| Check | Result |
+|-------|--------|
+| 1. Render | Pass (Andy: "It all looks good to me"). Step 1: 10 phrases, 22.4 s of audio in 0.78 to 1.14 s, 74 of 74 words timed; step 2: 8 phrases, 19.5 s in 0.35 s, 76 of 76. Stephanie's markers come through both the callback and the delegate; source 22,050 Hz. Picking a rendered step again renders nothing. |
+| 2. Listen | Pass after the changes above. The slate and cues in Jamie are recognisable "because of the change in voice"; Andy does not like the voices much. Output latency on the SK18: **356 ms** (333 ms route plus 23 ms buffer), against 41 ms on the phone's speaker. Overall speed "a little fast"; 0.85x "seemed more normal", to be judged again on real takes in stage 5, where the engine paces the voice. |
+| 3. Highlight | Pass (Andy: "everything looks good"), at 1.0x and the other speeds. |
+| 4. Locked | Pass: Listen played the whole step with the screen locked and the sheet said Finished on unlocking. |
+
+**Outcome: PASS** (2026-11-07). Rendering, the player, the tones, the cue voice and the latency allowance work through the SK18 on the iPhone 14 Pro, locked as well. The voice itself remains the weak point: Personal Voice is worse than Stephanie, so a better voice (another downloaded voice, or an imported recording) is a follow-up. PRD v0.6.
 
 ## Review pass — 2026-11-06
 

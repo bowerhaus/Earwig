@@ -1,6 +1,6 @@
 # Earwig - Product Requirements Document (PRD)
 
-**Status:** Draft v0.5, 2026-11-06. Changes by version are in the Document History at the end.
+**Status:** Draft v0.6, 2026-11-07. Changes by version are in the Document History at the end.
 **Name:** Earwig (decided 2026-11-05: UK slang for listening in). Bundle identifier `com.bowerhaus.Earwig`.
 
 ## Executive Summary
@@ -10,8 +10,9 @@ presenter, and follows what the presenter actually says. The presenter speaks a 
 behind the voice in their ear; when they slow down, the voice slows; when they stop or
 wander off the script, the voice waits at the end of its phrase and picks them up again
 where they are. The script is text from elsewhere (first of all a Cutaway project's
-`script.md`), turned into speech on the phone in the presenter's own voice (Apple's
-Personal Voice) or a downloaded Apple voice, with word timings, before the take starts.
+`script.md`), turned into speech on the phone in a downloaded Apple voice (Stephanie by
+default; the presenter's own recorded reading or a cloud voice later, made on the Mac), with
+word timings, before the take starts.
 
 The same script, voice rendering and following engine also drive an ordinary on-screen
 teleprompter, where the text scrolls at the presenter's pace instead of being spoken.
@@ -74,7 +75,7 @@ take sounds like you talking, not reading.
 |---|---|
 | Platform | iOS 26.0 or later, iPhone only (`TARGETED_DEVICE_FAMILY` 1). The author's phone is an iPhone 14 Pro on iOS 27.0.1. iOS 26 is the floor because the on-device speech API introduced there (`SpeechAnalyzer` and `SpeechTranscriber`) is the recogniser; the siblings' iOS 17 floor does not apply. |
 | Language and UI | Swift, SwiftUI, MVVM with `@Observable`, Swift Concurrency. |
-| Persistence | SwiftData for scripts, renderings, takes and settings; rendered phrase audio as files in Application Support, referenced by the rendering record. |
+| Persistence | SwiftData for scripts and takes; settings in `UserDefaults`. Rendered audio is held in memory, not saved (plan 004): a step renders in about a second. The `Rendering` entity is kept for imported renderings (6.2). |
 | Project | XcodeGen from `project.yml`; never hand-edit the generated `.xcodeproj`, which is git-ignored. Version and build number live in `project.yml`. |
 | Tests | Swift Testing (`import Testing`). The follow engine and the script parser are pure Swift and fully unit-tested with fixture word streams. |
 | Lint | SwiftLint, with an `engine_purity` custom rule as PhysiMate's: `Engine/` imports no UI, audio, persistence or Combine framework. |
@@ -100,7 +101,7 @@ None at run time. Development needs Xcode 27 or later, `xcodegen`, `swiftlint`.
 | **Line** | A spoken sentence or item within a step. In Cutaway's format, each `- ` item under `Says:`. |
 | **Direction** | Text in a step that is not spoken by the presenter: a step's title and `Shows:` field, anything in brackets inside a line, a `Footage:` or `Open:` field. Directions are never matched against what the presenter says. Some are read as cues (section 4.2). |
 | **Phrase** | The unit of playback and gating: a line split at sentence ends and at clause breaks (commas, dashes, semicolons) so no phrase is longer than about twelve words. The voice can only wait at a phrase boundary. |
-| **Rendering** | A phrase's audio in one voice, with the start time of every word in it. All of a script's phrases are rendered before a take, and cached by script hash and voice. |
+| **Rendering** | A phrase's audio in one voice, with the start time of every word in it. The phrases of the step a take starts from are rendered when the step is chosen, and kept in memory while the app runs by voice, rate and text (plan 004). |
 | **Lead** | How far ahead of the presenter the voice runs, set in words, with the equivalent in seconds shown: the head start the presenter feels, since the engine allows for the recogniser's delay itself (5.4). Default 3 (plan 003), about what lead 5 felt like in plan 001 when the delay was not allowed for; to be tried against 5 by ear in stage 5. |
 | **Position** | Two positions in the script, both as a word index: the voice's (where playback is) and the presenter's (the last script word confidently heard). The engine's job is to keep the difference near the lead. |
 | **Cue voice** | A second, clearly different voice (an Apple voice, never the presenter's) that reads directions and slates so the presenter knows at once that it is not a line. |
@@ -117,12 +118,12 @@ Priorities: P0 is v1, P1 should follow soon, P2 is nice to have.
 
 | Feature | Priority | Notes |
 |---|---|---|
-| Import by paste from the clipboard (Universal Clipboard from the Mac) | P0 | The Scripts screen has a Paste button (SwiftUI's `PasteButton`, so no Allow Paste prompt; confirmed on the iPhone in plan 002); Earwig detects the format (Cutaway when the text has a `## ` heading and a `Says:` field) and names the script from its title or first line. The clipboard must hold the script's text: a `script.md` copied as a file in Finder pastes only its name (plan 002). |
+| Import by paste from the clipboard (Universal Clipboard from the Mac) | P0 | The Scripts screen has a Paste button, Earwig's own in the accent yellow (plan 004: SwiftUI's `PasteButton` avoided the Allow Paste prompt, but iOS darkens its tint to gold-brown to keep its white text legible). iOS asks Allow Paste until Settings › Apps › Earwig › Paste from Other Apps is set to Allow, once; Earwig detects the format (Cutaway when the text has a `## ` heading and a `Says:` field) and names the script from its title or first line. The clipboard must hold the script's text: a `script.md` copied as a file in Finder pastes only its name (plan 002). |
 | Parse Cutaway `script.md` (`cutaway/script@1`) | P0 | As Cutaway's own parser, but lenient: a misnumbered or unnumbered step is kept, not an error. Title `# Script: X` (prefix optional), the first such line before the first step; steps `## N. Title`; `Says:` items (`- `, `* `, `+ `) are lines; `Shows:`, `Footage:`, `Open:` and an old `Notes:` are directions; fields may be bold; a source span in round brackets at the end of a line is stripped; run-on indented lines are joined. Text before the first step is kept as a preamble, shown, never spoken. Unknown lines are kept as directions. |
 | Parse plain text | P0 | Blank-line-separated blocks are steps (no blank lines: one step); a block's first line is its title if it has at most eight words, no sentence-ending punctuation and more lines after it. The script's title is a leading `# ` line, or a first block that is only such a title line, or else the first line cut to 40 characters. |
 | Directions inside a line | P0 | Square brackets only, in both formats: `[Gesture to the boats]` is a direction at that point, read in the cue voice. Round brackets are spoken. |
 | Show a script as its steps with each step's lines and directions | P0 | Read-only. The start-from-step picker lives here. |
-| Re-paste replaces a script's text, keeping its takes | P0 | The same text (line endings and trailing spaces aside) opens the stored script. A paste whose stated title (a `# ` line, or a plain script's lone title line) matches a stored script's, ignoring case, replaces that script's text and keeps its takes, renderings, cues setting and start step; a title taken from a first line or first step never replaces another script. The Script screen has Paste new version for a script whose title changed. Renderings are re-used for unchanged phrases (stage 4). |
+| Re-paste replaces a script's text, keeping its takes | P0 | The same text (line endings and trailing spaces aside) opens the stored script. A paste whose stated title (a `# ` line, or a plain script's lone title line) matches a stored script's, ignoring case, replaces that script's text and keeps its takes, renderings, cues setting and start step; a title taken from a first line or first step never replaces another script. The Script screen has Paste new version for a script whose title changed. Unchanged phrases are not rendered again while the app runs (plan 004). |
 | Delete a script | P0 | |
 | Import from the share sheet and Files, and a pasted file | P1 | After paste proves the flow. Includes a `script.md` copied as a file in Finder, which today pastes only its name. |
 | Watch an iCloud Drive folder so a Cutaway project's script appears by itself | P2 | Roadmap, section 13. |
@@ -131,16 +132,16 @@ Priorities: P0 is v1, P1 should follow soon, P2 is nice to have.
 
 | Feature | Priority | Notes |
 |---|---|---|
-| Render every phrase of a script before a take, with word timings | P0 | `AVSpeechSynthesizer.write(_:toBufferCallback:toMarkerCallback:)` for the audio; the word boundaries come from word markers, by the marker callback or the `willSpeakMarker` delegate (whichever the voice sends), with `byteSampleOffset` in bytes. The `willSpeakRangeOfSpeechString` delegate is no use for timing during `write`, which runs far ahead of real time (plan 001). The downloaded voices render about 40 times faster than real time on the iPhone 14 Pro, so a progress bar is only needed for long scripts; cached afterwards by script hash and voice. |
-| Presenter's voice: Apple Personal Voice | P0 | Trained once by the presenter in Settings, Accessibility, Personal Voice, with Allow Apps to Request to Use on. Earwig requests authorisation in code (there is no usage-description key) and lists the Personal Voices available. Not yet judged: the author had not made one at plan 001; it is to be tried against Stephanie for quality, render speed and word markers once made (section 15). |
-| Default voice until Personal Voice is judged: Apple downloaded voices | P0 | Stephanie (Enhanced, en-GB) is the default, the author's pick in plan 001 ("okay, not fantastic"); Jamie (Premium, en-GB) is the alternative. Both rendered every word with timings. Compact default voices are listed but marked poor. |
-| Cue voice for slates and directions | P0 | An Apple voice chosen in Settings, by default the best downloaded voice that is not the presenter's. Directions read as cues: at the start of a step, its number and title, then its `Shows:` text ("Step three. Rosie up ahead. Rosie trots far ahead up the long track."). A per-script switch turns cues off; a bracketed direction inside a line is read in the cue voice at that point. Cues are never matched. |
+| Render the take's step before it starts, with word timings | P0 | `AVSpeechSynthesizer.write(_:toBufferCallback:toMarkerCallback:)` for the audio; the word boundaries come from word markers, by the marker callback or the `willSpeakMarker` delegate (whichever the voice sends), with `byteSampleOffset` in bytes. The `willSpeakRangeOfSpeechString` delegate is no use for timing during `write`, which runs far ahead of real time (plan 001). Stephanie renders about 20 to 50 times faster than real time on the iPhone 14 Pro (plan 004: a 22 s step in 0.8 to 1.1 s, every word timed), so the start step is rendered, with progress in the Script screen's row, as soon as the script opens or another step is picked, and held in memory while the app runs. Nothing is saved; whether to is reconsidered for a voice that renders slowly. |
+| Presenter's voice: Apple downloaded voices | P0 | Stephanie (Enhanced, en-GB) is the default, the author's pick in plan 001 ("okay, not fantastic"); any English voice of Enhanced quality or better can be picked instead (plan 004, in the Script screen's menu until Settings). iOS 27 puts the quality in a voice's name ("Stephanie (Enhanced)"), which the voice list allows for. A better voice is wanted (section 15). |
+| Personal Voice | Dropped | Tried in plan 004: "the voice quality is actually terrible. It sounds like some cross between me and the built-in voices", and it rendered about 2.3 times faster than real time against Stephanie's 20, though it timed every word. It can still be picked once allowed, but is never the default or the cue voice. The presenter's own recorded reading, or a cloud voice, made on the Mac and imported (section 13), is the route to a better voice. |
+| Cue voice for slates and directions | P0 | An Apple voice, by default the best en-GB voice that is not the presenter's, the other gender first (Jamie, Premium, with Stephanie). The slate reads the step's number and title, then its `Shows:` text, then the slate ("Step 3. Rosie up ahead. Rosie trots far ahead up the long track. Step 3, take 2."); a shot ID is spelled out ("W 3 1"). A per-script switch turns cues off. Cues are never matched. |
+| Directions inside a line | P0 | A setting (plan 004): **Chime**, the default, plays a low soft pong (0.8 s, about −14 dBFS) at that point, which rings on under the next line while the voice waits only 0.25 s; **Spoken** reads the direction in the cue voice there, and the take waits for it. A spoken direction leaves its own length as a gap in the take (about 1.4 s for "Gesture to the boats"), which is why the chime is the default. Reading the step's inline directions in the slate was tried and dropped: several would be hard to remember. |
 | Rate | P0 | A base speaking rate per voice in Settings, applied at render time (default 0.5). The engine's pacing changes playback speed, not the render; 0.85x to 1.2x through the time-pitch node sounded natural in plan 001. |
 | Import a rendering made elsewhere | P2 | A folder of phrase audio and a timings file, as Cutaway could produce with ElevenLabs or from the presenter's own recording (section 13). |
 
-**Why pre-render.** The synthesiser cannot change speed mid-utterance, Personal Voice
-renders slower than real time on some phones, and a future cloud or recorded voice
-arrives as files. Rendering everything to buffers up front makes the player and the
+**Why pre-render.** The synthesiser cannot change speed mid-utterance, a slower voice
+may render near real time, and a future cloud or recorded voice arrives as files. Rendering everything to buffers up front makes the player and the
 engine indifferent to where the voice came from, and makes the take itself free of
 synthesis latency.
 
@@ -182,8 +183,9 @@ shot ID and the take number. Earwig builds on that:
    said instead: "W three one, take two.")
 2. The presenter repeats the slate aloud to the camera. Earwig hears it; that is both the
    confirmation that listening works and the trigger.
-3. Three short tones, then the first phrase plays in the presenter's voice. The presenter
-   starts speaking `lead` words behind it; from here on the engine follows.
+3. Three short tones (1 kHz beeps 0.6 s apart, made in code as one buffer), then the first
+   phrase plays on the fourth beat in the presenter's voice. The presenter starts speaking
+   `lead` words behind it; from here on the engine follows.
 
 Alternatives, kept for the first plan to try:
 
@@ -227,8 +229,10 @@ slate) is a roadmap item (section 13): cheap once the microphone is open, but sc
 
 ### 4.8 Settings
 
-- Presenter's voice (Personal Voice or downloaded voice), base rate, and a Preview button.
-- Cue voice, cues on or off by default.
+- Presenter's voice (a downloaded voice), base rate, and a Preview button. Plan 004 found
+  1.0x a little fast and 0.85x "more normal" in Listen; the base rate is judged again on
+  real takes in stage 5.
+- Cue voice, cues on or off by default, and directions inside a line chimed or spoken.
 - Lead, in words, with seconds shown for the chosen voice and rate.
 - Pacing: hybrid or phrase-gated; speed bounds.
 - Start ritual: slate with a reply, slate alone, or tones only.
@@ -267,8 +271,11 @@ engine. Every rule here is unit-tested with fixture word streams.
   rewrite needs no bookkeeping; a final settles the block. Pairing first appearances with
   the finals' start times measures the recogniser's delay; the finals' spacing measures the
   presenter's rate.
-- The player's reported playback position (phrase and offset into its rendering) and the
-  end of each phrase, cue and the tones.
+- The player's reported playback position (phrase and offset into its rendering), where
+  the presenter hears it: the rendered offset less the output latency at the current
+  speed (356 ms on the SK18, plan 004); and the end of each phrase, cue and the tones,
+  reported when its last sample has gone to the output, so the next follows with no gap
+  in the ear.
 - The manual controls and a tap; settings: lead, pacing mode, speed bounds, start mode and
   the thresholds in 5.3.
 - Time: every input carries a time on one engine clock and the host ticks the engine about
@@ -372,8 +379,8 @@ waits for real scripts in stage 5.
   carries a parser version; a list from an older parser is rebuilt from the script's
   source text when the script is opened, so changing the rules needs no migration.
 - **Rendering**: script, script hash, voice identifier, rate, created at, and a JSON map
-  of phrase to audio file name and word start times. Files live in Application
-  Support/Renderings/<script hash>/<voice>/.
+  of phrase to audio file name and word start times. Unused in v1, where rendered audio
+  is held in memory (plan 004); kept for imported renderings (6.2).
 - **Take**: script, step index (not a relationship, so a re-paste that rebuilds the steps
   keeps it), number, started at, duration, outcome (`completed`, `stopped`).
 - **Settings** is `UserDefaults` through a typed wrapper, not a model.
@@ -400,7 +407,7 @@ MVVM with SwiftData, as PhysiMate.
 Views (SwiftUI) → ViewModels (@Observable) → Models (SwiftData)
                           ↓
    Services: ScriptParser, PhraseSplitter, WordNormaliser, VoiceRenderer,
-             RenderingStore, AudioSessionManager, Listener, Player, Slater
+             ScriptRenderer, AudioSessionManager, Listener, Player, Slater
                           ↓
    Engine/: FollowEngine (pure; words in, commands out)
 ```
@@ -411,7 +418,10 @@ Views (SwiftUI) → ViewModels (@Observable) → Models (SwiftData)
 - **PhraseSplitter** and **WordNormaliser**: shared by the parser and the engine; the
   normaliser mirrors Cutaway's rules so what Cutaway calls "as spoken" matches here too.
 - **VoiceRenderer**: renders phrases to buffers with word timings through
-  `AVSpeechSynthesizer`; one queue, progress reported; results to **RenderingStore**.
+  `AVSpeechSynthesizer`, one at a time.
+- **ScriptRenderer**: renders the start step's missing phrases through VoiceRenderer, keeps
+  them in memory by voice, rate and text, reports progress; **VoiceCatalogue** chooses the
+  voices.
 - **AudioSessionManager**: configures the session (`.playAndRecord`, A2DP output only,
   built-in mic input), reports the route, handles interruptions (a call pauses the take;
   resume by hand).
@@ -419,8 +429,9 @@ Views (SwiftUI) → ViewModels (@Observable) → Models (SwiftData)
   heard words with times to the engine.
 - **Player**: `AVAudioEngine` with a `varispeed` or `timePitch` node (time-pitch, so
   slowing down does not drop the voice's pitch), plays rendered phrases on command, and
-  reports its position by the audio clock. Tones are scheduled on the audio clock, as
-  PhysiMate's plan 001 found necessary.
+  reports its position by the audio clock. Three channels on one engine: the voice through
+  the time-pitch node, cues and the slate at 1.0x, and the tones and the chime. Tones are
+  scheduled on the audio clock, as PhysiMate's plan 001 found necessary.
 - **Slater**: the start ritual (4.5).
 
 ### 7.3 Folder Structure
@@ -431,7 +442,8 @@ Earwig/
   Models/        SwiftData models, PhraseList, ModelJSON, Settings
   Engine/        FollowEngine, Matcher, PresenterEstimate, Pacer, WordFolding, WordNormaliser,
                  ScriptWords, FollowScript (pure Swift)
-  Services/      ScriptParser, ScriptImporter, PhraseSplitter, VoiceRenderer, RenderingStore,
+  Services/      ScriptParser, ScriptImporter, PhraseSplitter, VoiceRenderer, ScriptRenderer,
+                 VoiceCatalogue, Tones, StepPreview,
                  AudioSessionManager, Listener, Player, Slater, ModelContainerFactory
   ViewModels/    ScriptsViewModel, ScriptDetailViewModel, …
   Views/         Scripts, ScriptDetail, Prompt, Settings, ListeningCheck
@@ -455,10 +467,13 @@ sample (a made-up harbour walk in Cutaway's layout).
 ### 8.2 Script
 
 The steps, each with its lines and directions in the cue colour. A rendering status row
-("Rendered in Andy, 42 phrases" or a Render button with progress). Tap a step to start a
-take from it; the takes so far for that step are shown on it. Each step shows its number
-large, as the slate says it. A menu holds the cues switch and Delete; Paste new version is
-a button at the foot of the screen (a `PasteButton` cannot sit in a menu).
+for the start step ("Step 1 ready in Stephanie, 10 phrases", progress while it renders, or
+the error and a Render button), with **Listen**: the step played straight through (slate,
+tones, phrases, directions as set) at 0.85x, 1.0x or 1.2x, the word being said highlighted,
+recording no take (plan 004). Tap a step to start a take from it; the takes so far for
+that step are shown on it. Each step shows its number large, as the slate says it. A menu
+holds the cues switch, the voice and the directions setting (until Settings) and Delete;
+Paste new version is a button at the foot of the screen.
 
 ### 8.3 Prompt
 
@@ -508,8 +523,8 @@ a minute because the room is noisy. Pinch to size the type.
 ### Flow 4: The script changed
 
 Cutaway's script was edited on the Mac. Copy it, open Earwig, Paste: the script's text is
-replaced, unchanged phrases keep their renderings, the changed ones render, the takes
-stay.
+replaced, the start step renders again (unchanged phrases at once, if rendered since the
+app started), the takes stay.
 
 ---
 
@@ -528,7 +543,7 @@ decorative. SF Symbols. All colours in `EarwigTheme`; views never define their o
 
 | Risk | Mitigation |
 |---|---|
-| Personal Voice is not good enough to follow comfortably, or renders too slowly on the 14 Pro | Still open: no Personal Voice existed at plan 001. Stephanie (Enhanced) is the v1 default meanwhile, judged "okay, not fantastic" and rendering about 40 times faster than real time. Pre-rendering absorbs slow synthesis. If Personal Voice fails too, the ElevenLabs import (section 13) moves up. |
+| The voice is not good enough to follow comfortably | Personal Voice failed in plan 004 (poor quality, slow to render), so Stephanie (Enhanced), "okay, not fantastic", stays the v1 voice. The imported rendering (section 13: the presenter's own recorded reading, or an ElevenLabs voice, made by Cutaway on the Mac) moves up. |
 | The in-ear earpieces fall into the hands-free profile, so the prompt sounds like a phone call | Retired for the author's SK18: with the session allowing Bluetooth for A2DP only and the built-in mic pinned, it stayed in A2DP with the mic open through every take in plan 001, including over eight minutes locked, and the mic did not pick up the earpiece. The route check (4.3) still shows it on every take, for other earpieces. |
 | Recognition is poor outdoors (wind, sea) or with the phone in a pocket | Indoors it is good in the hand and in a gilet pocket alike (plan 001: about 0.9 s median delay, 96 to 98% of script words, most misses spelling, not hearing). Outdoors and the mount are not yet measured; they are checked on the first real takes. The engine tolerates missed words (5.3, runs of two, lost after six). A lavalier into the phone is a possible later input. |
 | Speed changes sound wrong | Time-pitch, not varispeed; narrow default bounds (0.85x to 1.2x); phrase-gated mode with no speed change as the fallback. |
@@ -559,8 +574,10 @@ Each stage is one plan, one branch, one issue and one PR.
 3. **Follow engine** (plan 003, done: see its Results). Pure, with the matcher, the pacer, the gates, lost and resume,
    tested against fixture word streams (a clean read, a slow read, a fluff and restart, a
    stop and resume, a wander off script).
-4. **Renderer and player.** Pre-rendering to files with timings, the rendering store,
-   the audio session, the time-pitch player on the audio clock, tones.
+4. **Renderer and player** (plan 004, done: see its Results). The start step rendered in
+   memory with word timings, the default voices, the slate and tones, the time-pitch player
+   on the audio clock with the output latency allowed for, directions chimed or spoken,
+   and Listen.
 5. **Listener and the Prompt screen, Ear mode.** The recogniser feeding the engine, the
    slate flow, manual controls, route check, Listening check in Settings.
 6. **Screen mode.** The scrolling text driven by the same engine, Ear and Screen
@@ -639,13 +656,12 @@ shared between recording and listening.
    or a Watch is wanted. Decide after a few real takes.
 3. Commit policy for this repo: Cutaway's (Claude commits at sensible points, never
    pushes) or the iOS siblings' (commits only when asked). Proposed: Cutaway's.
-4. Whether cues should also read a line's own bracketed directions mid-line, or only step
-   directions at the start of a step. Proposed: both, with the per-script switch.
-5. Whether Personal Voice's authorisation and the Personal Voice itself survive a
-   TestFlight install (the voice lives in the OS, so it should).
-6. Personal Voice against Stephanie, once the author has made one: quality through the
-   earpiece, render speed, and whether its word markers arrive. Until then Stephanie is
-   the default.
+4. Answered in plan 004: a line's own directions are a setting, chimed (the default) or
+   spoken at that point; step directions are read in the slate.
+5. Moot: Personal Voice is not used (plan 004).
+6. Answered in plan 004: Personal Voice is worse than Stephanie through the earpiece and
+   slower to render, though it times every word. A better voice is still wanted: another
+   downloaded voice, or the presenter's own reading or a cloud voice imported from Cutaway.
 
 ---
 
@@ -653,6 +669,7 @@ shared between recording and listening.
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.6 | 2026-11-07 | Plan 004 results: rendered audio held in memory, the start step rendered when chosen, nothing saved (2, 3, 4.2, 6.1, 9); Personal Voice tried and dropped, Stephanie the default and any good English voice pickable (Executive Summary, 4.2, 4.8, 11, questions 5 and 6); the cue voice the other gender first, the slate's text, a shot ID spelled out (4.2); directions inside a line a setting, a low chime by default or spoken (4.2, 4.8, question 4); the tones (4.5); the player's position where the presenter hears it and phrase ends on render (5.1); services and folders (7); the rendering row and Listen (8.2); our own Paste button in place of `PasteButton` (4.1, 8.2); stage 4 done (12). |
 | 0.5 | 2026-11-06 | Plan 003 results: the lead is the felt head start, default 3 (3, 4.4); the gate counted to the phrase boundary (4.4, 5.4); re-anchoring in place of the three targets for stepping back, picking up and jumping, and a lost search over the take's step only (4.4, 5.3, 5.4); the manual controls as built (4.4); three start modes in Settings (4.5, 4.8, 5.5, question 1); the engine's inputs and outputs as built, with time passed in (5.1, 5.2); matching with its folds, confidence and a 12-word window behind (5.3); the presenter estimate as built and the hybrid speed's sign fixed to 1 − k·e (5.4); completion (5.4); folders (7.3); the numbers risk (11); stage 3 done (12). |
 | 0.4 | 2026-11-06 | Plan 002 results: paste import confirmed on the iPhone with no Allow Paste prompt, and a file copied in Finder pastes only its name (4.1, P1 row); the Cutaway and plain parsing rules as built, square brackets as the only inline directions, re-paste by stated title (4.1); script words read at parse time, a number run never crossing punctuation (5.1); the entities as built, with the phrase list's parser version (6.1); folders (7.3); screens (8.1, 8.2); the theme, one sky-blue look not split into light and dark (10); stage 2 done (12). |
 | 0.3 | 2026-11-05 | Plan 001 results (spike on the iPhone 14 Pro with the SK18 earpiece): Stephanie (Enhanced) is the default voice until Personal Voice is judged; the default lead is 5 words; the earpiece holds A2DP with the mic open and recognition runs locked, so those risks are retired; recognition is about 0.9 s behind, untimed in its interim results, and fed untimed audio (4.3); the engine estimates the presenter's place and adds the delay (5.4) and treats numbers, compounds and contractions as said (5.1); render and rate details (4.2); fluffs (4.4); open question 6. |

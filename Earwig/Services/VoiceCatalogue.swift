@@ -27,13 +27,16 @@ struct VoiceInfo: Equatable, Sendable {
     var language: String
     var quality: Quality
     var gender: Gender
+    /// The presenter's own voice, made in Settings, Accessibility, Personal Voice.
+    var isPersonal = false
 
-    init(identifier: String, name: String, language: String, quality: Quality, gender: Gender) {
+    init(identifier: String, name: String, language: String, quality: Quality, gender: Gender, isPersonal: Bool = false) {
         self.identifier = identifier
         self.name = name
         self.language = language
         self.quality = quality
         self.gender = gender
+        self.isPersonal = isPersonal
     }
 
     init(_ voice: AVSpeechSynthesisVoice) {
@@ -50,10 +53,11 @@ struct VoiceInfo: Equatable, Sendable {
         case .male: .male
         default: .unspecified
         }
+        isPersonal = voice.voiceTraits.contains(.isPersonalVoice)
     }
 
-    /// "Stephanie (Enhanced)".
-    var displayName: String { "\(name) (\(quality.label))" }
+    /// "Stephanie (Enhanced)", or "Andy (Personal Voice)".
+    var displayName: String { "\(name) (\(isPersonal ? "Personal Voice" : quality.label))" }
 
     /// The name without a trailing "(Enhanced)" or "(Premium)": iOS 27 puts the quality in a
     /// voice's name ("Stephanie (Enhanced)"), where iOS 26 did not.
@@ -81,18 +85,32 @@ enum VoiceCatalogue {
     /// Where a voice is downloaded, for a message.
     static let downloadHint = "Download voices in Settings › Accessibility › Spoken Content › Voices › English."
 
-    /// The installed voices Earwig would use: no Personal Voice (stage 7) and no novelty voices.
+    /// The installed voices Earwig would use, no novelty voices. Personal Voices are listed only
+    /// once the app is allowed to use them.
     static func installed() -> [VoiceInfo] {
         AVSpeechSynthesisVoice.speechVoices()
-            .filter { !$0.voiceTraits.contains(.isPersonalVoice) && !$0.voiceTraits.contains(.isNoveltyVoice) }
+            .filter { !$0.voiceTraits.contains(.isNoveltyVoice) }
             .map(VoiceInfo.init)
     }
 
-    /// The default choice from the installed voices, or `nil` when there is no English voice.
-    static func choose(from voices: [VoiceInfo]) -> VoiceChoice? {
-        guard let presenter = presenter(from: voices) else { return nil }
-        let cue = cue(from: voices, presenter: presenter) ?? presenter
-        return VoiceChoice(presenter: presenter, cue: cue, presenterIsPreferred: isPreferred(presenter))
+    /// The choice from the installed voices, or `nil` when there is no English voice. A presenter
+    /// voice picked by hand (`presenterID`) is used while it is installed; else the default.
+    /// A Personal Voice is never the default and never the cue voice.
+    static func choose(from voices: [VoiceInfo], presenterID: String? = nil) -> VoiceChoice? {
+        let picked = presenterID.flatMap { id in voices.first { $0.identifier == id } }
+        let standard = voices.filter { !$0.isPersonal }
+        guard let presenter = picked ?? presenter(from: standard) else { return nil }
+        let cue = cue(from: standard, presenter: presenter) ?? presenter
+        return VoiceChoice(presenter: presenter, cue: cue, presenterIsPreferred: picked != nil || isPreferred(presenter))
+    }
+
+    /// The presenter voices worth offering: Personal Voices, then English voices of Enhanced
+    /// quality or better, British first.
+    static func presenterOptions(from voices: [VoiceInfo]) -> [VoiceInfo] {
+        let personal = voices.filter(\.isPersonal)
+        let good = voices.filter { !$0.isPersonal && isEnglish($0) && $0.quality >= .enhanced }
+            .sorted { ($0.language == preferredLanguage ? 0 : 1, $0.name) < ($1.language == preferredLanguage ? 0 : 1, $1.name) }
+        return personal + good
     }
 
     /// Stephanie (Enhanced or better, en-GB); else the best en-GB voice; else the best English.

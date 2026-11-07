@@ -75,13 +75,21 @@ final class ScriptRenderer {
     /// The app's renderer: `VoiceRenderer` with the default voices.
     static func live() -> ScriptRenderer {
         let installed = VoiceCatalogue.installed()
-        let renderer = ScriptRenderer(renderer: VoiceRenderer(), voices: VoiceCatalogue.choose(from: installed))
+        let renderer = ScriptRenderer(renderer: VoiceRenderer(), voices: VoiceCatalogue.choose(from: installed, presenterID: AppSettings.presenterVoiceID))
         renderer.onEvent = { Log.event($0) }
-        for voice in installed where voice.language.hasPrefix("en-GB") {
+        for voice in installed where voice.language.hasPrefix("en-GB") || voice.isPersonal {
             Log.event("voice: \(voice.displayName), \(voice.language), \(voice.gender), \(voice.identifier)")
         }
         Log.event("voices: presenter \(renderer.voices?.presenter.displayName ?? "none"), cue \(renderer.voices?.cue.displayName ?? "none")")
         return renderer
+    }
+
+    /// Changes the voices. What was rendered in the old ones is kept, by its key, for a change back.
+    func use(_ voices: VoiceChoice?) {
+        guard voices != self.voices else { return }
+        self.voices = voices
+        state = .idle
+        onEvent?("voices: presenter \(voices?.presenter.displayName ?? "none"), cue \(voices?.cue.displayName ?? "none")")
     }
 
     /// Waits for the render `prepare` started, for tests.

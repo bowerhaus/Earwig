@@ -22,6 +22,20 @@ struct VoiceCatalogueTests {
         #expect(VoiceInfo.baseName("(Odd)") == "(Odd)")
     }
 
+    @Test func aPersonalVoicePickedByHandPresentsButNeverCues() throws {
+        let mine = VoiceInfo(identifier: "personal.andy", name: "Andy", language: "en-GB", quality: .compact, gender: .male, isPersonal: true)
+        let voices = [mine, voice("Stephanie"), voice("Jamie", "en-GB", .premium, .male)]
+        // Not the default.
+        #expect(VoiceCatalogue.choose(from: voices)?.presenter.name == "Stephanie")
+        let picked = try #require(VoiceCatalogue.choose(from: voices, presenterID: "personal.andy"))
+        #expect(picked.presenter == mine)
+        #expect(picked.presenterIsPreferred)
+        #expect(picked.cue.name == "Stephanie")
+        // Gone, the default again.
+        #expect(VoiceCatalogue.choose(from: [voice("Stephanie")], presenterID: "personal.andy")?.presenter.name == "Stephanie")
+        #expect(VoiceCatalogue.presenterOptions(from: voices + [voice("Daniel", "en-GB", .compact, .male)]).map(\.name) == ["Andy", "Jamie", "Stephanie"])
+    }
+
     @Test func aCompactStephanieIsNotThePreferredVoice() throws {
         let voices = [voice("Stephanie", "en-GB", .compact), voice("Kate", "en-GB", .enhanced)]
         let choice = try #require(VoiceCatalogue.choose(from: voices))

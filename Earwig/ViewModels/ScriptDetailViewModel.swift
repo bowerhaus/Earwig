@@ -1,4 +1,4 @@
-import Foundation
+import AVFoundation
 import Observation
 import SwiftData
 
@@ -71,6 +71,27 @@ final class ScriptDetailViewModel {
             inline: AppSettings.inlineDirections
         )
     }
+
+    /// The presenter voices to pick from, and whether Personal Voice may still be asked for.
+    var presenterOptions: [VoiceInfo] { VoiceCatalogue.presenterOptions(from: VoiceCatalogue.installed()) }
+    var canAskForPersonalVoice: Bool { AVSpeechSynthesizer.personalVoiceAuthorizationStatus == .notDetermined }
+
+    /// Uses a presenter voice picked by hand and renders the start step in it.
+    func usePresenter(_ identifier: String, renderer: ScriptRenderer) {
+        AppSettings.presenterVoiceID = identifier
+        renderer.use(VoiceCatalogue.choose(from: VoiceCatalogue.installed(), presenterID: identifier))
+        renderStartStep(with: renderer)
+    }
+
+    /// Asks once to use the presenter's Personal Voice; it is then listed among the voices.
+    func askForPersonalVoice() async {
+        let status = await AVSpeechSynthesizer.requestPersonalVoiceAuthorization()
+        Log.event("personal voice: \(status == .authorized ? "authorised" : "not authorised (\(status.rawValue))")")
+        personalVoiceAsked += 1
+    }
+
+    /// Bumped when Personal Voice has been asked for, so the menu lists the voices again.
+    var personalVoiceAsked = 0
 
     func pasteNewVersion(_ text: String?, in context: ModelContext, renderer: ScriptRenderer) {
         guard let text, !text.isEmpty else {

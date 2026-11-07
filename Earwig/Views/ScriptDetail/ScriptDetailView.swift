@@ -197,7 +197,21 @@ struct ScriptDetailView: View {
     private var menu: some View {
         Menu {
             Toggle("Read Cues", isOn: Binding(get: { script.cuesOn }, set: { model.setCues($0, in: context) }))
-            // An app setting, here until the Settings screen (stage 7).
+            // App settings, here until the Settings screen (stage 7).
+            Picker("Voice", systemImage: "person.wave.2", selection: Binding(
+                get: { renderer.voices?.presenter.identifier ?? "" },
+                set: { model.usePresenter($0, renderer: renderer) }
+            )) {
+                ForEach(model.presenterOptions, id: \.identifier) { Text($0.displayName).tag($0.identifier) }
+            }
+            .pickerStyle(.menu)
+            // Listed again once Personal Voice has been allowed.
+            .id(model.personalVoiceAsked)
+            if model.canAskForPersonalVoice {
+                Button("Allow Personal Voice", systemImage: "person.crop.circle.badge.checkmark") {
+                    Task { await model.askForPersonalVoice() }
+                }
+            }
             Picker("Directions in a Line", systemImage: "bell", selection: $inlineDirections) {
                 ForEach(InlineDirections.allCases, id: \.self) { Text($0.label).tag($0) }
             }

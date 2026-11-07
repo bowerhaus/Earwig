@@ -20,6 +20,13 @@ enum InlineDirections: String, CaseIterable, Sendable {
 /// Settings kept in `UserDefaults` (PRD §6.1), until the Settings screen of stage 7 gathers them.
 enum AppSettings {
     static let inlineDirectionsKey = "inlineDirections"
+    static let presenterVoiceKey = "presenterVoice"
+
+    /// The presenter's voice picked by hand, by identifier; `nil` for the default (Stephanie).
+    static var presenterVoiceID: String? {
+        get { UserDefaults.standard.string(forKey: presenterVoiceKey) }
+        set { UserDefaults.standard.set(newValue, forKey: presenterVoiceKey) }
+    }
 
     static var inlineDirections: InlineDirections {
         get { UserDefaults.standard.string(forKey: inlineDirectionsKey).flatMap(InlineDirections.init) ?? .chime }

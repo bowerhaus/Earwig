@@ -1,8 +1,8 @@
 # Plan 005: Listener and the Prompt Screen, Ear Mode
 
-**GitHub Issue:** to be created (PR must include "Closes #N")
+**GitHub Issue:** [#15](https://github.com/bowerhaus/Earwig/issues/15) (PR must include "Closes #15")
 **Branch:** `listener-prompt` (from `main` at `48844f2`, after plan 004 merged)
-**Status:** Draft, for Andy's review.
+**Status:** Issue created; waiting for approval.
 **Manual test:** yes, on Andy's iPhone 14 Pro with the SK18: the first real takes, one check at a time (Verification).
 **Goal:** Make Earwig follow. The recogniser feeds the follow engine, the engine drives the player, and a take runs from the Script screen's Start to its end on the Prompt screen in Ear mode: the slate, the reply, the tones, the voice a lead ahead, waiting when the presenter stops and picking them up where they are, with the manual controls and the route check. Each take is recorded and numbered. The Listening check comes back as a diagnostic. The open judgements left for this stage are made by ear: lead 3 against 5, the start mode, hybrid against phrase-gated pacing.
 

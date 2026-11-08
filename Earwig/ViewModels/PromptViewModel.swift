@@ -177,8 +177,9 @@ struct PromptViewModel: Equatable {
     /// Whether the middle is the scrolling text: in a take with the screen on, until it is over.
     var showsScreen: Bool { setup.mode.screen && !isOver }
 
-    /// Where the presenter is, for the scroll: the engine's estimate, and its confident word.
-    var place: Double { following ? snapshot.presenterEstimate : -1 }
+    /// Where the presenter is, for the scroll: the engine's place for the screen, and its
+    /// confident word.
+    var place: Double { following ? snapshot.presenterPlace : -1 }
     var confident: Int { following ? snapshot.presenterWord : -1 }
 
     /// The step's words as the screen shows them now.

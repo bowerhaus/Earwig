@@ -148,6 +148,8 @@ struct FollowEngineTests {
         #expect(engine.tick(at: 7) == [])
         #expect(engine.snapshot.status == .waiting)
         #expect(engine.snapshot.presenterEstimate > 7)
+        // The screen's place keeps the gate's rule: at the next phrase's first word (plan 008).
+        #expect(engine.snapshot.presenterPlace == 5)
         #expect(engine.handle(.interim("morning all here we are the tide"), at: 7.2) == [.play(phrase: 2, speed: 1)])
     }
 
@@ -256,10 +258,10 @@ struct FollowEngineTests {
         _ = engine.handle(.voiceProgress(phrase: 0, offset: 1.6), at: 3.4)
         _ = engine.handle(.interim("morning all here"), at: 3.4)
         _ = engine.handle(.hold, at: 3.5)
-        let place = engine.snapshot.presenterEstimate
+        let place = engine.snapshot.presenterPlace
         _ = engine.handle(.interim("morning all here we are the tide"), at: 5)
         _ = engine.tick(at: 6)
-        #expect(engine.snapshot.presenterEstimate == place)
+        #expect(engine.snapshot.presenterPlace == place)
     }
 
     @Test func holdWhileWaitingStopsNothing() {

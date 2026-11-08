@@ -72,6 +72,19 @@ struct ScreenPlaceScenarioTests {
         expectFollowed(run([.read(0...27), .pause(6), .read(28...75)], pace), pace)
     }
 
+    /// Device check 1: pausing after a phrase, the mark showed the second word of the next one.
+    /// Through a pause it waits at the phrase's last word or the next phrase's first.
+    @Test(arguments: paces)
+    func aPauseAtAPhraseEndWaitsAtTheNextPhrasesStart(_ pace: Pace) {
+        // Phrase 0 is words 0–6.
+        let take = run([.read(0...6), .pause(3), .read(7...75)], pace)
+        let resume = take.presenter.spoken.first { $0.word.script == 7 }?.start ?? 0
+        let paused = take.screenPlaces.filter { $0.time > resume - 2 && $0.time < resume }.map(\.place)
+        #expect(!paused.isEmpty)
+        #expect(paused.allSatisfy { (6...7).contains(Int($0.rounded(.down))) })
+        expectFollowed(take, pace)
+    }
+
     @Test(arguments: paces)
     func aFluffAndStepBack(_ pace: Pace) {
         // A step back of two words, which the text waits out rather than moving back for.

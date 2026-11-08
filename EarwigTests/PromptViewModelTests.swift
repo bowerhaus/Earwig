@@ -198,6 +198,7 @@ struct PromptViewModelTests {
         var snapshot = FollowSnapshot()
         snapshot.status = status
         snapshot.presenterEstimate = estimate
+        snapshot.presenterPlace = estimate
         snapshot.presenterWord = Int(estimate.rounded(.down))
         snapshot.voicePhrase = voicePhrase
         snapshot.voiceWord = voiceWord

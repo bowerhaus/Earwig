@@ -78,6 +78,11 @@ struct FollowSnapshot: Equatable, Sendable {
     /// The last confident word heard, and where the presenter is estimated to be now.
     var presenterWord = -1
     var presenterEstimate = -1.0
+    /// Where the screen shows the presenter (plan 008): the estimate with the gate's rule, so it
+    /// does not coast across a phrase end until a word of the next phrase is heard. With the
+    /// free coast, a pause at a phrase end left the screen's mark two words into the next
+    /// phrase (device check 1). Kept still while held.
+    var presenterPlace = -1.0
     /// Whether the last word heard was part of a confident run.
     var confident = false
     var speed = 1.0

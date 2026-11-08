@@ -106,9 +106,9 @@ struct FollowEngineReadingTests {
         _ = engine.handle(.interim("morning all here"), at: 3)
         #expect(engine.handle(.hold, at: 3.1) == [])
         #expect(engine.snapshot.status == .held)
-        let place = engine.snapshot.presenterEstimate
+        let place = engine.snapshot.presenterPlace
         _ = engine.handle(.interim("morning all here we are the tide"), at: 5)
-        #expect(engine.snapshot.presenterEstimate == place)
+        #expect(engine.snapshot.presenterPlace == place)
         #expect(engine.handle(.hold, at: 5.5) == [])
         #expect(engine.snapshot.status == .reading)
         #expect(engine.snapshot.presenterWord == 6)

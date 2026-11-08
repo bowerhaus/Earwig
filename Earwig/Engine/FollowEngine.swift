@@ -168,7 +168,8 @@ struct FollowEngine: Sendable {
         }
         snapshot.voiceWord = voiceWord
         snapshot.presenterWord = current.confident
-        snapshot.presenterEstimate = heldPlace ?? presenterNow()
+        snapshot.presenterEstimate = presenterNow()
+        snapshot.presenterPlace = heldPlace ?? presenterNow(atGate: true)
         snapshot.confident = current.run >= (current.lost ? settings.lostRun : settings.run) && current.sinceMatch == 0
         snapshot.speed = pacer.speed
         snapshot.error = lastError
@@ -478,7 +479,7 @@ extension FollowEngine {
         }
         // The place shown is kept while held, so the text stays still, and released to
         // wherever the presenter has been heard since (plan 008, decision 4; review C1).
-        heldPlace = presenterNow()
+        heldPlace = presenterNow(atGate: true)
         held = true
         pacer.pause()
         if case .playing(let phrase) = voice {

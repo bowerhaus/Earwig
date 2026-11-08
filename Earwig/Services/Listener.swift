@@ -66,6 +66,8 @@ final class Listener {
     @ObservationIgnored var onHeard: ((FollowEvent, TimeInterval) -> Void)?
     /// Listening restarted after the results stream failed: the interim block was lost.
     @ObservationIgnored var onRestart: (() -> Void)?
+    /// Listening stopped mid-take and will not restart itself, with why, for the screen (#18).
+    @ObservationIgnored var onGaveUp: ((String) -> Void)?
     @ObservationIgnored var onEvent: ((String) -> Void)?
 
     @ObservationIgnored private let audio: AudioEngineHost
@@ -185,13 +187,16 @@ final class Listener {
                       audio.isRunning ? "running" : "STOPPED", fed.buffers, fed.seconds, volatileCount, finalCount, since, words.count)
     }
 
-    /// Restarts listening after the results stream failed, at most once every ten seconds.
+    /// Restarts listening after the results stream failed, at most once every ten seconds. Gives
+    /// up, and says so through `onGaveUp`, on a second failure within that time or a restart that
+    /// fails to start (#18).
     private func recover() async {
         guard state == .listening else { return }
         if let restartedAt, HostClock.now - restartedAt < 10 {
             onEvent?("not restarting again so soon; listening stopped")
             await tearDown()
             state = .failed("results ended; restarted too recently")
+            onGaveUp?("listening stopped after two failures in ten seconds")
             return
         }
         restartedAt = HostClock.now
@@ -204,6 +209,7 @@ final class Listener {
         await start(contextWords: lastContextWords, fastResults: lastFastResults)
         words = kept + words
         onWordsChanged?(words)
+        if case .failed(let message) = state { onGaveUp?("listening could not restart (\(message))") }
     }
 
     func clearWords() {

@@ -81,12 +81,13 @@ struct TakeSummary: Sendable {
     var longestWait: TimeInterval? { waits.max() }
 
     /// One line for the console at the end of a take.
-    func line(duration: TimeInterval, outcome: FollowOutcome) -> String {
+    /// `note` says why a take stopped, when it was not the presenter: "not listening".
+    func line(duration: TimeInterval, outcome: FollowOutcome, note: String? = nil) -> String {
         let used = controls.isEmpty ? "none" : controls.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", ")
         let lead = withinTwoShare.map { String(format: "%.0f%% of %.1f s speaking", $0 * 100, speakingTime) } ?? "no speaking"
         let waitText = waits.isEmpty ? "none" : String(format: "%d, longest %.1f s", waits.count, longestWait ?? 0)
         let speed = minSpeed.map { String(format: "%.2f–%.2f", $0, maxSpeed ?? $0) } ?? "n/a"
         return String(format: "take summary: %.1f s, %@; controls %@; heard to word %d of %d; lead within 2 words %@; waits %@; speed %@; delay %.2f s; rate %.2f words/s",
-                      duration, outcome.rawValue, used, wordsHeard, wordCount, lead, waitText, speed, delay, rate)
+                      duration, outcome.rawValue + (note.map { " (\($0))" } ?? ""), used, wordsHeard, wordCount, lead, waitText, speed, delay, rate)
     }
 }

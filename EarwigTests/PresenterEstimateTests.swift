@@ -7,11 +7,11 @@ struct PresenterEstimateTests {
 
     private func basis(
         confident: Int = 10, at: Double? = 0, afterFinal: Bool = false, offScript: Bool = false,
-        voiceStart: Int? = nil, voiceStartedAt: Double? = nil, cap: Int? = nil
+        voiceStart: Int? = nil, voiceStartedAt: Double? = nil, cap: Int? = nil, boundary: Int? = nil
     ) -> PresenterEstimate.Basis {
         PresenterEstimate.Basis(
             confident: confident, confidentAt: at, afterFinal: afterFinal, offScript: offScript,
-            voicePhraseStart: voiceStart, voiceStartedAt: voiceStartedAt, cap: cap
+            voicePhraseStart: voiceStart, voiceStartedAt: voiceStartedAt, cap: cap, boundary: boundary
         )
     }
 
@@ -96,5 +96,25 @@ struct PresenterEstimateTests {
         #expect(estimate.position(basis(cap: 12), lead: 3, at: 0.5) == 12)
         // Nor falls behind what was heard.
         #expect(estimate.position(basis(cap: 8), lead: 3, at: 0.5) == 10)
+    }
+
+    // MARK: - The phrase boundary (plan 006, #19)
+
+    @Test func fromAPhrasesLastWordTheCoastStopsAtTheNextPhrasesFirstWord() {
+        let estimate = PresenterEstimate(settings: settings)
+        // Word 10 ends its phrase: 10 + 2.5 × (0.9 + 0.2) would be 12.75.
+        #expect(estimate.position(basis(boundary: 11), lead: 3, at: 0.2) == 11)
+    }
+
+    @Test func aBoundaryBeyondTheCoastChangesNothing() {
+        let estimate = PresenterEstimate(settings: settings)
+        #expect(abs(estimate.position(basis(boundary: 13), lead: 3, at: 0.2) - 12.75) < 1e-9)
+    }
+
+    @Test func theBoundaryLeavesThePauseRuleAlone() {
+        let estimate = PresenterEstimate(settings: settings)
+        // After a final, with the voice four words on: taken to have begun the voice's phrase.
+        let paused = basis(afterFinal: true, voiceStart: 15, voiceStartedAt: 0, boundary: 11)
+        #expect(estimate.position(paused, lead: 3, at: 5) == 15)
     }
 }

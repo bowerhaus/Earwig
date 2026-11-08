@@ -253,8 +253,10 @@ struct FollowEngine: Sendable {
 
     // MARK: - Following
 
-    /// Where the presenter is estimated to be now.
-    private func presenterNow() -> Double {
+    /// Where the presenter is estimated to be now. For a gate, the coast stops at the end of the
+    /// phrase they were last confidently heard in (plan 006, decision 5); pacing and the snapshot
+    /// keep the free coast, so the voice is not slowed at every phrase crossing (review C2).
+    private func presenterNow(atGate: Bool = false) -> Double {
         // Never past what the voice has given: the end of the phrase it plays, or the word
         // before the phrase it waits to play (which, after a re-anchor, is not the phrase it
         // last started).
@@ -266,6 +268,7 @@ struct FollowEngine: Sendable {
         case .idle: cap = nil
         }
         let start = voicePhrase.map { script.firstWord[$0] }
+        let boundary = atGate ? script.phrase(containing: current.confident).map { script.range(of: $0).upperBound } : nil
         let pausedSince = lastFinalAt.map { (current.confidentAt ?? -.infinity) <= $0 } ?? false
         let basis = PresenterEstimate.Basis(
             confident: current.confident,
@@ -274,7 +277,8 @@ struct FollowEngine: Sendable {
             offScript: current.lost || current.sinceMatch >= 2,
             voicePhraseStart: start,
             voiceStartedAt: voiceStartedAt,
-            cap: cap
+            cap: cap,
+            boundary: boundary
         )
         return estimate.position(basis, lead: settings.lead, at: now)
     }
@@ -379,7 +383,7 @@ struct FollowEngine: Sendable {
     private func gateIsOpen(_ phrase: Int) -> Bool {
         if script.phrases[phrase].kind == .spoken, phrase > 0, script.phrases[phrase - 1].kind == .cue { return true }
         guard let gating = script.gatingPhrase(before: phrase), let last = script.lastWord(of: gating) else { return true }
-        return presenterNow() >= Double(last + 1 - settings.lead)
+        return presenterNow(atGate: true) >= Double(last + 1 - settings.lead)
     }
 
     /// The take completes when the last word is heard, or, with the presenter in the last spoken

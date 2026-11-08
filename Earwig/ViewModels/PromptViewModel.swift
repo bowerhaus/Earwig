@@ -29,18 +29,23 @@ struct PromptViewModel: Equatable {
     let route: AudioRoute
     let setup: TakeSetup.Summary
     let downloadProgress: Double?
+    /// Why the take stopped, when listening gave up (#18).
+    let stopReason: String?
 
-    init(phase: TakeHost.Phase, snapshot: FollowSnapshot, route: AudioRoute, setup: TakeSetup.Summary, downloadProgress: Double? = nil) {
+    init(phase: TakeHost.Phase, snapshot: FollowSnapshot, route: AudioRoute, setup: TakeSetup.Summary,
+         downloadProgress: Double? = nil, stopReason: String? = nil) {
         self.phase = phase
         self.snapshot = snapshot
         self.route = route
         self.setup = setup
         self.downloadProgress = downloadProgress
+        self.stopReason = stopReason
     }
 
     @MainActor
     init(host: TakeHost) {
-        self.init(phase: host.phase, snapshot: host.snapshot, route: host.route, setup: host.setup.summary, downloadProgress: host.downloadProgress)
+        self.init(phase: host.phase, snapshot: host.snapshot, route: host.route, setup: host.setup.summary,
+                  downloadProgress: host.downloadProgress, stopReason: host.stopReason)
     }
 
     // MARK: - Top
@@ -99,7 +104,8 @@ struct PromptViewModel: Equatable {
         case .failed(let message):
             return message
         case .finished(let outcome):
-            return outcome == .completed ? "Completed" : "Stopped"
+            if outcome == .completed { return "Completed" }
+            return stopReason.map { "Stopped: \($0)" } ?? "Stopped"
         case .running:
             switch snapshot.status {
             case .slate:

@@ -105,6 +105,8 @@ enum PresenterAct {
     /// Say words that are not in the script.
     case say([String])
     case pause(TimeInterval)
+    /// Go straight on from the last word, without its phrase-end pause.
+    case runOn
 }
 
 /// Speaks at a steady rate, behind the voice, pausing at phrase ends.
@@ -154,6 +156,8 @@ struct SimulatedPresenter {
                 queue += words.map { Word(script: nil, reactive: false, text: $0, pauseAfter: 0) }
             case .pause(let length):
                 if !queue.isEmpty { queue[queue.count - 1].pauseAfter += length }
+            case .runOn:
+                if !queue.isEmpty { queue[queue.count - 1].pauseAfter = 0 }
             }
         }
     }
@@ -193,6 +197,9 @@ struct SimulatedRecogniser {
     var firstAfterFinal: TimeInterval = 0.9
     var pauseForFinal: TimeInterval = 0.5
     var finalDelay: TimeInterval = 1.0
+    /// The least time between interim results. On the phone they came in bursts about a second
+    /// apart (plan 005, device check 4); 0 shows each change at once.
+    var interimInterval: TimeInterval = 0
     /// How the recogniser writes a script word, by flat index: "seawall" for "sea" with ""
     /// for "wall" joins a compound; "" alone drops a word.
     var writes: [Int: String] = [:]
@@ -206,7 +213,9 @@ struct SimulatedRecogniser {
     private var block: [Item] = []
     private var pending: [Item] = []
     private var blockFollowsFinal = false
-    private var lastInterim = ""
+    /// The interim text last shown, and when.
+    private(set) var lastInterim = ""
+    private var lastInterimAt = -TimeInterval.infinity
 
     mutating func hear(_ spoken: SimulatedPresenter.Spoken) {
         var text = spoken.word.text
@@ -246,8 +255,9 @@ struct SimulatedRecogniser {
             shown.append(Self.building(item.text, since: time - visible))
         }
         let text = shown.joined(separator: " ")
-        if !text.isEmpty, text != lastInterim {
+        if !text.isEmpty, text != lastInterim, time - lastInterimAt >= interimInterval {
             lastInterim = text
+            lastInterimAt = time
             events.append(.interim(text))
         }
         return events
@@ -273,6 +283,17 @@ struct TakeSimulation {
     private(set) var statuses: [FollowStatus] = []
     /// The voice's word less the presenter's, less the lead, while both are under way.
     private(set) var leadErrors: [(time: TimeInterval, error: Int)] = []
+    /// What the engine knew when it released each phrase (plan 006, decision 4).
+    struct Release {
+        let phrase: Int
+        /// The presenter estimate and confident word just before the release.
+        let estimate: Double
+        let confident: Int
+        /// The last script word the presenter had begun, and the interim text last shown.
+        let presenterAt: Int
+        let heard: String
+    }
+    private(set) var releases: [Release] = []
 
     init(script: FollowScript, settings: FollowSettings = FollowSettings(), acts: [PresenterAct], rate: Double = 2.5, recogniser: SimulatedRecogniser = SimulatedRecogniser()) {
         var settings = settings
@@ -301,6 +322,11 @@ struct TakeSimulation {
 
     private mutating func apply(_ new: [FollowCommand]) {
         for command in new {
+            if case .play(let phrase, _) = command {
+                let snapshot = engine.snapshot
+                releases.append(Release(phrase: phrase, estimate: snapshot.presenterEstimate, confident: snapshot.presenterWord,
+                                        presenterAt: presenter.position, heard: recogniser.lastInterim))
+            }
             player.apply(command, at: time)
             if case .play = command { presenter.begin(at: time) }
         }
@@ -323,9 +349,10 @@ struct TakeSimulation {
 
 /// The scenarios' scripts.
 enum SimulationScripts {
-    /// The sample's step: the harbour walk, step 2 by default, made the engine's input.
-    static func harbour(step: Int) -> FollowScript {
+    /// The sample's step: the harbour walk, step 2 by default, made the engine's input. The
+    /// voice says a word every `secondsPerWord` (2.5 words a second by default).
+    static func harbour(step: Int, secondsPerWord: TimeInterval = 0.4) -> FollowScript {
         let parsed = ScriptParser.parse(SampleScript.harbourWalk)
-        return FollowScript(phraseList: PhraseList(lines: parsed.steps[step].lines))
+        return FollowScript(phraseList: PhraseList(lines: parsed.steps[step].lines), secondsPerWord: secondsPerWord)
     }
 }

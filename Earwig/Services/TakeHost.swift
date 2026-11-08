@@ -8,6 +8,8 @@ protocol HeardSource: AnyObject {
     var onHeard: ((FollowEvent, TimeInterval) -> Void)? { get set }
     /// Listening restarted itself and the interim block was lost.
     var onRestart: (() -> Void)? { get set }
+    /// Listening stopped mid-take and will not restart itself, with why (#18).
+    var onGaveUp: ((String) -> Void)? { get set }
     /// The speech assets' download, 0 to 1, while getting ready; `nil` when not downloading.
     var downloadProgress: Double? { get }
     /// Starts listening with the take's words as contextual strings. `nil` once listening,
@@ -113,6 +115,8 @@ final class TakeHost: Identifiable {
     let setup: TakeSetup
     private(set) var phase: Phase = .gettingReady
     private(set) var snapshot = FollowSnapshot()
+    /// Why the take stopped, when it was not the presenter or a call: listening gave up (#18).
+    private(set) var stopReason: String?
 
     var route: AudioRoute { session.route }
     var downloadProgress: Double? { heard.downloadProgress }
@@ -196,6 +200,7 @@ final class TakeHost: Identifiable {
             self?.log("take: listening restarted; settling the block")
             self?.send(.final([]))
         }
+        heard.onGaveUp = { [weak self] in self?.listeningGaveUp($0) }
         session.onInterruption = { [weak self] began in
             guard began else { return }
             self?.log("take: interrupted; stopping")
@@ -280,7 +285,16 @@ final class TakeHost: Identifiable {
         return lastTime
     }
 
-    // MARK: - Route and engine
+    // MARK: - Route, listening and engine
+
+    /// Listening stopped and will not come back: the take cannot follow, so it stops, saying why
+    /// (plan 006, decision 2).
+    private func listeningGaveUp(_ reason: String) {
+        guard phase == .running else { return }
+        log("take: \(reason); stopping")
+        stopReason = reason
+        send(.stop)
+    }
 
     /// The earpiece went: hold, so the voice is not heard by the room or the mic (decision 9).
     private func deviceLost() {
@@ -315,7 +329,7 @@ final class TakeHost: Identifiable {
         snapshot = engine.snapshot
         phase = .finished(outcome)
         recorder.finished(duration: duration, outcome: TakeOutcome(rawValue: outcome.rawValue) ?? .stopped)
-        log(summary.line(duration: duration, outcome: outcome))
+        log(summary.line(duration: duration, outcome: outcome, note: stopReason == nil ? nil : "not listening"))
         Task { await tearDown() }
     }
 
@@ -335,6 +349,7 @@ final class TakeHost: Identifiable {
         player = nil
         heard.onHeard = nil
         heard.onRestart = nil
+        heard.onGaveUp = nil
         session.onInterruption = nil
         session.onDeviceLost = nil
         output.onRestarted = nil

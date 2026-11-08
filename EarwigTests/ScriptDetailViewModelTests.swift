@@ -49,7 +49,7 @@ struct ScriptDetailViewModelTests {
         context.insert(earlier)
         earlier.script = script
 
-        model.startTake(with: renderer, in: context)
+        model.startTake(with: renderer, in: context, mode: .voice)
         let setup = try #require(model.take?.setup)
         #expect(setup.take == 5)
         #expect(setup.slateText.hasSuffix("take 5."))
@@ -62,6 +62,40 @@ struct ScriptDetailViewModelTests {
         #expect(script.takes(forStep: 0).count == 1)
     }
 
+    @Test func onTheScreenAloneATakeStartsWithNothingRendered() throws {
+        let context = container.mainContext
+        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
+        let model = ScriptDetailViewModel(script: script)
+        #expect(model.renderState(renderer) == .idle)
+
+        model.startTake(with: renderer, in: context, mode: .screen)
+        let setup = try #require(model.take?.setup)
+        #expect(setup.mode == .screen)
+        #expect(!setup.engineSettings.voiced)
+        #expect(setup.audio.phrases.isEmpty)
+        #expect(setup.script.phrases.count == setup.phraseList.phrases.count)
+        #expect(setup.script.words.count == setup.phraseList.spoken.flatMap(\.phrase.scriptWords).count)
+
+        // Next Take keeps the take's mode, whatever the setting.
+        let stored = AppSettings.take.mode
+        AppSettings.take.mode = .voice
+        defer { AppSettings.take.mode = stored }
+        model.nextTake(with: renderer, in: context)
+        #expect(model.take?.setup.mode == .screen)
+        model.endTake()
+    }
+
+    @Test func withAVoiceATakeStillNeedsTheRendering() throws {
+        let context = container.mainContext
+        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
+        let model = ScriptDetailViewModel(script: script)
+        model.startTake(with: renderer, in: context, mode: .voice)
+        #expect(model.take == nil)
+        #expect(model.error == "The step is not rendered yet.")
+    }
+
     @Test func withCuesOffATakeHasNoCuePhrases() async throws {
         let context = container.mainContext
         let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
@@ -72,7 +106,7 @@ struct ScriptDetailViewModelTests {
         await renderer.finished()
         #expect(model.startStep?.phraseList.phrases.contains { $0.kind == .cue } == true)
 
-        model.startTake(with: renderer, in: context)
+        model.startTake(with: renderer, in: context, mode: .voice)
         let setup = try #require(model.take?.setup)
         #expect(setup.phraseList.phrases.allSatisfy { $0.kind == .spoken })
         #expect(setup.audio.phrases.count == setup.phraseList.phrases.count)

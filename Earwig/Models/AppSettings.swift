@@ -16,6 +16,45 @@ enum InlineDirections: String, CaseIterable, Sendable {
     }
 }
 
+/// How a take reaches the presenter (PRD §4.6; plan 008, decision 6): the script always scrolls
+/// on the Prompt screen, with the voice reading it into the earpiece or without. Chosen before
+/// the take and fixed for it. Andy, after trying them on the phone: Ear alone showed less than
+/// the voice with the text, at no gain, so the two left are these.
+enum TakeMode: String, CaseIterable, Sendable {
+    case voice
+    case screen
+
+    /// A mode as saved, including the three of the first build: Ear and Both are the voice.
+    init?(stored: String) {
+        switch stored {
+        case "voice", "ear", "both": self = .voice
+        case "screen": self = .screen
+        default: return nil
+        }
+    }
+
+    /// Whether the voice reads the script.
+    var voiced: Bool { self == .voice }
+
+    /// The short name, beside its icon on the Script screen.
+    var label: String {
+        switch self {
+        case .voice: "With Voice"
+        case .screen: "Screen Only"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .voice: "ear"
+        case .screen: "text.alignleft"
+        }
+    }
+
+    /// The name in the take summary's line.
+    var logName: String { rawValue }
+}
+
 /// What a take is followed by, judged by ear in stage 5 (plan 005, decision 11): the lead, the
 /// pacing and the start mode, kept in `UserDefaults` and read into `FollowSettings` for a take.
 struct TakeSettings {
@@ -35,6 +74,14 @@ struct TakeSettings {
     /// its reply, which its tests are written for.
     static let defaultStartMode = StartMode.tonesOnly
     static let startModeKey = "startMode"
+    static let modeKey = "takeMode"
+    /// The voice, as before Screen mode, for the beach (plan 008, decision 6).
+    static let defaultMode = TakeMode.voice
+    static let lightsVoiceKey = "lightsVoicePhrase"
+    static let textSizeKey = "textSize"
+    /// The Prompt screen's text size in points (plan 008, decision 8).
+    static let textSizeRange = 24.0...72.0
+    static let defaultTextSize = 40.0
 
     let defaults: UserDefaults
 
@@ -57,6 +104,31 @@ struct TakeSettings {
         nonmutating set { defaults.set(newValue.rawValue, forKey: Self.startModeKey) }
     }
 
+    var mode: TakeMode {
+        get { defaults.string(forKey: Self.modeKey).flatMap(TakeMode.init(stored:)) ?? Self.defaultMode }
+        nonmutating set { defaults.set(newValue.rawValue, forKey: Self.modeKey) }
+    }
+
+    /// Whether, with the voice, its phrase is lit in the scrolling text. Off unless set: Andy,
+    /// trying both on the mount (device check 3 of plan 008).
+    var lightsVoice: Bool {
+        get { defaults.bool(forKey: Self.lightsVoiceKey) }
+        nonmutating set { defaults.set(newValue, forKey: Self.lightsVoiceKey) }
+    }
+
+    /// The Prompt screen's text size, kept within `textSizeRange`.
+    var textSize: Double {
+        get {
+            guard defaults.object(forKey: Self.textSizeKey) != nil else { return Self.defaultTextSize }
+            return Self.clampTextSize(defaults.double(forKey: Self.textSizeKey))
+        }
+        nonmutating set { defaults.set(Self.clampTextSize(newValue), forKey: Self.textSizeKey) }
+    }
+
+    static func clampTextSize(_ size: Double) -> Double {
+        min(max(size, textSizeRange.lowerBound), textSizeRange.upperBound)
+    }
+
     /// The voice's base speed: the player plays the engine's speeds times this (#14). One of
     /// `voiceSpeeds`, `defaultVoiceSpeed` unless set.
     var voiceSpeed: Double {
@@ -68,7 +140,8 @@ struct TakeSettings {
         nonmutating set { defaults.set(newValue, forKey: Self.voiceSpeedKey) }
     }
 
-    /// The engine's settings for a take: the defaults with these three.
+    /// The engine's settings for a take: the defaults with these three. Whether it is voiced
+    /// comes from the take's mode (`TakeSetup.engineSettings`).
     var followSettings: FollowSettings {
         var settings = FollowSettings()
         settings.lead = lead

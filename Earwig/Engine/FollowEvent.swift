@@ -62,6 +62,8 @@ enum FollowStatus: String, Equatable, Sendable {
     case tones
     case speaking
     case waiting
+    /// Following the presenter with no voice (plan 008, decision 1).
+    case reading
     case lost
     case held
     case finished
@@ -76,6 +78,9 @@ struct FollowSnapshot: Equatable, Sendable {
     /// The last confident word heard, and where the presenter is estimated to be now.
     var presenterWord = -1
     var presenterEstimate = -1.0
+    /// Where the screen shows the presenter (plan 008): the word after the last one confidently
+    /// heard, kept still while held.
+    var presenterPlace = -1.0
     /// Whether the last word heard was part of a confident run.
     var confident = false
     var speed = 1.0

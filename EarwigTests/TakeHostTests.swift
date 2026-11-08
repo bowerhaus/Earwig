@@ -81,7 +81,7 @@ struct TakeHostTests {
         output.calls = { [calls] in calls.list.append($0) }
     }
 
-    private func host(start: StartMode = .slateWithReply, slateFails: Bool = false) -> TakeHost {
+    private func host(start: StartMode = .slateWithReply, slateFails: Bool = false, mode: TakeMode = .voice) -> TakeHost {
         let phrases = Self.lines.map { line in
             let words = ScriptWords.words(in: line)
             return FollowPhrase(kind: .spoken, words: words, wordStarts: words.indices.map { Double($0) * 0.4 }, duration: Double(words.count) * 0.4)
@@ -89,13 +89,15 @@ struct TakeHostTests {
         let audio = TakeAudio(phrases: phrases.map { TakeAudio.Phrase(kind: .spoken, buffer: silence(seconds: $0.duration)) }, slate: nil, tones: silence(seconds: Tones.duration))
         var settings = FollowSettings()
         settings.start = start
-        let setup = TakeSetup(
+        var setup = TakeSetup(
             stepNumber: 1, stepTitle: "The footpath", take: 2,
             phraseList: PhraseList(lines: Self.lines),
             script: FollowScript(phrases: phrases), audio: audio,
             slateText: "Step 1, take 2.", slateWords: Slate.replyWords(number: 1, shotID: nil, take: 2),
             settings: settings, contextWords: ["We", "follow"]
         )
+        setup.mode = mode
+        if !mode.voiced { setup.audio.phrases = [] }
         let calls = calls
         return TakeHost(
             setup: setup, session: session, output: output, heard: heard, recorder: recorder,
@@ -187,6 +189,25 @@ struct TakeHostTests {
         // From the slate to the last word heard.
         #expect(abs((recorder.finished.first?.duration ?? 0) - (lastHeardAt - 100)) < 0.01)
         #expect(recorder.started.count == 1)
+    }
+
+    @Test func aTakeWithNoVoiceFollowsAndCompletesWithNothingOnTheVoice() async {
+        let host = host(mode: .screen)
+        await throughTheSlate(host)
+        #expect(output.played.map(\.channel) == [.cue, .tone])
+        #expect(host.snapshot.status == .reading)
+        // The earpiece put away: nothing plays through it, so the take goes on.
+        session.onDeviceLost?()
+        #expect(host.snapshot.status == .reading)
+
+        pass(1, host)
+        hear(.interim("We follow the footpath down to"))
+        pass(1, host)
+        hear(finals(["We", "follow", "the", "footpath", "down", "to", "the", "end", "of", "the", "fields"], spokenFrom: clock.now - 4.4))
+        pass(0.1, host)
+        #expect(host.phase == .finished(.completed))
+        #expect(!output.played.contains { $0.channel == .voice })
+        #expect(recorder.finished.map(\.outcome) == [.completed])
     }
 
     @Test func stopRecordsAStoppedTake() async {

@@ -69,4 +69,9 @@ struct FollowSettings: Equatable, Sendable {
     var slateGap: TimeInterval = 3
     /// Slate words to hear before the take starts in `.slateWithReply` mode.
     var slateWordsNeeded = 2
+
+    /// Whether a voice reads the script. Without one (Screen Only, plan 008,
+    /// decision 1), the engine follows the presenter alone: no phrases are played, no lead is
+    /// kept and nothing waits at a phrase end. The slate and the tones are as with a voice.
+    var voiced = true
 }

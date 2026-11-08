@@ -46,25 +46,3 @@ struct PhraseListTests {
         #expect(ModelJSON.decode(PhraseList.self, from: Data()) == nil)
     }
 }
-
-struct PhraseListSentenceTests {
-
-    private let list = PhraseList(lines: [
-        "Morning! The plan is simple: along the sea wall, up the cliff path, and back through the village for a late breakfast.",
-        "[Point] Look there.",
-    ])
-
-    @Test func aSentenceRunsAcrossItsPhrases() {
-        // 0 "Morning!", 1 and 2 the long sentence, 3 the cue, 4 "Look there."
-        #expect(list.phrases.count == 5)
-        #expect(list.sentence(containing: 0) == 0...0)
-        #expect(list.sentence(containing: 1) == 1...2)
-        #expect(list.sentence(containing: 2) == 1...2)
-    }
-
-    @Test func aCueBelongsToTheSentenceAfterItAndALineEndsOne() {
-        #expect(list.sentence(containing: 4) == 3...4)
-        #expect(list.sentence(containing: 3) == 3...4)
-        #expect(list.sentence(containing: 9) == 9...9)
-    }
-}

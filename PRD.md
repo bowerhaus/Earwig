@@ -1,6 +1,6 @@
 # Earwig - Product Requirements Document (PRD)
 
-**Status:** Draft v0.9, 2026-11-08. Changes by version are in the Document History at the end.
+**Status:** Draft v0.10, 2026-11-08. Changes by version are in the Document History at the end.
 **Name:** Earwig (decided 2026-11-05: UK slang for listening in). Bundle identifier `com.bowerhaus.Earwig`.
 
 ## Executive Summary
@@ -14,8 +14,9 @@ where they are. The script is text from elsewhere (first of all a Cutaway projec
 default; the presenter's own recorded reading or a cloud voice later, made on the Mac), with
 word timings, before the take starts.
 
-The same script, voice rendering and following engine also drive an ordinary on-screen
-teleprompter, where the text scrolls at the presenter's pace instead of being spoken.
+The same script and following engine also drive an on-screen teleprompter: every take
+scrolls the script on the phone at the presenter's pace, with the voice in the earpiece or,
+in Screen Only, without it (plan 008).
 
 Earwig is for the author's own video work (the Cutaway toolkit's videos, filmed on an
 Osmo Pocket 3 or the iPhone itself). It is distributed to the author through TestFlight,
@@ -207,11 +208,12 @@ only** as the default; the slate modes stay in Settings for shoots that want a s
 
 | Feature | Priority | Notes |
 |---|---|---|
-| Scrolling text with the current phrase highlighted and the presenter's heard position marked | P0 | Large type, dark background, the step title small at the top. Portrait and landscape. The same engine positions the text: the highlighted phrase is the voice's position, the mark is the presenter's. |
-| Ear and Screen together | P0 | On the mount beside the lens the screen shows the text while the earpiece speaks it. Either can be switched off. |
-| Fixed-pace scroll when listening is off | P1 | Words per minute in Settings, start and stop on tap. |
-| Font size | P0 | A setting, and a pinch on the Prompt screen. |
-| Directions shown in the cue colour, never highlighted as spoken | P0 | |
+| Scrolling text that follows the presenter | P0 | Every take (plan 008). Large type on the theme's sky blue, the step and take small at the top, in portrait and landscape (the controls down the side). The line the presenter is on is held at an eyeline a third of the way down, by a smooth scroll; the words already heard turn faint, so their place is where the white starts. No marker on a single word: one showed the recogniser's second of delay as a word always behind. |
+| Two modes, chosen before the take | P0 | **With Voice**: the voice in the earpiece and the scrolling text. **Screen Only**: the text and no voice, nothing rendered, so a take starts at once. Chosen on the Script screen's start card or in Settings (one value), fixed for the take, kept by Next Take. Ear alone, the first build's third mode, was dropped: the voice with the text showed more at no cost. |
+| The voice's phrase lit | P1 | With the voice, its phrase on the cards' mid-blue and its word on the accent. A setting, off by default (Andy, plan 008). |
+| Fixed-pace scroll when listening is off | P1 | Words per minute in Settings, start and stop on tap. Not built: its own issue. |
+| Font size | P0 | A setting (24 to 72 pt, default 40) and a pinch on the Prompt screen. |
+| Directions shown in the cue colour, never lit or dimmed as spoken | P0 | A long one wraps a word at a time. |
 | Mirror flip, external display, pedal or remote | Out | Not wanted. |
 
 ### 4.7 Takes
@@ -237,12 +239,14 @@ slate) is a roadmap item (section 13): cheap once the microphone is open, but sc
 - Lead, in words (2 to 6, default 5), with seconds shown for the chosen voice and rate.
 - Pacing: hybrid (default) or phrase-gated; speed bounds; voice speed.
 - Start ritual: slate with a reply, slate alone, or tones only (default).
-- Screen: font size, fixed-pace words per minute.
+- Screen: the mode (With Voice or Screen Only), whether the voice's phrase is lit, font
+  size; fixed-pace words per minute when that is built.
 - Diagnostics: the Listening check (4.3) and the route check.
 
 Plan 005 built the first Settings screen, from a gear on the Scripts screen, with what it
 judged: Following (lead, pacing, voice speed), Start, and Diagnostics (the Listening check).
-The voice and the directions setting stay in the Script screen's menu until stage 7.
+The voice and the directions setting stay in the Script screen's menu until stage 7. Plan
+008 added the Screen group: Mode, Light the Voice's Phrase, and Text size.
 
 ---
 
@@ -366,6 +370,28 @@ estimated position, the speed, the lead error, and the measured delay and rate.
   word, so a presenter who comes back to the last phrase late is not cut off at its first
   word (plan 005).
 
+### 5.4a Following with no voice, and the screen's place (plan 008)
+
+With no voice (`voiced` off, Screen Only) the engine follows the presenter alone. The start
+is as with a voice, and the slate and tones still play. After the tones it is **Reading**:
+no phrase is played and nothing waits at a phrase end. Hearing, matching, Lost and step backs
+are as with a voice, and the estimate is capped at the last word. Hold keeps the place, and
+Release goes to wherever the presenter has been heard since. Back and Forward move the place
+a spoken phrase, passing over cues. The take completes on the last word, or with the
+presenter in the last phrase and not heard for `endGrace`. With no voice, the take's first
+word, heard first, is trusted on its own.
+
+The screen's place (`presenterPlace`) is the word after the last one confidently heard, kept
+still while held. It is only what has been heard, never a guess ahead. Guessing ran the mark
+past pauses, and the rules added to undo bad guesses interacted with each other (Andy,
+device check 2 of plan 008). It trails the presenter by about the recogniser's delay. The
+screen smooths it (`ScreenPlace`): a move glides, otherwise it follows forward and never
+back.
+
+After Back or Forward, with a voice or without, what was said before the press is not
+followed (heard from a delay on, spoken from the press). It reached the recogniser late and
+pulled the place straight back.
+
 ### 5.5 Start
 
 By the start mode (4.5). **Slate with a reply**: the engine plays the slate cue, then,
@@ -447,6 +473,7 @@ Views (SwiftUI) → ViewModels (@Observable) → Models (SwiftData)
   the time-pitch node, cues and the slate at 1.0x, and the tones and the chime. Tones are
   scheduled on the audio clock, as PhysiMate's plan 001 found necessary.
 - **Slate**: the slate's text and its reply words (4.5).
+- **ScreenText**: the take's step as words for the scrolling text (plan 008).
 - **TakeHost**: one take, from getting ready (microphone, session, audio engine, listening,
   the slate's render, in that order) to its end: ticks the engine twenty times a second with
   the player's progress, passes it what is heard and what the player reports, passes its
@@ -464,8 +491,9 @@ Earwig/
   Services/      ScriptParser, ScriptImporter, PhraseSplitter, VoiceRenderer, ScriptRenderer,
                  VoiceCatalogue, Tones, StepPreview, TakeAudio, Slate, AudioSessionManager,
                  AudioEngineHost, Listener, HeardEvents, Player, TakeHost, TakeSummary,
-                 ScriptTakeRecorder, ModelContainerFactory
-  ViewModels/    ScriptsViewModel, ScriptDetailViewModel, PromptViewModel, ListeningCheck
+                 ScriptTakeRecorder, ScreenText, ModelContainerFactory
+  ViewModels/    ScriptsViewModel, ScriptDetailViewModel, PromptViewModel, ListeningCheck,
+                 ScreenPlace, ScreenLayout, ScreenFollower
   Views/         Scripts, ScriptDetail, Prompt, Settings (with the Listening check), Splash
   Resources/     Info.plist, Assets (the app icon, the mark, the launch colour), tones
 EarwigTests/     Engine and parser tests with fixture word streams
@@ -487,40 +515,45 @@ sample (a made-up harbour walk in Cutaway's layout).
 
 ### 8.2 Script
 
-The steps, each with its lines and directions in the cue colour. A rendering status row
-for the start step ("Step 1 ready in Stephanie, 10 phrases", progress while it renders, or
-the error and a Render button), with **Listen**: the step played straight through (slate,
-tones, phrases, directions as set) at 0.85x, 1.0x or 1.2x, the word being said highlighted,
-recording no take (plan 004), and **Start Take N** once the step is ready. Tap a step to
-make it the start step; its card then has **Start**, which starts a take as well. A tap on
-the card itself never starts one, so a take is not started by accident while scrolling
-(plan 005). The takes so far for each step, and the next take's number, are shown on it. Each step shows its number large, as the slate says it. A menu
-holds the cues switch, the voice and the directions setting (until Settings) and Delete;
-Paste new version is a button at the foot of the screen.
+The steps, each with its lines and directions in the cue colour. At the top, the start card
+(plan 008, Andy's pick): "Step N · take M", the two modes as large tiles that only choose
+(With Voice, Screen Only), **Listen** once the step is rendered (the step played straight
+through, slate, tones, phrases and directions as set, at 0.85x, 1.0x or 1.2x, the word being
+said highlighted, recording no take; plan 004), and the rendering only while it runs or if
+it failed, with a Render button. **Start Take N** is at the foot of the start step's own
+card, once it can start (rendered, or at once in Screen Only). Tap a step to make it the
+start step. A tap on the card itself never starts a take, so one is not started by accident
+while scrolling (plan 005). The takes so far for each step, and the next take's number, are
+shown on it. Each step shows its number large, as the slate says it. A menu holds the cues
+switch, the voice and the directions setting (until Settings) and Delete; Paste new version
+is a button at the foot of the screen.
 
 ### 8.3 Prompt
 
-The take screen, usable at arm's length and glanceable from a mount:
+The take screen, usable at arm's length and glanceable from a mount (plan 008):
 
-- Top: step number and title, take number, route check (earpiece and mic icons, red when
-  wrong, the earpiece amber on the speaker), judged only while the take runs.
-- Middle: in Screen mode the scrolling text (4.6); in Ear mode a large status word
-  (Getting ready, Slate, Tones, Speaking, Waiting, Lost, Held, Finished), what to do (in the
-  slate-with-reply mode "Say the slate, or tap"; a tap there skips it), and the voice's
-  phrase with the word it is saying in the accent colour, or, while it waits, is lost or
-  held, the whole sentence it stopped in with the part not yet given dimmed. A small
-  diagnostics line (lead error, speed, delay, rate) under it, kept for now.
-- Bottom: Hold, Back, Forward, Restart step, Stop. Big targets; the screen stays awake
-  while the take runs, and a take runs on with the phone locked.
+- Top, one row: step number and title, take number, the status as a word (Getting ready,
+  Slate, Tones, Speaking, Waiting, Reading, Lost, Held), the take's mode, and the route
+  check (earpiece and mic icons, red when wrong, the earpiece amber on the speaker; not
+  judged in Screen Only), judged only while the take runs. What to do under it (in the
+  slate-with-reply mode "Say the slate, or tap"; a tap on the text skips it), and a small
+  diagnostics line (lead error, speed, delay, rate), kept for now.
+- Middle: the scrolling text (4.6). A drag moves it by hand; it follows again three seconds
+  after, or at once on Back, Forward or Restart. A pinch sizes it, scaled about the eyeline
+  while pinching and laid out again when the pinch ends.
+- Bottom: Back, Hold, Forward, Restart step, Stop as one row of icons, down the side in
+  landscape. The screen stays awake while the take runs, the text redraws only while it
+  moves, and a take runs on with the phone locked.
 - A take ends at the end of the step, on Stop, on an interruption, or when listening gives
-  up ("Stopped: listening stopped …", with why); Finished then offers
-  Next Take (the same step again) and Done, and the Script screen shows the next take
-  number. Getting ready that fails (no microphone, listening or slate) says why, with Done.
+  up ("Stopped: listening stopped …", with why). Finished then shows the outcome large and
+  offers Next Take (the same step again, in the same mode) and Done, and the Script screen
+  shows the next take number. Getting ready that fails (no microphone, listening or slate)
+  says why, with Done.
 
 ### 8.4 Settings
 
 As 4.8, grouped: Voice, Following, Start, Screen, Diagnostics. From plan 005, Following,
-Start and Diagnostics, opened from a gear on the Scripts screen.
+Start and Diagnostics, opened from a gear on the Scripts screen; from plan 008, Screen.
 
 ### 8.5 Listening check
 
@@ -543,12 +576,12 @@ take ends. Tap the step again for take two.
 
 ### Flow 2: The desk head, phone on the mount
 
-Phone on the mount beside the lens, Ear and Screen both on. The text is there to glance
-at, the voice is the one actually driving. Font large. Stop with a tap.
+Phone on the mount beside the lens, With Voice. The text is there to glance at, the voice is
+the one actually driving. Font large. Stop with a tap.
 
 ### Flow 3: A teleprompter, plain
 
-A plain-text script pasted in. Screen mode only, Ear off, fixed-pace scroll at 140 words
+A plain-text script pasted in. Screen Only, fixed-pace scroll at 140 words
 a minute because the room is noisy. Pinch to size the type.
 
 ### Flow 4: The script changed
@@ -627,8 +660,9 @@ Each stage is one plan, one branch, one issue and one PR.
    recogniser feeding the engine, the take host, the slate flow, manual controls, route
    check, takes recorded at the slate, the first Settings screen (lead, pacing, voice speed,
    start) and the Listening check; the defaults chosen by ear on the phone.
-6. **Screen mode.** The scrolling text driven by the same engine, Ear and Screen
-   together, font size.
+6. **Screen mode** (plan 008, done: see its Results). The scrolling text driven by the
+   same engine in every take, With Voice or Screen Only, the start card, font size. The
+   fixed-pace scroll is its own issue.
 7. **Settings and TestFlight.** The settings in 4.8, the release script, the first
    TestFlight build.
 
@@ -719,6 +753,7 @@ shared between recording and listening.
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.10 | 2026-11-08 | Plan 008 (#25), stage 6: Screen mode as built and judged on the phone. Every take scrolls the script, With Voice or Screen Only, chosen on the start card or in Settings and fixed for the take; Ear alone dropped (Executive Summary, 4.6, 4.8, 8.3, Flow 2, Flow 3). The eyeline with the heard words dimmed, no word marker; the voice's phrase lit as a setting, off by default (4.6). Following with no voice, the screen's place as the word after the last one heard, and what was said before Back or Forward not followed (5.4a). The start card, Start Take on the step's card (8.2). The Prompt screen's one layout (8.3). ScreenText and the screen's view models (7.2, 7.3). Stage 6 done (12). |
 | 0.9 | 2026-11-08 | Plan 007 (#21): the app icon, the mark and the splash, with the launch colour and the splash's rules (10); the plan noted beside the stages (12); folders (7.3). Checked on the iPhone 14 Pro: the icon in the three appearances, the splash on a cold launch only, no visual refresh asked for. |
 | 0.8 | 2026-11-08 | Plan 006 results (#18, #19): a take whose listening gives up stops and says why (4.3, 8.3); for a gate, the presenter estimate does not coast across a phrase end until a word of the next phrase is heard, so off-script speech after a phrase end holds the voice (5.4). Checked on the iPhone 14 Pro: off script at a phrase end, a misheard phrase end, a clean read, a filler, and listening giving up. |
 | 0.7 | 2026-11-08 | Plan 005 results: the default lead 5, hybrid pacing and tones only, chosen on the phone (3, 4.4, 4.5, 4.8, 5.5, question 1); a voice speed, default 0.95x, as the base the player plays the voice at (4.2, 4.8); the route check during a take, amber on the speaker, an earpiece put away ending the take (4.3, 7.2, 11); the whole sentence shown while the voice waits, and no automatic re-giving after a fluff (4.4, 8.3); Forward from the last phrase does nothing, Start on the start step's card (4.4, 8.2); a take recorded at its slate (4.7); a 24-word window behind, a misread word not a jump, and completion timed from the presenter's last word (5.3, 5.4); the take host and the Slate service (7.2); the Prompt screen and the first Settings screen as built (8.3, 8.4); the measured lead and delays, outdoors and the Osmo still to do (4.4, 11); stage 5 done (12). |

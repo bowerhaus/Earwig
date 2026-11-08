@@ -17,6 +17,9 @@ struct AppSettingsTests {
         #expect(settings.voiceSpeed == 0.95)
         #expect(settings.pacing == .hybrid)
         #expect(settings.startMode == .tonesOnly)
+        #expect(settings.mode == .voice)
+        #expect(settings.textSize == 40)
+        #expect(!settings.lightsVoice)
     }
 
     @Test func theFollowSettingsCarryThem() {
@@ -28,6 +31,30 @@ struct AppSettingsTests {
         #expect(follow.pacing == .phraseGated)
         #expect(follow.start == .slate)
         #expect(follow.minSpeed == FollowSettings().minSpeed)
+    }
+
+    @Test func theModeIsKept() {
+        settings.mode = .screen
+        #expect(settings.mode == .screen)
+        settings.defaults.set("nonsense", forKey: TakeSettings.modeKey)
+        #expect(settings.mode == .voice)
+        // The modes of the first build: Ear and Both are the voice.
+        settings.defaults.set("both", forKey: TakeSettings.modeKey)
+        #expect(settings.mode == .voice)
+        settings.defaults.set("ear", forKey: TakeSettings.modeKey)
+        #expect(settings.mode == .voice)
+        #expect(TakeMode.voice.voiced && !TakeMode.screen.voiced)
+    }
+
+    @Test func theTextSizeIsKeptInItsRange() {
+        settings.textSize = 100
+        #expect(settings.textSize == 72)
+        settings.textSize = 10
+        #expect(settings.textSize == 24)
+        settings.defaults.set(5.0, forKey: TakeSettings.textSizeKey)
+        #expect(settings.textSize == 24)
+        settings.textSize = 52
+        #expect(settings.textSize == 52)
     }
 
     @Test func theLeadIsKeptInItsRange() {

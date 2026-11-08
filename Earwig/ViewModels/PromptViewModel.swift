@@ -1,6 +1,6 @@
 import Foundation
 
-/// What the Prompt screen shows in Ear mode (PRD §8.3; plan 005, decision 7), worked out from the
+/// What the Prompt screen shows (PRD §8.3; plan 005, decision 7), worked out from the
 /// take host's phase, the engine's snapshot and the route. Plain values in, text and states out,
 /// so it is tested without audio.
 struct PromptViewModel: Equatable {
@@ -15,13 +15,22 @@ struct PromptViewModel: Equatable {
         case wrong
     }
 
-    /// One token of the text shown: a word or a bracketed cue, whether the voice is saying it,
-    /// and whether the voice has yet to give it.
-    struct Token: Equatable {
-        var text: String
+    /// A word of the scrolling text with how it is shown (plan 008, decision 4).
+    struct ScreenToken: Equatable {
+        var word: ScreenWord
+        /// In the voice's phrase, and the word the voice is saying.
+        var inVoicePhrase = false
         var isVoiceWord = false
-        var isAhead = false
-        var isCue = false
+        /// Before following starts, every word is dimmed.
+        var isWaiting = false
+
+        /// Heard already: before `heard`, the word after the last one heard, as the screen shows
+        /// it. Dimmed, the only mark of the presenter's place: a block on one word showed the
+        /// recogniser's second of delay as a word marker always behind (Andy, device check 2).
+        func isHeard(before heard: Int?) -> Bool {
+            guard let heard, let index = word.word, !isWaiting else { return false }
+            return index < heard
+        }
     }
 
     let phase: TakeHost.Phase
@@ -44,7 +53,7 @@ struct PromptViewModel: Equatable {
 
     @MainActor
     init(host: TakeHost) {
-        self.init(phase: host.phase, snapshot: host.snapshot, route: host.route, setup: host.setup.summary,
+        self.init(phase: host.phase, snapshot: host.snapshot, route: host.route, setup: host.summaryForScreen,
                   downloadProgress: host.downloadProgress, stopReason: host.stopReason)
     }
 
@@ -54,8 +63,10 @@ struct PromptViewModel: Equatable {
 
     var takeText: String { "Take \(setup.take)" }
 
+    /// Not judged with no voice: nothing plays but the slate and the tones, so the speaker or no
+    /// earpiece is fine (plan 008, decision 10).
     var earpiece: RouteState {
-        guard phase == .running else { return .unknown }
+        guard phase == .running, setup.mode.voiced else { return .unknown }
         if route.isHandsFree { return .wrong }
         return route.isSpeaker ? .caution : .good
     }
@@ -68,7 +79,7 @@ struct PromptViewModel: Equatable {
     /// Said under the route icons when one is not good.
     var routeNote: String? {
         guard phase == .running else { return nil }
-        if route.isHandsFree { return "The earpiece is in hands-free mode: reconnect it." }
+        if route.isHandsFree, setup.mode.voiced { return "The earpiece is in hands-free mode: reconnect it." }
         if mic == .wrong { return "Not listening on the iPhone's mic." }
         if earpiece == .caution { return "Speaker: the mic will hear the voice." }
         return nil
@@ -88,6 +99,7 @@ struct PromptViewModel: Equatable {
             case .tones: return "Tones"
             case .speaking: return "Speaking"
             case .waiting: return "Waiting"
+            case .reading: return "Reading"
             case .lost: return "Lost"
             case .held: return "Held"
             case .finished: return "Finished"
@@ -124,37 +136,36 @@ struct PromptViewModel: Equatable {
     /// Whether a tap in the middle starts the take from the slate.
     var tapStarts: Bool { phase == .running && snapshot.status == .slate }
 
-    /// While the voice speaks, its phrase with the word it is saying marked. While it waits, is
-    /// lost or held, the whole sentence it stopped in, so the presenter can see where to start
-    /// again (device check 3); the part the voice has not given yet is marked ahead.
-    var phrase: [Token] {
-        guard phase == .running, let index = snapshot.voicePhrase, setup.phraseList.phrases.indices.contains(index),
-              [.speaking, .waiting, .lost, .held].contains(snapshot.status) else { return [] }
-        let shown = snapshot.status == .speaking ? index...index : setup.phraseList.sentence(containing: index)
-        return shown.flatMap { tokens(of: $0, ahead: $0 > index) }
-    }
+    // MARK: - The scrolling text
 
-    private func tokens(of index: Int, ahead: Bool) -> [Token] {
-        let stepPhrase = setup.phraseList.phrases[index]
-        if stepPhrase.kind == .cue { return [Token(text: "[\(stepPhrase.phrase.text)]", isAhead: ahead, isCue: true)] }
-        var word = setup.firstWord.indices.contains(index) ? setup.firstWord[index] : 0
-        return stepPhrase.phrase.tokens.map { token in
-            guard token.word != nil else { return Token(text: token.text, isAhead: ahead) }
-            defer { word += 1 }
-            return Token(text: token.text, isVoiceWord: word == snapshot.voiceWord && snapshot.status == .speaking, isAhead: ahead)
+    /// Where the presenter is, for the scroll: the engine's place for the screen.
+    /// While following, never before the first word.
+    var place: Double { following ? max(snapshot.presenterPlace, 0) : -1 }
+
+    /// The step's words as the screen shows them now.
+    var screenTokens: [ScreenToken] {
+        let voicing = following && setup.mode.voiced && setup.lightsVoice
+        return setup.screenWords.map { word in
+            var token = ScreenToken(word: word, isWaiting: !following)
+            guard following, !word.isCue else { return token }
+            if voicing, word.phrase == snapshot.voicePhrase {
+                token.inVoicePhrase = true
+                token.isVoiceWord = snapshot.status == .speaking && word.word != nil && word.word == snapshot.voiceWord
+            }
+            return token
         }
     }
 
     /// The device check's numbers (decision 7): lead error, speed, the measured delay and rate.
     var diagnostics: String? {
-        guard phase == .running, [.speaking, .waiting, .lost, .held].contains(snapshot.status) else { return nil }
+        guard following else { return nil }
         let error = snapshot.error.map { String(format: "%+.1f", $0) } ?? "–"
         return String(format: "lead error %@ · speed %.2f× · delay %.2f s · rate %.1f w/s", error, snapshot.speed, snapshot.delay, snapshot.rate)
     }
 
     // MARK: - Bottom
 
-    private var following: Bool { phase == .running && [.speaking, .waiting, .lost, .held].contains(snapshot.status) }
+    private var following: Bool { phase == .running && [.speaking, .waiting, .reading, .lost, .held].contains(snapshot.status) }
 
     var holdEnabled: Bool { following }
     var isHeld: Bool { phase == .running && snapshot.status == .held }
@@ -187,11 +198,14 @@ extension TakeSetup {
         var title: String
         var take: Int
         var start: StartMode
-        var phraseList: PhraseList
-        var firstWord: [Int]
+        /// The step's words for the screen, built once per take.
+        var screenWords: [ScreenWord]
+        var mode = TakeMode.voice
+        var lightsVoice = false
     }
 
     var summary: Summary {
-        Summary(number: stepNumber, title: stepTitle, take: take, start: settings.start, phraseList: phraseList, firstWord: script.firstWord)
+        Summary(number: stepNumber, title: stepTitle, take: take, start: settings.start,
+                screenWords: ScreenText.words(phraseList: phraseList, firstWord: script.firstWord), mode: mode, lightsVoice: lightsVoice)
     }
 }

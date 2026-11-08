@@ -83,6 +83,18 @@ struct TakeSetup {
     var contextWords: [String]
     /// The voice's base speed (#14).
     var voiceSpeed = 1.0
+    /// With the voice or the screen only, fixed for the take (plan 008, decision 6).
+    var mode = TakeMode.voice
+    /// Whether, with the voice, its phrase is lit in the scrolling text.
+    var lightsVoice = false
+
+    /// The engine's settings: voiced exactly when the take has the ear, so the engine and the
+    /// host cannot disagree about it (review C3).
+    var engineSettings: FollowSettings {
+        var engine = settings
+        engine.voiced = mode.voiced
+        return engine
+    }
 
     /// The step's words and the slate's, each once, as written, for the analyser's context.
     static func contextWords(phraseList: PhraseList, slateText: String) -> [String] {
@@ -113,6 +125,8 @@ final class TakeHost: Identifiable {
     static let tickInterval: TimeInterval = 0.05
 
     let setup: TakeSetup
+    /// What the Prompt screen needs of the setup, built once (its screen words most of all).
+    @ObservationIgnored private(set) lazy var summaryForScreen = setup.summary
     private(set) var phase: Phase = .gettingReady
     private(set) var snapshot = FollowSnapshot()
     /// Why the take stopped, when it was not the presenter or a call: listening gave up (#18).
@@ -151,7 +165,7 @@ final class TakeHost: Identifiable {
         self.clock = clock
         self.ticks = ticks
         self.log = log
-        engine = FollowEngine(script: setup.script, settings: setup.settings, slateWords: setup.slateWords)
+        engine = FollowEngine(script: setup.script, settings: setup.engineSettings, slateWords: setup.slateWords)
         summary = TakeSummary(wordCount: setup.script.words.count)
     }
 
@@ -297,10 +311,11 @@ final class TakeHost: Identifiable {
     }
 
     /// The earpiece went: hold, so the voice is not heard by the room or the mic (decision 9).
+    /// With no voice there is nothing to keep from the room, so the take goes on (plan 008).
     private func deviceLost() {
         guard phase == .running else { return }
         log("take: output device lost; route \(session.route.summary)")
-        guard [.speaking, .waiting, .lost].contains(snapshot.status) else { return }
+        guard setup.mode.voiced, [.speaking, .waiting, .lost].contains(snapshot.status) else { return }
         send(.hold)
     }
 
@@ -329,7 +344,7 @@ final class TakeHost: Identifiable {
         snapshot = engine.snapshot
         phase = .finished(outcome)
         recorder.finished(duration: duration, outcome: TakeOutcome(rawValue: outcome.rawValue) ?? .stopped)
-        log(summary.line(duration: duration, outcome: outcome, note: stopReason == nil ? nil : "not listening"))
+        log(summary.line(duration: duration, outcome: outcome, mode: setup.mode, note: stopReason == nil ? nil : "not listening"))
         Task { await tearDown() }
     }
 

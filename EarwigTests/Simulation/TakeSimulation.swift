@@ -294,6 +294,16 @@ struct TakeSimulation {
         let heard: String
     }
     private(set) var releases: [Release] = []
+    /// With no voice, the presenter estimate less the last word the presenter began, while they
+    /// are reading (plan 008, decision 1).
+    private(set) var placeErrors: [(time: TimeInterval, error: Double)] = []
+    /// What the screen shows, smoothed from the estimate each step (plan 008, decision 3): its
+    /// place less the last word the presenter began while reading, and every step it moved back.
+    private(set) var screen = ScreenPlace()
+    private(set) var screenErrors: [(time: TimeInterval, error: Double)] = []
+    private(set) var screenBackSteps: [(time: TimeInterval, length: Double)] = []
+    /// The screen's place at every step.
+    private(set) var screenPlaces: [(time: TimeInterval, place: Double)] = []
 
     init(script: FollowScript, settings: FollowSettings = FollowSettings(), acts: [PresenterAct], rate: Double = 2.5, recogniser: SimulatedRecogniser = SimulatedRecogniser()) {
         var settings = settings
@@ -314,7 +324,11 @@ struct TakeSimulation {
             let said = player.said
             if let spoken = presenter.advance(to: time, voiceSaid: { said[$0]?.first }) { recogniser.hear(spoken) }
             events += recogniser.advance(to: time)
-            for event in events { apply(engine.handle(event, at: time)) }
+            for event in events {
+                // With no voice the presenter starts after the tones, from the script.
+                if event == .tonesEnded, !engine.settings.voiced { presenter.begin(at: time + 0.3) }
+                apply(engine.handle(event, at: time))
+            }
             apply(engine.tick(at: time))
             measure()
         }
@@ -334,6 +348,16 @@ struct TakeSimulation {
 
     private mutating func measure() {
         statuses.append(engine.snapshot.status)
+        let reading = presenter.position >= 0 && presenter.spoken.last.map { $0.word.script != nil && time - $0.end < 0.7 } == true
+        let shown = screen.place
+        screen.step(toward: engine.snapshot.presenterPlace, at: time)
+        if screen.place < shown - 0.001 { screenBackSteps.append((time, shown - screen.place)) }
+        screenPlaces.append((time, screen.place))
+        if reading { screenErrors.append((time, screen.place - Double(presenter.position))) }
+        if !engine.settings.voiced {
+            if reading { placeErrors.append((time, engine.snapshot.presenterEstimate - Double(presenter.position))) }
+            return
+        }
         guard player.isSpeakingAPhrase, let voice = player.word, presenter.position >= 0,
               let last = presenter.spoken.last, time - last.end < 0.7 else { return }
         leadErrors.append((time, voice - presenter.position - engine.settings.lead))

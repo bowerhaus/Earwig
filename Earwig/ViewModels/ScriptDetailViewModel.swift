@@ -76,23 +76,30 @@ final class ScriptDetailViewModel {
 
     /// Opens the Prompt screen on a take of the start step, numbered after the step's last take
     /// (plan 005, decisions 3 and 8). The take is recorded once its slate plays.
-    func startTake(with renderer: ScriptRenderer, in context: ModelContext) {
+    /// `mode` is the take's, from the setting unless given (Next Take keeps the last take's).
+    /// Screen Only needs nothing rendered: the engine follows the presenter alone (plan 008,
+    /// decision 7).
+    func startTake(with renderer: ScriptRenderer, in context: ModelContext, mode given: TakeMode? = nil) {
         // One take at a time: a second Start (the card's and the row's) does not orphan one.
         guard take == nil, let step = startStep else { return }
+        let mode = given ?? AppSettings.take.mode
         let stepIndex = script.lastStep
         // With cues off, inline directions are not played (PRD §4.2): the take has no cue phrases.
         let all = step.phraseList
-        guard let allRendered = renderer.rendered(all) else {
-            error = "The step is not rendered yet."
-            return
-        }
         let keep = all.phrases.indices.filter { script.cuesOn || all.phrases[$0].kind == .spoken }
         let phraseList = PhraseList(parserVersion: all.parserVersion, phrases: keep.map { all.phrases[$0] })
-        let rendered = keep.map { allRendered[$0] }
         let number = script.nextTakeNumber(forStep: stepIndex)
         let built: (script: FollowScript, audio: TakeAudio)
         do {
-            built = try TakeAudio.build(phraseList: phraseList, rendered: rendered, inline: AppSettings.inlineDirections)
+            if mode.voiced {
+                guard let allRendered = renderer.rendered(all) else {
+                    error = "The step is not rendered yet."
+                    return
+                }
+                built = try TakeAudio.build(phraseList: phraseList, rendered: keep.map { allRendered[$0] }, inline: AppSettings.inlineDirections)
+            } else {
+                built = try TakeAudio.voiceless(phraseList: phraseList)
+            }
         } catch {
             self.error = error.localizedDescription
             return
@@ -109,7 +116,9 @@ final class ScriptDetailViewModel {
             slateWords: Slate.replyWords(for: step, take: number),
             settings: AppSettings.take.followSettings,
             contextWords: TakeSetup.contextWords(phraseList: phraseList, slateText: slateText),
-            voiceSpeed: AppSettings.take.voiceSpeed
+            voiceSpeed: AppSettings.take.voiceSpeed,
+            mode: mode,
+            lightsVoice: AppSettings.take.lightsVoice
         )
         let session = AudioSessionManager()
         session.onEvent = { Log.event($0) }
@@ -122,6 +131,9 @@ final class ScriptDetailViewModel {
         // `-EarwigNoListen YES`: a take that hears nothing, for the simulator, which cannot
         // transcribe en-GB.
         if UserDefaults.standard.bool(forKey: "EarwigNoListen") { heard = SilentHeardSource() }
+        // `-EarwigReads YES`: a take that hears the step read at 2.5 words a second, so the
+        // simulator shows the screen following (plan 008).
+        if UserDefaults.standard.bool(forKey: "EarwigReads") { heard = ReadingHeardSource(phraseList: phraseList) }
         // `-EarwigListenGivesUp YES`: listening gives up ten seconds into the take, to see the
         // take stop and say why on the phone (plan 006, decision 7).
         if UserDefaults.standard.bool(forKey: "EarwigListenGivesUp") { heard = GivingUpHeardSource(heard) }
@@ -147,9 +159,10 @@ final class ScriptDetailViewModel {
 
     /// The same step again, as the next take.
     func nextTake(with renderer: ScriptRenderer, in context: ModelContext) {
+        let mode = take?.setup.mode
         take?.end()
         take = nil
-        startTake(with: renderer, in: context)
+        startTake(with: renderer, in: context, mode: mode)
     }
 
     /// The presenter voices to pick from, and whether Personal Voice may still be asked for.
@@ -204,6 +217,48 @@ final class SilentHeardSource: HeardSource {
     var downloadProgress: Double? { nil }
     func listen(contextWords: [String]) async -> String? { nil }
     func stopListening() async {}
+}
+
+/// Reads the step aloud as heard words, for the simulator, which cannot transcribe en-GB: four
+/// seconds after listening starts (past the tones), the step's words one every 0.4 s as one
+/// growing interim block, settled by a final at each sentence end (plan 008, `-EarwigReads`).
+@MainActor
+final class ReadingHeardSource: HeardSource {
+    var onHeard: ((FollowEvent, TimeInterval) -> Void)?
+    var onRestart: (() -> Void)?
+    var onGaveUp: ((String) -> Void)?
+    var downloadProgress: Double? { nil }
+    private let words: [String]
+    private var reading: Task<Void, Never>?
+
+    init(phraseList: PhraseList) {
+        words = phraseList.spoken.flatMap { $0.phrase.tokens.filter { $0.word != nil }.map(\.text) }
+    }
+
+    func listen(contextWords: [String]) async -> String? {
+        reading = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(4))
+            guard let self else { return }
+            var block: [(text: String, start: TimeInterval)] = []
+            for word in words {
+                guard !Task.isCancelled else { return }
+                block.append((word, HostClock.now - 0.4))
+                onHeard?(.interim(block.map(\.text).joined(separator: " ")), HostClock.now)
+                if PhraseSplitter.endsSentence(word) {
+                    try? await Task.sleep(for: .seconds(0.5))
+                    onHeard?(.final(block.map { FinalWord(text: $0.text, start: $0.start) }), HostClock.now)
+                    block = []
+                }
+                try? await Task.sleep(for: .seconds(0.4))
+            }
+        }
+        return nil
+    }
+
+    func stopListening() async {
+        reading?.cancel()
+        reading = nil
+    }
 }
 
 /// Listens as the source it wraps, then gives up ten seconds after listening starts, as the

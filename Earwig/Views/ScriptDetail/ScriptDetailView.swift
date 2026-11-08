@@ -9,6 +9,7 @@ struct ScriptDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(ScriptRenderer.self) private var renderer
     @AppStorage(AppSettings.inlineDirectionsKey) private var inlineDirections: InlineDirections = .chime
+    @AppStorage(TakeSettings.modeKey) private var mode: TakeMode = TakeSettings.defaultMode
     @State private var model: ScriptDetailViewModel
     @State private var confirmingDelete = false
 
@@ -27,16 +28,20 @@ struct ScriptDetailView: View {
         }
     }
 
-    /// Whether the start step is rendered, so a take can start.
+    /// Whether the start step is rendered.
     private var isReady: Bool {
         if case .ready = model.renderState(renderer) { return true }
         return false
     }
 
+    /// Whether a take can start: rendered, or on the screen alone, which needs no rendering
+    /// (plan 008, decision 7).
+    private var canStart: Bool { model.startStep != nil && (isReady || !mode.voiced) }
+
     private var content: some View {
         List {
             Section {
-                renderingRow
+                startCard
                 if let preamble = script.preamble {
                     Text(preamble)
                         .font(.footnote)
@@ -51,7 +56,7 @@ struct ScriptDetailView: View {
                         // The start step: its Start button starts a take; the card itself is not
                         // a button, so the two never nest.
                         StepView(step: step, isStart: true, takes: script.takes(forStep: index), nextTake: script.nextTakeNumber(forStep: index),
-                                 start: isReady ? { model.startTake(with: renderer, in: context) } : nil)
+                                 start: canStart ? { model.startTake(with: renderer, in: context) } : nil)
                     } else {
                         Button {
                             model.select(step: index, in: context, renderer: renderer)
@@ -87,6 +92,13 @@ struct ScriptDetailView: View {
         }
         .onAppear { model.appeared(in: context, renderer: renderer) }
         #if DEBUG
+        .task {
+            // `-EarwigScreen YES` starts a take on the screen alone, which needs no rendering
+            // (plan 008); with `-EarwigReads YES` it hears the step read.
+            guard UserDefaults.standard.bool(forKey: "EarwigScreen"), model.take == nil else { return }
+            try? await Task.sleep(for: .seconds(1))
+            model.startTake(with: renderer, in: context, mode: .screen)
+        }
         .onChange(of: model.renderState(renderer)) { _, state in
             // `-EarwigListen YES` opens Listen once the start step is ready, for the simulator.
             // After a moment, as a sheet asked for during the navigation push is dropped.
@@ -143,46 +155,33 @@ struct ScriptDetailView: View {
         }
     }
 
-    private var renderingRow: some View {
+    /// The start card (Andy, device check 1 of plan 008): the step and take a take will be, the
+    /// two modes as tiles that only choose (the same value as Settings), Listen once the step is
+    /// rendered, and the rendering itself only while it runs or if it failed. Start Take is on
+    /// the start step's own card.
+    private var startCard: some View {
         let state = model.renderState(renderer)
         let stepNumber = model.startStep?.number ?? 1
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 12) {
-                Image(systemName: renderIcon(state))
-                    .foregroundStyle(renderIconColour(state))
-                    .frame(width: 24)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(renderTitle(state, step: stepNumber))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(EarwigTheme.text)
-                    Text(renderDetail(state))
-                        .font(.footnote)
-                        .foregroundStyle(EarwigTheme.secondaryText)
-                }
-                Spacer(minLength: 8)
-                renderAction(state)
-            }
-            if case .rendering(_, let done, let total) = state {
-                ProgressView(value: Double(done), total: Double(max(total, 1)))
-                    .tint(EarwigTheme.accent)
-            }
-            if case .ready = state {
-                // Start, not a tap on a step: a take started by accident while scrolling is
-                // worse than one more tap (plan 005, decision 8).
-                HStack(spacing: 12) {
-                    Button { model.listen(with: renderer) } label: {
-                        Label("Listen", systemImage: "headphones")
-                            .font(.subheadline.bold())
-                            .frame(minHeight: 34)
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Step \(stepNumber) · take \(model.nextTakeNumber)")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(EarwigTheme.secondaryText)
+            if model.startStep != nil {
+                HStack(spacing: 10) {
+                    ForEach(TakeMode.allCases, id: \.self) { option in
+                        ModeTile(mode: option, selected: option == mode) { mode = option }
                     }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.capsule)
-                    .tint(EarwigTheme.accent)
-                    Button { model.startTake(with: renderer, in: context) } label: {
-                        AccentPill(title: "Start Take \(model.nextTakeNumber)", systemImage: "play.fill", expands: true)
-                    }
-                    .buttonStyle(.plain)
                 }
+            }
+            renderStatus(state, step: stepNumber)
+            if isReady {
+                Button { model.listen(with: renderer) } label: {
+                    Label("Listen to Step \(stepNumber)", systemImage: "headphones")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(EarwigTheme.accent)
+                        .frame(minHeight: 32)
+                }
+                .buttonStyle(.borderless)
             }
             if let voices = renderer.voices, !voices.presenterIsPreferred {
                 Text("\(VoiceCatalogue.preferredName) (Enhanced) isn't on this iPhone, so the voice is \(voices.presenter.displayName). \(VoiceCatalogue.downloadHint)")
@@ -190,51 +189,41 @@ struct ScriptDetailView: View {
                     .foregroundStyle(EarwigTheme.caution)
             }
         }
+        .padding(.vertical, 4)
     }
 
-    private func renderIcon(_ state: ScriptRenderer.State) -> String {
-        switch state {
-        case .ready: "waveform"
-        case .failed: "exclamationmark.triangle.fill"
-        case .rendering, .idle: "waveform.badge.ellipsis"
-        }
-    }
-
-    private func renderIconColour(_ state: ScriptRenderer.State) -> Color {
-        switch state {
-        case .ready: EarwigTheme.good
-        case .failed: EarwigTheme.warning
-        case .rendering, .idle: EarwigTheme.secondaryText
-        }
-    }
-
-    private func renderTitle(_ state: ScriptRenderer.State, step: Int) -> String {
-        switch state {
-        case .idle: "Step \(step) not rendered"
-        case .rendering(_, let done, let total): "Rendering step \(step): \(done) of \(total)"
-        case .ready: "Step \(step) ready in \(renderer.voices?.presenter.name ?? "the voice")"
-        case .failed: "Step \(step) could not be rendered"
-        }
-    }
-
-    private func renderDetail(_ state: ScriptRenderer.State) -> String {
-        if case .failed(_, let message) = state { return message }
-        let phrases = model.startStep?.phraseList.phrases.count ?? 0
-        return "\(phrases) phrases · \(script.format.label)"
-    }
-
+    /// The rendering, shown only while it runs, when it failed, or when the voice needs it and
+    /// it has not started.
     @ViewBuilder
-    private func renderAction(_ state: ScriptRenderer.State) -> some View {
+    private func renderStatus(_ state: ScriptRenderer.State, step: Int) -> some View {
         switch state {
+        case .rendering(_, let done, let total):
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Rendering step \(step): \(done) of \(total)", systemImage: "waveform.badge.ellipsis")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(EarwigTheme.secondaryText)
+                ProgressView(value: Double(done), total: Double(max(total, 1)))
+                    .tint(EarwigTheme.accent)
+            }
+        case .failed(_, let message):
+            renderProblem("Step \(step) could not be rendered: \(message)", colour: EarwigTheme.warning)
+        case .idle:
+            if mode.voiced { renderProblem("Step \(step) is not rendered yet.", colour: EarwigTheme.secondaryText) }
         case .ready:
             EmptyView()
-        case .failed, .idle:
-            Button("Render") { model.renderStartStep(with: renderer) }
-                .buttonStyle(.bordered)
-                .buttonBorderShape(.capsule)
-                .tint(EarwigTheme.accent)
-        case .rendering:
-            EmptyView()
+        }
+    }
+
+    private func renderProblem(_ text: String, colour: Color) -> some View {
+        HStack(spacing: 12) {
+            Text(text)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(colour)
+            Spacer(minLength: 8)
+            Button { model.renderStartStep(with: renderer) } label: {
+                AccentPill(title: "Render", systemImage: "waveform")
+            }
+            .buttonStyle(.borderless)
         }
     }
 
@@ -267,6 +256,36 @@ struct ScriptDetailView: View {
     }
 }
 
+/// A mode as a large tile on the start card: its icon and name, on the accent when chosen.
+/// It only chooses; Start Take is on the start step's card.
+private struct ModeTile: View {
+    let mode: TakeMode
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                // One height for both icons, so the names line up.
+                Image(systemName: mode.systemImage)
+                    .font(.title2.weight(.semibold))
+                    .frame(height: 30)
+                Text(mode.label)
+                    .font(.subheadline.bold())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(selected ? EarwigTheme.onAccent : EarwigTheme.text)
+            .frame(maxWidth: .infinity, minHeight: 76)
+            .background(selected ? EarwigTheme.accent : EarwigTheme.control, in: RoundedRectangle(cornerRadius: 16))
+            .contentShape(RoundedRectangle(cornerRadius: 16))
+        }
+        // Borderless, so each tile in the row takes its own tap.
+        .buttonStyle(.borderless)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
 /// A filled accent capsule with dark text, for the main action on a row or a sheet.
 struct AccentPill: View {
     let title: String
@@ -276,6 +295,8 @@ struct AccentPill: View {
     var body: some View {
         Label(title, systemImage: systemImage)
             .font(expands ? .title3.bold() : .subheadline.bold())
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
             .foregroundStyle(EarwigTheme.onAccent)
             .frame(maxWidth: expands ? .infinity : nil, minHeight: expands ? 52 : 34)
             .padding(.horizontal, 14)

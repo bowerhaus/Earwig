@@ -2,8 +2,9 @@
 
 Scratch state for the plan in flight. Overwritten at the start of a plan, emptied to a stub when it completes.
 
-**Plan 007: app icon, logo and splash (#21)**, branch `app-icon-splash` from `main` at `5b1849e`. The plan is written (`plans/007-app-icon-splash.md`); nothing is built yet. Screen mode (stage 6) moves to plan 008.
+**Plan 007: app icon, logo and splash (#21)**, branch `app-icon-splash` from `main` at `5b1849e`. The plan is written and committed (`plans/007-app-icon-splash.md`, commit `d3240c5`, status Draft); nothing is built, pushed or posted. Screen mode (stage 6) moves to plan 008. The other session's work (plan 006, `take-hearing`) is merged; `main` is clean.
 
-- The mark is chosen: 2d-j, the white earwig crawling at 35° on sky blue, from the concepts page https://claude.ai/artifact/8hvAFycZj6MXAquw53z5cL (its "Chosen" section holds the geometry, copied into the plan's decision 2).
-- Next: `/plan_create_issue` is not needed (#21 exists); on Andy's go-ahead, step 1 (the icon script).
+- **The mark is chosen:** 2d-j, the white earwig crawling at 35° on sky blue, as one mark for the tile, the splash and the logo. The concepts page is the artifact https://claude.ai/artifact/8hvAFycZj6MXAquw53z5cL (six versions, five rounds; its "Chosen" section at the top holds the geometry, copied into the plan's decision 2). Republish it by passing that URL as `url` to the Artifact tool after an `action: "read"`; the page is plain HTML with each mark as a JavaScript function taking a palette, and the chosen one is `earwig3(p)`.
+- **Rejected along the way** (so they are not offered again): the arcs mark (4c, a generic sound symbol once one mark had to do every job), blue earwig on buttercup (2d-i: the splash and launch colour would have to follow it, and iOS's dark backdrop takes the colour away), the letter e, quotation marks, word bars, the glassy earbud, the forceps alone, the earwig-with-arcs hybrid, and the cartoon earwig with a face.
+- **Next:** Andy approves the plan (`/plan_approved` or `/plan_autopilot`); #21 exists, so `/plan_create_issue` is not needed. Then step 1, the icon script (`uv run --with pillow scripts/app_icon/make_app_icon.py`; Chrome is at `/Applications/Google Chrome.app`, `uv` is installed, Pillow is not in the system Python), then the review section on the concepts page (step 2) before the assets go in.
 - Open follow-ups: #5, #6, #10, #13, #14, #16, #22; outdoors and the Osmo on the next shoot; the Scripts toolbar's Paste pill shows only its icon (unchecked whether it predates plan 005).

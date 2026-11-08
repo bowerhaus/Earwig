@@ -50,4 +50,6 @@ Dropped at Andy's word ("Yes, drop them"). Telling a fluff from a misheard word 
 
 ## Results
 
-(After the device check.)
+**Device check, 2026-11-08, iPhone 14 Pro with the SK18.** Step 1 of a made-up-for-the-phone script, whose second sentence has a 14-word clause with no punctuation: rendered as one phrase ("at a watermill that ground flour for this village for nearly three hundred years.", 4.26 s). Andy: "the long clause sounded right."
+
+The cost of decision 3 showed on the same take: a fluff early in that clause, and the voice read the clause to its end, about four seconds, where the old cut would have stopped it after "…flour for".

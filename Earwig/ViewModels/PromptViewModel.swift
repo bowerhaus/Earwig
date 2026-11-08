@@ -97,7 +97,9 @@ struct PromptViewModel: Equatable {
     /// Said on Finished about the recording, when it is not what was chosen.
     var recordingText: String? {
         guard isOver else { return nil }
-        return recording.note
+        if let note = recording.note { return note }
+        guard case .finished = phase, setup.recording != .off, recording.isTornDown, recording.result == nil else { return nil }
+        return "Nothing was recorded."
     }
 
     // MARK: - Top

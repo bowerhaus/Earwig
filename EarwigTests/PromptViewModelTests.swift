@@ -87,6 +87,9 @@ struct PromptViewModelTests {
         let note = PromptViewModel.Recording(note: "Video stopped at 1:23: the phone was locked.")
         #expect(model(.finished(.stopped), .finished, recording: .video, recorded: note).recordingText == note.note)
         #expect(model(.running, .speaking, recording: .video, recorded: note).recordingText == nil)
+        let nothing = PromptViewModel.Recording(since: 100, isTornDown: true)
+        #expect(model(.finished(.stopped), .finished, recording: .sound, recorded: nothing).recordingText == "Nothing was recorded.")
+        #expect(model(.finished(.stopped), .finished, recorded: nothing).recordingText == nil)
     }
 
     @Test func theStatusWords() {

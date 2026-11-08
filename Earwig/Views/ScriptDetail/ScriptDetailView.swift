@@ -173,13 +173,14 @@ struct ScriptDetailView: View {
                         ModeTile(mode: option, selected: option == mode) { mode = option }
                     }
                 }
-                HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("Record")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(EarwigTheme.secondaryText)
-                    Spacer(minLength: 4)
-                    ForEach(TakeRecordingMode.allCases, id: \.self) { option in
-                        RecordChip(recording: option, selected: option == recording) { recording = option }
+                    HStack(spacing: 8) {
+                        ForEach(TakeRecordingMode.allCases, id: \.self) { option in
+                            RecordChip(recording: option, selected: option == recording) { recording = option }
+                        }
                     }
                 }
             }
@@ -307,9 +308,10 @@ private struct RecordChip: View {
             Label(recording.label, systemImage: recording.systemImage)
                 .font(.subheadline.bold())
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .foregroundStyle(selected ? EarwigTheme.onAccent : EarwigTheme.text)
-                .padding(.horizontal, 12)
-                .frame(minHeight: 36)
+                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, minHeight: 40)
                 .background(selected ? EarwigTheme.accent : EarwigTheme.control, in: Capsule())
                 .contentShape(Capsule())
         }

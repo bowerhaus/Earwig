@@ -72,7 +72,7 @@ enum TakeRecordingMode: String, CaseIterable, Sendable {
 
     var systemImage: String {
         switch self {
-        case .off: "record.circle"
+        case .off: "circle.slash"
         case .sound: "waveform"
         case .video: "video"
         }

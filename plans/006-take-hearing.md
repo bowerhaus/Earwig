@@ -159,6 +159,12 @@ Built as planned, with these findings and changes. The device check is still to 
   - **Clean read, and every other existing scenario:** completed, with no presenter waits at any pace. The lead is within two words more often: a clean read went from 94, 88 and 78% to 97, 91 and 88%; the others rose by between 0 and 14 points. The longest silence rose by up to 1 s in the break-off and restart scenarios, since the voice now waits for the presenter to be heard in the next phrase. Total silence stayed about the same.
   - **A misheard phrase end** ("in all" heard as "an hour", phrase 2's last two words). At 2.5 and 4 words a second there are no presenter waits. In 1 s bursts, the gate after phrase 3 held 2.45 s against 1.15 s before, and the presenter waited 0.15 s once. So the guard "no longer than on main" (decision 6) holds for the presenter at two paces, but not quite at the phone's: the test pins presenter waits at 0.2 s or less and silences under 2.5 s. **Andy's check 2 decides whether that feels right.**
   - **A filler at a phrase end:** no waits, and not lost, at any pace.
+### Device check (iPhone 14 Pro, SK18), 2026-11-08
+
+| Check | Result |
+|-------|--------|
+| 1. Off script at a phrase end | **Pass** (Andy). Take 16, step 1, as plan 005's take 12: he read "…if we don't stop too often," then went straight on with "we may be able to find a different way to do this" and more. The voice waited after "it should take a couple of hours" and released nothing while he was off script. Lost was shown 1.0 s after the gate closed, about 3.5 s after his first own word. The direction chime and "Most of these boats…" were held for 10.6 s and released on "It should take" when he came back. Completed, heard 70 of 70. The console confirmed the bursts: interim results in groups a few milliseconds apart, about a second between groups. |
+
 - **Commits:** steps 2 and 3 went in as one commit, since the reproduction was written and the rule found in one pass. The plan's disabled-test commit was not needed.
 - **Not written: "giving up while getting ready changes nothing"** (step 1). It cannot happen. `onGaveUp` is set only in `begin`, which moves to running at once, and `tearDown` clears it. Listening that fails to start is already `listen`'s failure, covered by `listeningThatFailsRecordsNoTakeAndTearsDown`.
 

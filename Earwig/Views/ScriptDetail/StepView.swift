@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// A step on the Script screen: its title, directions in the cue colour, its lines with any
-/// inline direction in the cue colour, and its takes. On the start step, Start starts a take
-/// once the step is rendered (Andy, device check 6: the badge looked like a button, so it is one).
+/// inline direction in the cue colour, and its takes. On the start step, Start Take at its foot
+/// starts a take (plan 008: there with the text, the start card above only choosing the mode).
 struct StepView: View {
     let step: Step
     let isStart: Bool
@@ -23,23 +23,6 @@ struct StepView: View {
                     .font(.title3.bold())
                     .foregroundStyle(EarwigTheme.text)
                 Spacer(minLength: 8)
-                if isStart {
-                    Button { start?() } label: {
-                        Label("Start", systemImage: "play.fill")
-                            .font(.caption.weight(.bold))
-                            .textCase(.uppercase)
-                            .tracking(1)
-                            .foregroundStyle(EarwigTheme.onAccent)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(EarwigTheme.accent, in: Capsule())
-                            .opacity(start == nil ? 0.4 : 1)
-                    }
-                    // Borderless: in a list row a plain button's tap goes to the row.
-                    .buttonStyle(.borderless)
-                    .disabled(start == nil)
-                    .accessibilityHint("Starts take \(nextTake)")
-                }
             }
 
             ForEach(Array(step.directions.enumerated()), id: \.offset) { _, direction in
@@ -57,6 +40,20 @@ struct StepView: View {
             Text(takesText)
                 .font(.footnote)
                 .foregroundStyle(EarwigTheme.secondaryText)
+
+            if isStart {
+                // Start, not a tap on the card: a take started by accident while scrolling is
+                // worse than one more tap (plan 005, decision 8).
+                Button { start?() } label: {
+                    AccentPill(title: "Start Take \(nextTake)", systemImage: "play.fill", expands: true)
+                        .opacity(start == nil ? 0.4 : 1)
+                }
+                // Borderless: in a list row a plain button's tap goes to the row.
+                .buttonStyle(.borderless)
+                .disabled(start == nil)
+                .accessibilityHint(start == nil ? "Once the step is rendered" : "Starts take \(nextTake)")
+                .padding(.top, 4)
+            }
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())

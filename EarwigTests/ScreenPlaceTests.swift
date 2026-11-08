@@ -67,6 +67,21 @@ struct ScreenPlaceTests {
         #expect(place.markPlace == place.place)
     }
 
+    @Test func aMoveForwardNeverShowsTheWordBefore() {
+        var place = ScreenPlace()
+        run(&place, from: 0, to: 2) { _ in 7 }
+        // Forward to a phrase starting at word 12: the mark is on 12 at once, and stays there.
+        place.move()
+        var marks: [Int] = []
+        var time = 2.0
+        while time < 4 {
+            time += 1.0 / 60
+            place.step(toward: 12, at: time)
+            marks.append(Int(place.markPlace.rounded(.down)))
+        }
+        #expect(marks.allSatisfy { $0 == 12 })
+    }
+
     @Test func aMoveGlidesHoweverNear() {
         var place = ScreenPlace()
         run(&place, from: 0, to: 2) { _ in 12 }

@@ -74,7 +74,12 @@ struct ScreenPlace: Equatable, Sendable {
             glideTarget = target
             place += error * (1 - exp(-interval / Self.jumpGlide))
             speed = 0
-            if abs(target - place) <= 0.05 { gliding = false }
+            // Landed on the target exactly: just short of it, gliding forward, is still the word
+            // before, and the mark showed it for a moment (device check 2 of plan 008).
+            if abs(target - place) <= 0.05 {
+                place = target
+                gliding = false
+            }
             return
         }
         let omega = Self.response

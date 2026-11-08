@@ -391,3 +391,135 @@ File: /Users/andybower/Projects/Earwig/EarwigTests/ScreenLayoutTests.swift, line
 5. **Size and orientation.** Passed (Andy): pinching, landscape on the mount with the controls down the side, and the size from Settings at the next take. The default of 40 pt "sounds good". The pinch was "a little bit jumpy", because every word was laid out again at each step of the pinch. Changed: while pinching, the text is scaled as a picture about the eyeline, and laid out again at the new size when the pinch ends.
 
 6. **With Voice, in a pocket, with the SK18** (in place of "Ear only, unchanged", since Ear mode went). Andy: "fine". The console: a take of step 1 completed, 30.9 s, all 70 words heard, six waits with the longest 3.1 s, speed 0.94–1.19, delay 0.82 s, never Lost. Plan 006's clean read, of step 3, had six waits with the longest 2.1 s. The pinch, made smooth after check 5, was also "fine".
+
+## Review pass — 2026-11-08 (second)
+
+Findings from `/review-branch` on branch `screen-mode`, run again at Andy's request after the device-check changes, **unresolved as written**. Each is a claim from a review on that date, not an established fact, and each verdict under *Assessment* is a recommendation, not a decision. Work through them and annotate each with what was done — fixed, or rejected and why. A finding that turns out to be wrong should say so here rather than be deleted.
+
+### Code
+
+Review of `screen-mode` against `main`, judged on plan 008's "As built" list. Everything is committed: no unstaged, staged or untracked files. I did not run the build or the tests.
+
+Overall the branch matches As built items 1 to 11:
+- **Modes:** two modes, With Voice and Screen Only, chosen on the start card's tiles or in Settings. A stored "ear" or "both" reads as With Voice, both through `TakeSettings` and through `@AppStorage`, which falls back to the default.
+- **The screen's place:** voiceless following, `screenPlace` as the word after the last confident one, and `ScreenPlace` with its two rules and the stated constants.
+- **The text:** an eyeline at 1/3, words heard in `heardText`, and the lit phrase only with a voice and `lightsVoice` on.
+- **Back and Forward:** they now ignore what was said before the press, with a voice and without.
+- **Starting:** Screen Only starts with nothing rendered, and Next Take keeps the mode.
+- **Size:** 24 to 72 pt, default 40, and the pinch scales the text about the eyeline.
+- **Layout:** one take layout, with the controls down the side in landscape.
+- **Route check:** the earpiece is not judged and a lost earpiece does not hold in Screen Only.
+- **Start card:** laid out as described.
+
+Engine purity, colours kept in `EarwigTheme`, and UK spelling are all respected. Nothing looks like it would break the build.
+
+**C1 — WARNING: the redraw may not actually pause when the text comes to rest (As built item 4, the battery point of device check 1).**
+- `TimelineView(.animation(minimumInterval: nil, paused: follower.isStill(toward: place) && !dragging))` only re-evaluates `paused` when `ScreenTextView.body` runs again.
+- The body runs again only when one of its inputs changes: `tokens`, `place`, `textSize` or `resume`, or the state values `layout` and `dragging`.
+- `ScreenFollower` is a reference type that nothing observes. When it settles, nothing makes the body run again, so the timeline keeps redrawing at display rate. Examples: after a burst, during Hold (`presenterPlace` is fixed at `heldPlace`), or once a dragged offset has faded (`dragging` was set false while `dragged` was still non-zero).
+- It only pauses if some unrelated input happens to change while the follower is already at rest. A With Voice take in a pocket with the light off is the case named, and it changes nothing else, so it would likely redraw throughout.
+- I have not checked this on the device; it depends on how often SwiftUI re-evaluates the view.
+- Fix: flip a `@State` flag (or make the follower `@Observable` with an "at rest" property that changes only on a transition) when `y(at:)` finds it has come to rest, so `paused` is re-read.
+- Files: `/Users/andybower/Projects/Earwig/Earwig/Views/Prompt/ScreenTextView.swift:30-38`, `/Users/andybower/Projects/Earwig/Earwig/ViewModels/ScreenFollower.swift:31-53`.
+
+**C2 — SUGGESTION: `moveReading` copies the re-anchor block from `move`, and `isCompleteReading` nearly copies `isComplete`.**
+- `move(by:)` and `moveReading(by:)` end with the same four lines (`settled`, `current`, `ignoreHeardBefore = now + estimate.delay`, `ignoreSpokenBefore = now`) under the same pasted comment. A small helper, for example `takePresenter(toStartOf: target)`, would keep the "ignore before the press" rule in one place. That rule was the subject of a device-check fix, so it is worth not having twice.
+- `isCompleteReading` is `isComplete(voiceDoneAt:)` with `since = current.confidentAt` instead of the later of the voice's end and `confidentAt`. Giving one function an optional voice-done time would remove the twin.
+- File: `/Users/andybower/Projects/Earwig/Earwig/Engine/FollowEngine.swift:509-551`.
+
+**C3 — SUGGESTION: `TakeSetup.Summary` carries fields left behind by the simplification.**
+- Once `phrase`/`tokens` and `PhraseList.sentence(containing:)` went, the app no longer reads `Summary.phraseList` or `Summary.firstWord`. Only `PromptViewModelTests` uses them, to build `screenWords` by hand.
+- `screenWords` defaults to `[]`, so a `Summary` built without it shows no text.
+- Building `screenWords` inside `Summary` from the phrase list, and dropping the two unused stored fields (or keeping them only as inputs), would remove the unused state and the trap.
+- Files: `/Users/andybower/Projects/Earwig/Earwig/ViewModels/PromptViewModel.swift:198-212`, `/Users/andybower/Projects/Earwig/EarwigTests/PromptViewModelTests.swift:11,158`.
+
+**C4 — SUGGESTION: a doc comment moved, and some doc comments are stale.**
+- `ModeTile` was inserted between `AccentPill`'s doc comment and `AccentPill`. The result is that `AccentPill` has no doc and `ModeTile`'s doc starts with "A filled accent capsule…" (`/Users/andybower/Projects/Earwig/Earwig/Views/ScriptDetail/ScriptDetailView.swift:259-260`).
+- `ReadingHeardSource`'s doc names `-EarwigScreen`, but the flag that switches it on is `-EarwigReads` (`/Users/andybower/Projects/Earwig/Earwig/ViewModels/ScriptDetailViewModel.swift:224`).
+- Several comments still use the superseded terms ("Screen mode with Ear off", "With Ear off", "reading line"), where As built says Screen Only and an eyeline:
+  - `FollowSettings.voiced` (`/Users/andybower/Projects/Earwig/Earwig/Engine/FollowSettings.swift:73`);
+  - `startTake` (`/Users/andybower/Projects/Earwig/Earwig/ViewModels/ScriptDetailViewModel.swift:80`);
+  - the `ScreenTextView` and `IconControl` headers (`/Users/andybower/Projects/Earwig/Earwig/Views/Prompt/ScreenTextView.swift:3`, `/Users/andybower/Projects/Earwig/Earwig/Views/Prompt/PromptView.swift:262`).
+
+**Not a finding:** `progress.md` still shows the plan in flight, with the second review and Complete unticked. CLAUDE.md asks for it to be emptied to a stub when the plan completes, so that needs doing before the PR.
+
+### Tests
+
+Review of the test changes on `screen-mode` against `main`. Nothing is staged, unstaged or untracked under EarwigTests/, so the committed diff is everything: 16 files, +981/−79. I did not run the tests.
+
+**T1 — CRITICAL: coverage gap that hides a real bug. With a voice, Back or Forward while held leaves the screen's place frozen.**
+- Voiced `move(by:)` sets `held = false` but never clears `heldPlace`. The voiceless `moveReading` clears it, and so do Hold-release, Restart and finish.
+- So `snapshot.presenterPlace` stays at `heldPlace ?? screenPlace` after the move, and the scrolling text stops following.
+- It stays frozen until the next Hold press. Because `held` is already false, that press holds again instead of releasing.
+- No test catches this:
+  - The voiceless `holdKeepsThePlaceAndReleaseGoesToWhereThePresenterIs` does Forward while held, but checks only `presenterWord`, not `presenterPlace`.
+  - The voiced `whileHeldThePlaceShownStaysStill` does no move.
+- Fix: add `heldPlace = nil` to `move(by:)`. Add a voiced test: Hold, then Forward, then `presenterPlace` follows the target. Also assert `presenterPlace` in the voiceless test.
+- Files: `/Users/andybower/Projects/Earwig/Earwig/Engine/FollowEngine.swift:511`, `/Users/andybower/Projects/Earwig/EarwigTests/FollowEngineTests.swift:257-266`, `/Users/andybower/Projects/Earwig/EarwigTests/FollowEngineReadingTests.swift:110-127`
+
+**T2 — WARNING: the voiced change to Back/Forward is untested.**
+- The voiced `move(by:)` now uses `ignoreHeardBefore = now + delay` and `ignoreSpokenBefore = now` (As built item 6: "with a voice or without").
+- Only the voiceless branch has a test of late pre-press speech: `whatWasSaidBeforeAMoveIsNotFollowed`.
+- In FollowEngineTests the only change on the voiced side moves the interim times (3 → 3.5, 4 → 4.5) so an existing test still passes. Nothing asserts the new behaviour.
+- Fix: parameterise `whatWasSaidBeforeAMoveIsNotFollowed` over voiced and voiceless, or add a voiced twin.
+- Files: `/Users/andybower/Projects/Earwig/Earwig/Engine/FollowEngine.swift:512-517`, `/Users/andybower/Projects/Earwig/EarwigTests/FollowEngineTests.swift:229-234`, `/Users/andybower/Projects/Earwig/EarwigTests/FollowEngineReadingTests.swift:166-181`
+
+**T3 — WARNING: two simulated pause tests are named after removed behaviour and add nothing to the phrase-end pause test.**
+- `aPauseAtAColonMidPhraseWaitsAtTheNextWord` describes the removed punctuation stop.
+  - Its assertion `floor(place) <= 16` (heard to 15) can't fail now, because the place never runs past the word after the last one heard.
+- `aPauseNoPunctuationMarksComesBackToTheNextWord` describes the removed slide-back after a pause ("comes back").
+  - The place no longer overshoots, so nothing comes back. What it actually checks (the place sits on the next word late in the pause) is what `aPauseAtAPhraseEndWaitsAtTheNextPhrasesStart` checks.
+- The doc comments retell device-check-1 bugs whose fixes were removed.
+- Fix: fold the three into one test, parameterised by where the pause falls if wanted, asserting the place rests on the next word during the pause and `screenBackSteps` stays empty. That also drops four parameterised runs per removed test.
+- File: `/Users/andybower/Projects/Earwig/EarwigTests/Simulation/ScreenPlaceScenarioTests.swift:71-115`
+
+**T4 — SUGGESTION: comments in tests still describe removed designs.**
+- FollowEngineTests.swift:151: "The screen's place keeps the gate's rule" is from the guessed-estimate design. `presenterPlace` is now just the word after the last confident one; the assertion (5) is right, the reason given is not.
+- FollowEngineReadingTests.swift:4: "Screen mode with Ear off". There is no Ear mode now; it is Screen Only.
+- PromptViewModelTests.swift:89: "judged as in Ear mode".
+- Paths: `/Users/andybower/Projects/Earwig/EarwigTests/FollowEngineTests.swift:151`, `/Users/andybower/Projects/Earwig/EarwigTests/FollowEngineReadingTests.swift:4`, `/Users/andybower/Projects/Earwig/EarwigTests/PromptViewModelTests.swift:89`
+
+**T5 — SUGGESTION: the screen tests in PromptViewModelTests test less than their names say.**
+- `ScreenToken.isHeard(before:)` gets its cut-off from the caller (in the app, `ScreenFollower.mark`).
+- So `whatHasBeenHeardIsDimmed` and `lostAndHeldStillFollow` really test `index < n` for an `n` the test passes in. The snapshot has no effect on which words dim.
+- The `screen(...)` helper's `estimate` sets `presenterEstimate`, `presenterPlace` and `presenterWord`, but the model now reads only `presenterPlace`.
+- Fix:
+  - Have the helper take `place` and set only `presenterPlace`.
+  - Merge the `isHeard` checks into one test: cue excluded, waiting excluded, the cut-off.
+  - Drop the overlapping parts of `lostAndHeldStillFollow`. Keep its point that `place` and `diagnostics` stay live while lost and held.
+- File: `/Users/andybower/Projects/Earwig/EarwigTests/PromptViewModelTests.swift:145-215`
+
+**T6 — SUGGESTION: the glide tests overlap.**
+- In ScreenPlaceTests, `aJumpForwardGlides` and `aMoveForwardNeverShowsTheWordBefore` both check that a forward glide puts the mark on the target at once and keeps it there. One test with both triggers (a big jump, and `move()`) would do.
+- In ScreenFollowerTests, `theMarkIsTheSmoothedPlacesWord` repeats `aSmallFallIsWaitedOut` through the follower. Keeping just the `nil` before the first word and the rounding down covers the follower's own code.
+- Files: `/Users/andybower/Projects/Earwig/EarwigTests/ScreenPlaceTests.swift:57-100`, `/Users/andybower/Projects/Earwig/EarwigTests/ScreenFollowerTests.swift:40-48`
+
+**T7 — SUGGESTION: some voiceless Back/Forward tests could be merged.**
+- `backAndForwardMoveThePlaceAPhraseAndPassOverCues` and `afterAMoveTheScreensPlaceIsThePhrasesFirstWord` walk the same moves, one checking `presenterWord` and the other `presenterPlace`. One test asserting both would cover the same ground.
+- `thePlaceIsCappedAtTheLastWord` asserts on `presenterEstimate`. That does exercise the new `.idle` cap, but the screen uses `presenterPlace`, so add an assertion on that too.
+- File: `/Users/andybower/Projects/Earwig/EarwigTests/FollowEngineReadingTests.swift:66-72, 129-158`
+
+**Well covered:**
+- `ScreenLayout`, `ScreenText`, `AppSettings` (mode, migrating stored values, text size range).
+- `TakeSummary` mode, the Matcher's first-word rule.
+- Starting in Screen Only with nothing rendered, and Next Take keeping the mode.
+- `TakeHost` with no voice, including a lost earpiece.
+- The route check with no voice.
+
+The removed `PhraseList.sentence` tests and the Ear-mode phrase and sentence tests went out with their code, as they should.
+
+Overall the amount of testing fits the change. Apart from T1 and T2, the gaps are leftovers from the simplification rather than missing tests.
+
+### Assessment
+
+- T1 — FIX: real. `move(by:)` sets `held = false` and never clears `heldPlace` (`FollowEngine.swift`, voiced `move`), and `heldPlace` is set with a voice since the first pass's C1 fix. Clear it in the shared re-anchor helper (C2), add a voiced Hold-then-Forward test, and assert `presenterPlace` in the voiceless one.
+- C1 — FIX: real. `TakeHost.publish` assigns `snapshot` only when it changes, so at rest nothing re-runs `ScreenTextView.body` and `paused` is never re-read. Keep a `@State` rest flag, set from the timeline closure when the follower's stillness changes.
+- T2 — FIX: a voiced twin of `whatWasSaidBeforeAMoveIsNotFollowed`.
+- T3 — FIX: fold the three pause tests into one, parameterised by where the pause falls, asserting the place rests on the next word and never moves back.
+- C2 — FIX: one re-anchor helper for both moves (with T1's `heldPlace = nil`); one completion rule with an optional voice-done time.
+- C3 — FIX: `Summary` drops `phraseList` and `firstWord`; the tests build `screenWords` from `ScreenText` directly.
+- C4 — FIX: move `AccentPill`'s doc comment back, fix `ReadingHeardSource`'s flag name, and update the stale terms.
+- T4 — FIX: the three stale test comments.
+- T5 — FIX: the helper takes `place` and sets only `presenterPlace`; one `isHeard` test; `lostAndHeldStillFollow` keeps only `place` and `diagnostics`.
+- T6 — FIX: one forward-glide test with both triggers; the follower's mark test keeps `nil` and the rounding down.
+- T7 — FIX: merge the two voiceless move tests, and assert `presenterPlace` in the cap test.

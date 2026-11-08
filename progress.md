@@ -18,7 +18,7 @@ Andy's choices (2026-11-08): Ear off follows the presenter directly; reading lin
 - [x] Tests + lint (322 tests pass, SwiftLint clean, at ea4512e)
 - [x] Review + fixes (Review pass and Outcome in the plan; #25 comment; 325 tests pass, lint clean)
 - [x] Manual test: device. All six checks passed (recorded in the plan's device check section and Results).
-- [ ] Second review (Andy asked, after the device-check changes): two agents running, then verdicts, a second Review pass in the plan, a #25 comment, fixes
+- [ ] Second review: recorded in the plan (Review pass, second) and on #25. Stopped for Andy: T1 is CRITICAL (voiced Back/Forward during Hold leaves heldPlace set). All findings are FIX; awaiting his yes, then apply, test, lint, Outcome
 - [ ] Complete (commit + PR). Plan Results, PRD v0.10 and CLAUDE.md are written.
 
 ## Notes

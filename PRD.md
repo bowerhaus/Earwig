@@ -1,6 +1,6 @@
 # Earwig - Product Requirements Document (PRD)
 
-**Status:** Draft v0.8, 2026-11-08. Changes by version are in the Document History at the end.
+**Status:** Draft v0.9, 2026-11-08. Changes by version are in the Document History at the end.
 **Name:** Earwig (decided 2026-11-05: UK slang for listening in). Bundle identifier `com.bowerhaus.Earwig`.
 
 ## Executive Summary
@@ -466,9 +466,10 @@ Earwig/
                  AudioEngineHost, Listener, HeardEvents, Player, TakeHost, TakeSummary,
                  ScriptTakeRecorder, ModelContainerFactory
   ViewModels/    ScriptsViewModel, ScriptDetailViewModel, PromptViewModel, ListeningCheck
-  Views/         Scripts, ScriptDetail, Prompt, Settings (with the Listening check)
-  Resources/     Info.plist, Assets, tones
+  Views/         Scripts, ScriptDetail, Prompt, Settings (with the Listening check), Splash
+  Resources/     Info.plist, Assets (the app icon, the mark, the launch colour), tones
 EarwigTests/     Engine and parser tests with fixture word streams
+scripts/app_icon/ make_app_icon.py and the SVGs it writes: the icon and the mark
 scripts/release/ testflight.sh, ExportOptions.plist
 plans/           One plan per branch
 docs/            development.md (gotchas), this PRD stays at the root
@@ -567,6 +568,20 @@ for the voice's phrase, the start step and the slate numerals, and peach for cue
 directions. High contrast and large type for arm's length. Few screens, nothing
 decorative. SF Symbols. All colours in `EarwigTheme`; views never define their own.
 
+**App icon and splash** (plan 007). One mark for the Home Screen tile, the splash and the
+logo: a white earwig crawling at 35° on the theme's sky blue, drawn to the insect's
+proportions with no face, chosen from five rounds of concepts. The icon has the three iOS
+appearances: light is the insect in white on sky blue, opaque; dark is a cooler white on a
+transparent ground, so iOS supplies its backdrop, with the body's cuts in near-black; tinted
+is greyscale on a transparent ground. A committed script, `scripts/app_icon/make_app_icon.py`,
+holds the geometry, writes the SVGs, renders the PNGs with headless Chrome and also renders
+the mark alone, transparent, as the `EarwigMark` image the splash and any logo use; nothing
+is drawn twice. The launch screen is the sky blue alone, a colour set pinned to the theme by a
+test, so a cold launch opens on the app's own ground. A splash overlay then fades the mark and
+the name ("Earwig" in SF Rounded, bold, white) in and out over the Scripts screen in under a
+second; it shows once per process, so a return from the background or an unlock mid-take
+shows nothing, and Reduce Motion changes nothing, since fades are not motion.
+
 ---
 
 ## 11. Risks and Mitigations
@@ -616,6 +631,8 @@ Each stage is one plan, one branch, one issue and one PR.
    together, font size.
 7. **Settings and TestFlight.** The settings in 4.8, the release script, the first
    TestFlight build.
+
+Beside the stages, plan 007 (app icon, logo and splash, #21) gave the app its mark (10).
 
 ### Excluded from MVP
 
@@ -702,6 +719,7 @@ shared between recording and listening.
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.9 | 2026-11-08 | Plan 007 (#21): the app icon, the mark and the splash, with the launch colour and the splash's rules (10); the plan noted beside the stages (12); folders (7.3). Checked on the iPhone 14 Pro: the icon in the three appearances, the splash on a cold launch only, no visual refresh asked for. |
 | 0.8 | 2026-11-08 | Plan 006 results (#18, #19): a take whose listening gives up stops and says why (4.3, 8.3); for a gate, the presenter estimate does not coast across a phrase end until a word of the next phrase is heard, so off-script speech after a phrase end holds the voice (5.4). Checked on the iPhone 14 Pro: off script at a phrase end, a misheard phrase end, a clean read, a filler, and listening giving up. |
 | 0.7 | 2026-11-08 | Plan 005 results: the default lead 5, hybrid pacing and tones only, chosen on the phone (3, 4.4, 4.5, 4.8, 5.5, question 1); a voice speed, default 0.95x, as the base the player plays the voice at (4.2, 4.8); the route check during a take, amber on the speaker, an earpiece put away ending the take (4.3, 7.2, 11); the whole sentence shown while the voice waits, and no automatic re-giving after a fluff (4.4, 8.3); Forward from the last phrase does nothing, Start on the start step's card (4.4, 8.2); a take recorded at its slate (4.7); a 24-word window behind, a misread word not a jump, and completion timed from the presenter's last word (5.3, 5.4); the take host and the Slate service (7.2); the Prompt screen and the first Settings screen as built (8.3, 8.4); the measured lead and delays, outdoors and the Osmo still to do (4.4, 11); stage 5 done (12). |
 | 0.6 | 2026-11-07 | Plan 004 results: rendered audio held in memory, the start step rendered when chosen, nothing saved (2, 3, 4.2, 6.1, 9); Personal Voice tried and dropped, Stephanie the default and any good English voice pickable (Executive Summary, 4.2, 4.8, 11, questions 5 and 6); the cue voice the other gender first, the slate's text, a shot ID spelled out (4.2); directions inside a line a setting, a low chime by default or spoken (4.2, 4.8, question 4); the tones (4.5); the player's position where the presenter hears it and phrase ends on render (5.1); services and folders (7); the rendering row and Listen (8.2); our own Paste button in place of `PasteButton` (4.1, 8.2); stage 4 done (12). |

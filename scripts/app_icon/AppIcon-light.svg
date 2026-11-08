@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<rect width="1024" height="1024" fill="#5CB8F3"/>
+<g transform="rotate(-35 512 512) translate(512 512) scale(1.06) translate(-512 -512)">
+  <ellipse cx="512" cy="258" rx="44" ry="48" fill="#FFFFFF"/>
+  <rect x="460" y="296" width="104" height="68" rx="18" fill="#FFFFFF"/>
+  <path d="M456 452 C448 540 468 640 486 704 L538 704 C556 640 576 540 568 452 Z" fill="#FFFFFF"/>
+  <path d="M463 520 H561" fill="none" stroke="#5CB8F3" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M469.2 582 H554.8" fill="none" stroke="#5CB8F3" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M475.4 644 H548.6" fill="none" stroke="#5CB8F3" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="454" y="356" width="116" height="102" rx="26" fill="#FFFFFF"/>
+  <path d="M512 366 V448" fill="none" stroke="#5CB8F3" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M492 224 C464 172 442 130 416 86" fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M462 336 L404 302 L362 330" fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M456 398 L394 410 L354 400" fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M460 448 L406 490 L372 530" fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M488 702 C430 764 424 856 496 896" fill="none" stroke="#FFFFFF" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+  <g transform="translate(1024 0) scale(-1 1)">
+  <path d="M492 224 C464 172 442 130 416 86" fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M462 336 L404 302 L362 330" fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M456 398 L394 410 L354 400" fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M460 448 L406 490 L372 530" fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M488 702 C430 764 424 856 496 896" fill="none" stroke="#FFFFFF" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</g>
+</svg>

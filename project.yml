@@ -36,7 +36,11 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         UIBackgroundModes:
           - audio
-        UILaunchScreen: {}
+        # The colour alone, the theme's sky blue, so the splash overlay fades in from it with no
+        # handover to see (plan 007). iOS caches launch screens across reinstalls: restart the
+        # phone to see a change.
+        UILaunchScreen:
+          UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft

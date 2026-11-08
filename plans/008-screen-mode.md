@@ -48,10 +48,14 @@
 3. **The scroll is smooth and continuous (Andy, 2026-11-08).** Andy chose a continuous scroll over moving a line at a time.
    - **Layout.** The step is laid out as one view per word in a wrapping layout (a SwiftUI `Layout`, `WordFlow`). The layout reports each word's line, its x across the line, and each line's y and height, as a plain `TextGeometry` value.
    - **Where the text should be.** The target is a y, not a word. Take the presenter's line's y, plus the fraction of the line before the estimate, times the line height. The fraction is worked out from the estimate's word and its fractional part, by the words' x positions. As the presenter reads along a line, the text rises continuously, and that line's middle is at the reading line when they are halfway through it.
-   - **Smoothing.** The shown offset follows the target with a critically damped glide, time constant 0.6 s, stepped each frame from a `TimelineView(.animation)`. The estimate moves in bursts about a second apart on the phone (plan 006), and the glide turns a burst into an even movement, not a jump.
-   - **Jumps.** A step back, Back, Forward, or found after Lost glides the same way, quicker (0.3 s) when the target is more than three lines away, so the text gets to the new place without a long slow scroll.
+   - **Smoothing, in words.** The shown place is smoothed in script words by `ScreenPlace`, then turned into a y by `ScreenLayout` every frame from a `TimelineView(.animation)`. The estimate moves in bursts about a second apart on the phone (plan 006): four words at once, a half-second coast, then still. A plain glide on the y (as first planned, time constant 0.6 s) would lag a steady reader by about 2.4 words at 4 words a second. So `ScreenPlace` is a critically damped second-order tracker (2.5 rad/s), with a speed as well as a place. While the presenter reads steadily it moves at their pace with no lag, and turns each burst into an even movement.
+     - It never runs on more than half a word past the estimate, so it stops when the presenter pauses.
+     - It never moves back for a fall in the estimate. The estimate falls a few words whenever a final settles a block, because it stops counting the recogniser's delay. Followed, that slipped the text back at every phrase end in the simulated takes.
+     - It moves back only when the confident word does, by more than two words: a step back, Back, Restart, or found behind after Lost.
+     - It glides forward on a jump of more than six words (Forward, found ahead), with time constant 0.3 s, and never turns back during that glide.
+   - **Measured** in the simulated takes (`ScreenPlaceScenarioTests`), against the last word the presenter began. At 2.5 words a second, 86–90% of samples are within two words and 96–99% within three. At 4 words a second in bursts, 69–89% are within two and 88–100% within three, against 60–70% and 80–85% for the raw estimate. Through a clean read, a stop and a fluff, the text never moves back.
    - **The view.** The text is a clipped container offset by the shown value, not a `ScrollView`, so the offset can be set every frame without fighting a scroll view's own animation.
-   - **Plain values.** The target and the glide are worked out by `ScreenScroll`, which is tested without views: given the geometry, the estimate, the time and the last offset, the next offset.
+   - **Plain values.** `ScreenPlace` (the smoothing) and `ScreenLayout` (the word frames and the y of a place) are tested without views.
    - **Dragging by hand.** A drag moves the text, and the automatic scroll waits. It comes back with a glide three seconds after the drag ends, or at once on Back, Forward or Restart.
    - **Why a view per word.** A step is a few hundred words at most, so it is cheap, and it gives each word its own colour and position, which one long `Text` cannot.
 
@@ -66,7 +70,8 @@
    The text is built from the take's `PhraseList` and `FollowScript.firstWord` into `[ScreenWord]` (text, flat index or none, phrase, line, whether a cue) by `ScreenText`, a plain value tested without views. Its state per word (passed, mark, in the voice's phrase, the voice's word, cue) comes from the snapshot in `PromptViewModel`.
 
 5. **Theme and type.**
-   - The Prompt screen keeps the one sky-blue theme's background, as Ear mode does. PRD §4.6 asks for "dark background", which the theme's dark appearance already gives; Andy judges both appearances on the mount.
+   - The Prompt screen keeps the one sky-blue theme's background, as Ear mode does. The app has one appearance, whatever the phone's setting (plan 002), so PRD §4.6's "dark background" is read as the theme's ground. Andy judges it on the mount.
+   - The voice's phrase is lit on the cards' mid-blue at 70%. A faint accent was tried first and looked green on the sky blue.
    - The type is the system font, semibold, left aligned, with a line spacing of 0.25 of the size so the reading line is easy to find.
    - Any colour added goes in `EarwigTheme`.
 
@@ -85,7 +90,7 @@
 8. **Font size.**
    - One saved value, `TakeSettings.textSize`, in points, 24 to 72, default 40, kept in `UserDefaults`.
    - In Settings it is a slider with a sample line at that size.
-   - On the Prompt screen, a pinch on the text scales it live and saves the size when the pinch ends; the reading line keeps its word in place while the size changes.
+   - On the Prompt screen, a pinch on the text scales it live, saving the size as it changes. The place stays at the reading line while the size changes, since the y is worked out from the place every frame.
    - The size is the same in portrait and landscape: landscape gives longer lines, not bigger type.
 
 9. **The Prompt screen in Screen mode is compact.** The text gets most of the screen, and the controls stay where a hand can reach them at the mount:
@@ -116,11 +121,11 @@
 | `ViewModels/ScriptDetailViewModel.swift` | Start without rendering when the mode is Screen (decision 7) |
 | `Views/Prompt/PromptView.swift` | Ear or Screen middle, the compact layout, the mode label (decision 9) |
 | `Views/Prompt/ScreenTextView.swift` (new) | The scrolling text, `WordFlow`, the reading line, the pinch (decisions 3, 8) |
-| `Views/Prompt/ScreenScroll.swift` (new) | The target offset and the glide, plain values (decision 3) |
+| `ViewModels/ScreenPlace.swift`, `ViewModels/ScreenLayout.swift` (new) | The smoothed place, and the y of a place from the word frames, plain values (decision 3) |
 | `Views/ScriptDetail/ScriptDetailView.swift` | The mode control beside Start; Start enabled without rendering in Screen mode (decisions 6, 7) |
 | `Views/Settings/SettingsView.swift` | The Screen group (decisions 6, 8) |
 | `EarwigTests/FollowEngineTests.swift`, `Simulation/FollowScenarioTests.swift`, `Simulation/TakeSimulation.swift` | Voiceless following (Step 1) |
-| `EarwigTests/ScreenTextTests.swift` (new), `ScreenScrollTests.swift` (new), `PromptViewModelTests.swift`, `TakeHostTests.swift`, `AppSettingsTests.swift`, `ScriptDetailViewModelTests.swift`, `TakeSummaryTests.swift` | As Steps |
+| `EarwigTests/ScreenTextTests.swift` (new), `ScreenPlaceTests.swift`, `ScreenLayoutTests.swift`, `Simulation/ScreenPlaceScenarioTests.swift` (new), `PromptViewModelTests.swift`, `TakeHostTests.swift`, `AppSettingsTests.swift`, `ScriptDetailViewModelTests.swift`, `TakeSummaryTests.swift` | As Steps |
 | `CLAUDE.md`, `PRD.md` | Status, the launch flag; §4.6, §4.8, §5, §8.3, §8.4, §12 as built |
 
 ## Steps
@@ -156,10 +161,12 @@
    - `ScreenText`, the per-word state in `PromptViewModel`, `ScreenTextView` with `WordFlow` and the reading line, and the compact layout in portrait and landscape.
    - Tests:
      - `ScreenTextTests`: paragraphs by line, cues, numbers as one word, cues dropped when off;
-     - `ScreenScrollTests`: the target through a line and across lines, the glide converging without overshoot, a burst becoming an even movement, a jump's quicker glide, and a drag pausing the follow for three seconds;
+     - `ScreenPlaceTests`: a steady read with no lag, bursts becoming an even movement, a pause, a fall in the estimate not moving it back, a step back and a jump forward gliding;
+     - `ScreenLayoutTests`: the y through a row, across rows and a paragraph gap, before the first word and past the last;
+     - `ScreenPlaceScenarioTests`: the smoothed place through simulated takes, with and without a voice, at both paces;
      - `PromptViewModelTests`: passed, the mark, the voice's phrase and word, Lost, Held, and the start before following.
-   - A Debug launch flag, `-EarwigScreen YES`, opens a demo take in Screen mode with `-EarwigNoListen`, so the simulator can show the layout.
-   - Screenshots in the simulator, portrait and landscape, light and dark, at 24, 40 and 72 pt, for Andy before the device check.
+   - Debug launch flags: `-EarwigScreen YES` opens a demo take in Screen mode, and `-EarwigReads YES` makes a take hear the step read at 2.5 words a second, so the simulator shows the text following.
+   - Screenshots in the simulator, portrait and landscape, Screen and Ear and Screen, for Andy before the device check.
 4. **The pinch** (decision 8): live scaling with the reading word held in place, saved at the end of the pinch.
 5. **Review.** `/review-branch`, with its findings fixed or recorded.
 6. **Device check** on the iPhone 14 Pro, one check at a time (Verification). Results come from Andy's verdicts and the console.
@@ -179,7 +186,7 @@
   2. **Screen only, off and back.** Stop mid-sentence and say something else, then go back a sentence and read on. Lost shows while you are off; the text steps back with you. Then Back, Forward and Hold, Release. Andy's verdict.
   3. **Ear and Screen, on the mount (Flow 2).** With the SK18. The voice leads, its phrase is lit ahead of your mark, and the text stays at your place. Andy's verdict on whether the lit phrase helps or distracts, and on the reading line's height.
   4. **Choosing the mode.** On the Script screen, switch the control beside Start between Ear, Screen and Both, and start a take in each. The Prompt screen shows the chosen mode, Settings shows the same value, and Next Take keeps it.
-  5. **Size and orientation.** Pinch the text larger and smaller during a take; landscape on the mount; the size from Settings at the next take. Andy's verdict on the default size at the mount's distance, and on the light and dark appearances.
+  5. **Size and orientation.** Pinch the text larger and smaller during a take; landscape on the mount; the size from Settings at the next take. Andy's verdict on the default size at the mount's distance, and on the sky blue as the ground.
   6. **Ear only, unchanged.** A take in Ear mode, to confirm nothing changed: no new waits against plan 006's clean read.
 
 ## Results

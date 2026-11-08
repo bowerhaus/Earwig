@@ -297,6 +297,11 @@ struct TakeSimulation {
     /// With no voice, the presenter estimate less the last word the presenter began, while they
     /// are reading (plan 008, decision 1).
     private(set) var placeErrors: [(time: TimeInterval, error: Double)] = []
+    /// What the screen shows, smoothed from the estimate each step (plan 008, decision 3): its
+    /// place less the last word the presenter began while reading, and every step it moved back.
+    private(set) var screen = ScreenPlace()
+    private(set) var screenErrors: [(time: TimeInterval, error: Double)] = []
+    private(set) var screenBackSteps: [(time: TimeInterval, length: Double)] = []
 
     init(script: FollowScript, settings: FollowSettings = FollowSettings(), acts: [PresenterAct], rate: Double = 2.5, recogniser: SimulatedRecogniser = SimulatedRecogniser()) {
         var settings = settings
@@ -341,6 +346,12 @@ struct TakeSimulation {
 
     private mutating func measure() {
         statuses.append(engine.snapshot.status)
+        let shown = screen.place
+        screen.step(toward: engine.snapshot.presenterEstimate, confident: engine.snapshot.presenterWord, at: time)
+        if screen.place < shown - 0.001 { screenBackSteps.append((time, shown - screen.place)) }
+        if presenter.position >= 0, let last = presenter.spoken.last, last.word.script != nil, time - last.end < 0.7 {
+            screenErrors.append((time, screen.place - Double(presenter.position)))
+        }
         if !engine.settings.voiced {
             guard presenter.position >= 0, let last = presenter.spoken.last, last.word.script != nil, time - last.end < 0.7 else { return }
             placeErrors.append((time, engine.snapshot.presenterEstimate - Double(presenter.position)))

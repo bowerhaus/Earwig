@@ -115,6 +115,8 @@ final class TakeHost: Identifiable {
     static let tickInterval: TimeInterval = 0.05
 
     let setup: TakeSetup
+    /// What the Prompt screen needs of the setup, built once (its screen words most of all).
+    @ObservationIgnored private(set) lazy var summaryForScreen = setup.summary
     private(set) var phase: Phase = .gettingReady
     private(set) var snapshot = FollowSnapshot()
     /// Why the take stopped, when it was not the presenter or a call: listening gave up (#18).

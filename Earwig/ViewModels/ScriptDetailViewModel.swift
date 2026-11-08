@@ -130,6 +130,9 @@ final class ScriptDetailViewModel {
         // `-EarwigNoListen YES`: a take that hears nothing, for the simulator, which cannot
         // transcribe en-GB.
         if UserDefaults.standard.bool(forKey: "EarwigNoListen") { heard = SilentHeardSource() }
+        // `-EarwigReads YES`: a take that hears the step read at 2.5 words a second, so the
+        // simulator shows the screen following (plan 008).
+        if UserDefaults.standard.bool(forKey: "EarwigReads") { heard = ReadingHeardSource(phraseList: phraseList) }
         // `-EarwigListenGivesUp YES`: listening gives up ten seconds into the take, to see the
         // take stop and say why on the phone (plan 006, decision 7).
         if UserDefaults.standard.bool(forKey: "EarwigListenGivesUp") { heard = GivingUpHeardSource(heard) }
@@ -213,6 +216,48 @@ final class SilentHeardSource: HeardSource {
     var downloadProgress: Double? { nil }
     func listen(contextWords: [String]) async -> String? { nil }
     func stopListening() async {}
+}
+
+/// Reads the step aloud as heard words, for the simulator, which cannot transcribe en-GB: four
+/// seconds after listening starts (past the tones), the step's words one every 0.4 s as one
+/// growing interim block, settled by a final at each sentence end (plan 008, `-EarwigScreen`).
+@MainActor
+final class ReadingHeardSource: HeardSource {
+    var onHeard: ((FollowEvent, TimeInterval) -> Void)?
+    var onRestart: (() -> Void)?
+    var onGaveUp: ((String) -> Void)?
+    var downloadProgress: Double? { nil }
+    private let words: [String]
+    private var reading: Task<Void, Never>?
+
+    init(phraseList: PhraseList) {
+        words = phraseList.spoken.flatMap { $0.phrase.tokens.filter { $0.word != nil }.map(\.text) }
+    }
+
+    func listen(contextWords: [String]) async -> String? {
+        reading = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(4))
+            guard let self else { return }
+            var block: [(text: String, start: TimeInterval)] = []
+            for word in words {
+                guard !Task.isCancelled else { return }
+                block.append((word, HostClock.now - 0.4))
+                onHeard?(.interim(block.map(\.text).joined(separator: " ")), HostClock.now)
+                if PhraseSplitter.endsSentence(word) {
+                    try? await Task.sleep(for: .seconds(0.5))
+                    onHeard?(.final(block.map { FinalWord(text: $0.text, start: $0.start) }), HostClock.now)
+                    block = []
+                }
+                try? await Task.sleep(for: .seconds(0.4))
+            }
+        }
+        return nil
+    }
+
+    func stopListening() async {
+        reading?.cancel()
+        reading = nil
+    }
 }
 
 /// Listens as the source it wraps, then gives up ten seconds after listening starts, as the

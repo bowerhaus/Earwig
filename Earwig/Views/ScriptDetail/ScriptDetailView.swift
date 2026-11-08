@@ -92,6 +92,13 @@ struct ScriptDetailView: View {
         }
         .onAppear { model.appeared(in: context, renderer: renderer) }
         #if DEBUG
+        .task {
+            // `-EarwigScreen YES` starts a take on the screen alone, which needs no rendering
+            // (plan 008); with `-EarwigReads YES` it hears the step read.
+            guard UserDefaults.standard.bool(forKey: "EarwigScreen"), model.take == nil else { return }
+            try? await Task.sleep(for: .seconds(1))
+            model.startTake(with: renderer, in: context, mode: .screen)
+        }
         .onChange(of: model.renderState(renderer)) { _, state in
             // `-EarwigListen YES` opens Listen once the start step is ready, for the simulator.
             // After a moment, as a sheet asked for during the navigation push is dropped.

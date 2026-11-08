@@ -1,24 +1,37 @@
 import SwiftUI
 import UIKit
 
-/// The Prompt screen in Ear mode (PRD §8.3; plan 005, decision 7): the step, the take and the
+/// The Prompt screen (PRD §8.3). In Ear mode (plan 005, decision 7): the step, the take and the
 /// route at the top; the status, what to do and the voice's phrase in the middle, where a tap
-/// starts the take from the slate; the manual controls at the bottom. The screen stays awake
-/// while it is up.
+/// starts the take from the slate; the manual controls at the bottom. In Screen mode (plan 008,
+/// decision 9): one row of the step, the status and the route, the scrolling text, and the
+/// controls as one row of icons, down the side in landscape. Finished and Can't start are as in
+/// Ear mode. The screen stays awake while it is up.
 struct PromptView: View {
     let host: TakeHost
     let onNextTake: () -> Void
     let onDone: () -> Void
 
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @AppStorage(TakeSettings.textSizeKey) private var textSize = TakeSettings.defaultTextSize
+    /// Counts Back, Forward and Restart, so the text follows again at once after a drag.
+    @State private var moves = 0
+
     var body: some View {
         let model = PromptViewModel(host: host)
-        VStack(spacing: 20) {
-            top(model)
-            middle(model)
-            bottom(model)
+        Group {
+            if model.showsScreen {
+                screen(model)
+            } else {
+                VStack(spacing: 20) {
+                    top(model)
+                    middle(model)
+                    bottom(model)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+            }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
         .background(EarwigTheme.background.ignoresSafeArea())
         .task(id: ObjectIdentifier(host)) { await host.start() }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
@@ -52,11 +65,11 @@ struct PromptView: View {
         }
     }
 
-    private func routeIcon(_ systemImage: String, state: PromptViewModel.RouteState, label: String) -> some View {
+    private func routeIcon(_ systemImage: String, state: PromptViewModel.RouteState, label: String, size: CGFloat = 44) -> some View {
         Image(systemName: systemImage)
-            .font(.title2)
+            .font(size < 44 ? .body : .title2)
             .foregroundStyle(colour(state))
-            .frame(width: 44, height: 44)
+            .frame(width: size, height: size)
             .background(EarwigTheme.surface, in: Circle())
             .accessibilityLabel("\(label) \(Self.describe(state))")
     }
@@ -152,6 +165,115 @@ struct PromptView: View {
         return result
     }
 
+    // MARK: - Screen mode
+
+    private func screen(_ model: PromptViewModel) -> some View {
+        Group {
+            if verticalSizeClass == .compact {
+                HStack(alignment: .top, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        screenTop(model)
+                        screenText(model)
+                    }
+                    screenControls(model, vertical: true)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    screenTop(model)
+                    screenText(model)
+                    screenControls(model, vertical: false)
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+    }
+
+    private func screenTop(_ model: PromptViewModel) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(model.stepText) · \(model.takeText)")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(EarwigTheme.text)
+                        .lineLimit(1)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(model.status)
+                            .font(.title3.weight(.heavy))
+                            .foregroundStyle(statusColour(model))
+                        Text(model.setup.mode.title)
+                            .font(.caption2.bold())
+                            .textCase(.uppercase)
+                            .tracking(1)
+                            .foregroundStyle(EarwigTheme.secondaryText)
+                    }
+                }
+                Spacer(minLength: 8)
+                routeIcon("earbuds", state: model.earpiece, label: "Earpiece", size: 34)
+                routeIcon("mic.fill", state: model.mic, label: "Microphone", size: 34)
+            }
+            if let note = model.routeNote {
+                Text(note)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(model.earpiece == .wrong || model.mic == .wrong ? EarwigTheme.warning : EarwigTheme.caution)
+            }
+            if let instruction = model.instruction {
+                Text(instruction)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(EarwigTheme.secondaryText)
+            }
+            if case .gettingReady = model.phase {
+                ProgressView(value: model.downloadProgress)
+                    .tint(EarwigTheme.accent)
+            }
+            if let diagnostics = model.diagnostics {
+                Text(diagnostics)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(EarwigTheme.secondaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+        }
+    }
+
+    private func screenText(_ model: PromptViewModel) -> some View {
+        ScreenTextView(tokens: model.screenTokens, place: model.place, confident: model.confident, textSize: $textSize, resume: moves)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onTapGesture {
+                if model.tapStarts { host.control(.tap) }
+            }
+    }
+
+    @ViewBuilder
+    private func screenControls(_ model: PromptViewModel, vertical: Bool) -> some View {
+        if model.canCancel {
+            Button(action: onDone) {
+                Text("Cancel")
+                    .font(.headline)
+                    .foregroundStyle(EarwigTheme.text)
+                    .frame(maxWidth: vertical ? 88 : .infinity, minHeight: 48)
+                    .background(EarwigTheme.surface, in: Capsule())
+            }
+            .buttonStyle(.plain)
+        } else {
+            let layout = vertical ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))
+            layout {
+                IconControl(title: "Back", systemImage: "backward.end.fill", enabled: model.backEnabled) { move(.back) }
+                IconControl(title: model.isHeld ? "Release" : "Hold", systemImage: model.isHeld ? "play.fill" : "pause.fill",
+                            lit: model.isHeld, enabled: model.holdEnabled) { host.control(.hold) }
+                IconControl(title: "Forward", systemImage: "forward.end.fill", enabled: model.forwardEnabled) { move(.forward) }
+                IconControl(title: "Restart", systemImage: "arrow.counterclockwise", enabled: model.restartEnabled) { move(.restart) }
+                IconControl(title: "Stop", systemImage: "stop.fill", enabled: model.stopEnabled) { host.control(.stop) }
+            }
+            .frame(width: vertical ? 64 : nil)
+        }
+    }
+
+    private func move(_ event: FollowEvent) {
+        moves += 1
+        host.control(event)
+    }
+
     // MARK: - Bottom
 
     @ViewBuilder
@@ -223,5 +345,29 @@ private struct ControlButton: View {
         .buttonStyle(.plain)
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.4)
+    }
+}
+
+/// A control in Screen mode's row: an icon, its name for VoiceOver only, lit while on (Hold).
+private struct IconControl: View {
+    let title: String
+    let systemImage: String
+    var lit = false
+    let enabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.title3.bold())
+                .foregroundStyle(lit ? EarwigTheme.onAccent : EarwigTheme.text)
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .background(lit ? EarwigTheme.accent : EarwigTheme.surface, in: RoundedRectangle(cornerRadius: 16))
+                .contentShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.4)
+        .accessibilityLabel(title)
     }
 }

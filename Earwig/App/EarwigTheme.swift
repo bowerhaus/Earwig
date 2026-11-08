@@ -25,6 +25,10 @@ enum EarwigTheme {
     static let warning = Color(hex: 0xFF8A7A)
     static let good = Color(hex: 0x7FE0A4)
     static let caution = Color(hex: 0xFFB454)
+    /// Behind the voice's phrase in the scrolling text: the cards' mid-blue, so white text reads
+    /// on it and the accent stays for the voice's word and the presenter's mark (plan 008,
+    /// decision 4; a faint accent looked green on the sky blue).
+    static let voiceHighlight = Color(hex: 0x2B82CC).opacity(0.7)
 }
 
 extension Color {

@@ -24,6 +24,20 @@ struct PromptViewModel: Equatable {
         var isCue = false
     }
 
+    /// A word of the scrolling text with how it is shown (plan 008, decision 4).
+    struct ScreenToken: Equatable {
+        var word: ScreenWord
+        /// Before the presenter's place: dimmed.
+        var isPassed = false
+        /// The presenter's place: underlined.
+        var isMark = false
+        /// In the voice's phrase, and the word the voice is saying.
+        var inVoicePhrase = false
+        var isVoiceWord = false
+        /// Before following starts, every word is dimmed.
+        var isWaiting = false
+    }
+
     let phase: TakeHost.Phase
     let snapshot: FollowSnapshot
     let route: AudioRoute
@@ -44,7 +58,7 @@ struct PromptViewModel: Equatable {
 
     @MainActor
     init(host: TakeHost) {
-        self.init(phase: host.phase, snapshot: host.snapshot, route: host.route, setup: host.setup.summary,
+        self.init(phase: host.phase, snapshot: host.snapshot, route: host.route, setup: host.summaryForScreen,
                   downloadProgress: host.downloadProgress, stopReason: host.stopReason)
     }
 
@@ -148,16 +162,44 @@ struct PromptViewModel: Equatable {
         }
     }
 
+    // MARK: - Screen mode
+
+    /// Whether the middle is the scrolling text: in a take with the screen on, until it is over.
+    var showsScreen: Bool { setup.mode.screen && !isOver }
+
+    /// Where the presenter is, for the scroll: the engine's estimate, and its confident word.
+    var place: Double { following ? snapshot.presenterEstimate : -1 }
+    var confident: Int { following ? snapshot.presenterWord : -1 }
+
+    /// The step's words as the screen shows them now.
+    var screenTokens: [ScreenToken] {
+        let mark = following && snapshot.presenterEstimate >= 0 ? Int(snapshot.presenterEstimate.rounded(.down)) : nil
+        let voicing = following && setup.mode.ear
+        return setup.screenWords.map { word in
+            var token = ScreenToken(word: word, isWaiting: !following)
+            guard following, !word.isCue else { return token }
+            if let index = word.word, let mark {
+                token.isPassed = index < mark
+                token.isMark = index == mark
+            }
+            if voicing, word.phrase == snapshot.voicePhrase {
+                token.inVoicePhrase = true
+                token.isVoiceWord = snapshot.status == .speaking && word.word != nil && word.word == snapshot.voiceWord
+            }
+            return token
+        }
+    }
+
     /// The device check's numbers (decision 7): lead error, speed, the measured delay and rate.
     var diagnostics: String? {
-        guard phase == .running, [.speaking, .waiting, .lost, .held].contains(snapshot.status) else { return nil }
+        guard following else { return nil }
         let error = snapshot.error.map { String(format: "%+.1f", $0) } ?? "–"
         return String(format: "lead error %@ · speed %.2f× · delay %.2f s · rate %.1f w/s", error, snapshot.speed, snapshot.delay, snapshot.rate)
     }
 
     // MARK: - Bottom
 
-    private var following: Bool { phase == .running && [.speaking, .waiting, .lost, .held].contains(snapshot.status) }
+    private var following: Bool { phase == .running && [.speaking, .waiting, .reading, .lost, .held].contains(snapshot.status) }
 
     var holdEnabled: Bool { following }
     var isHeld: Bool { phase == .running && snapshot.status == .held }
@@ -193,9 +235,12 @@ extension TakeSetup {
         var phraseList: PhraseList
         var firstWord: [Int]
         var mode = TakeMode.ear
+        /// The step's words for the screen, built once per take.
+        var screenWords: [ScreenWord] = []
     }
 
     var summary: Summary {
-        Summary(number: stepNumber, title: stepTitle, take: take, start: settings.start, phraseList: phraseList, firstWord: script.firstWord, mode: mode)
+        Summary(number: stepNumber, title: stepTitle, take: take, start: settings.start, phraseList: phraseList, firstWord: script.firstWord, mode: mode,
+                screenWords: mode.screen ? ScreenText.words(phraseList: phraseList, firstWord: script.firstWord) : [])
     }
 }

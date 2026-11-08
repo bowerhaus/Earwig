@@ -13,8 +13,8 @@ Andy's choices (2026-11-08): Ear off follows the presenter directly; reading lin
 
 - [x] Step 1: the engine with no voice (a4ad65f). Raw estimate at 4 w/s in bursts swings ±4 words; thresholds pinned at measured. Step 3 adds a rate-tracking ScreenPlace (alpha-beta in words) and measures it in the simulation.
 - [x] Step 2: settings, the take's mode, Start without rendering (mode picker in the rendering row; a lost earpiece does not hold a voiceless take)
-- [ ] Step 3: the text, `ScreenText`, `ScreenScroll`, `ScreenTextView`, compact layout, `-EarwigScreen`, screenshots
-- [ ] Step 4: the pinch
+- [x] Step 3: the text: `ScreenText`, `ScreenPlace` (tracker in words), `ScreenLayout`, `ScreenTextView`, compact layout, `-EarwigScreen` and `-EarwigReads`; simulator screenshots in the scratchpad `shots/` (screen-c, both, landscape)
+- [x] Step 4: the pinch (in `ScreenTextView`; checked on the device only)
 - [ ] Tests + lint
 - [ ] Review + fixes
 - [ ] Manual test: device (Verification 1–6)

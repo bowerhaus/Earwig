@@ -190,4 +190,74 @@ struct PromptViewModelTests {
         #expect(model.diagnostics == "lead error -0.4 · speed 1.05× · delay 0.91 s · rate 2.6 w/s")
         #expect(self.model(.running, .slate).diagnostics == nil)
     }
+
+    // MARK: - Screen mode
+
+    private func screen(_ status: FollowStatus, estimate: Double = -1, voicePhrase: Int? = nil, voiceWord: Int? = nil,
+                        mode: TakeMode = .screen, phase: TakeHost.Phase = .running) -> PromptViewModel {
+        var snapshot = FollowSnapshot()
+        snapshot.status = status
+        snapshot.presenterEstimate = estimate
+        snapshot.presenterWord = Int(estimate.rounded(.down))
+        snapshot.voicePhrase = voicePhrase
+        snapshot.voiceWord = voiceWord
+        var setup = setup
+        setup.mode = mode
+        setup.screenWords = ScreenText.words(phraseList: setup.phraseList, firstWord: setup.firstWord)
+        return PromptViewModel(phase: phase, snapshot: snapshot, route: route(out: .builtInSpeaker), setup: setup)
+    }
+
+    @Test func theScreenShowsWhileTheTakeRunsWithTheScreenOn() {
+        #expect(screen(.reading).showsScreen)
+        #expect(screen(.idle, phase: .gettingReady).showsScreen)
+        #expect(!screen(.finished, phase: .finished(.completed)).showsScreen)
+        #expect(!screen(.idle, phase: .failed("No mic")).showsScreen)
+        #expect(!screen(.speaking, mode: .ear).showsScreen)
+        #expect(screen(.speaking, mode: .both).showsScreen)
+    }
+
+    @Test func beforeFollowingEveryWordWaits() {
+        let model = screen(.tones)
+        #expect(model.screenTokens.allSatisfy { $0.isWaiting })
+        #expect(!model.screenTokens.contains { $0.isMark })
+        #expect(model.place == -1)
+        #expect(screen(.reading).status == "Reading")
+    }
+
+    @Test func thePresentersPlaceIsMarkedAndWhatTheyPassedDimmed() {
+        // Words: We(0) follow(1) the(2) footpath.(3) [Point] Down(4) to(5) three hundred(6) boats.(7)
+        let model = screen(.reading, estimate: 2.6)
+        let tokens = model.screenTokens
+        #expect(tokens.filter { $0.isMark }.map(\.word.text) == ["the"])
+        #expect(tokens.filter { $0.isPassed }.map(\.word.text) == ["We", "follow"])
+        #expect(!tokens.contains { $0.inVoicePhrase })
+        #expect(model.place == 2.6)
+        #expect(model.confident == 2)
+    }
+
+    @Test func aCueIsNeverMarkedPassedOrLit() {
+        let tokens = screen(.speaking, estimate: 6, voicePhrase: 1, mode: .both).screenTokens
+        let cue = tokens.first { $0.word.isCue }
+        #expect(cue?.word.text == "[Point]")
+        #expect(cue?.isPassed == false)
+        #expect(cue?.inVoicePhrase == false)
+    }
+
+    @Test func withTheVoiceItsPhraseIsLitAndItsWordMarked() {
+        let tokens = screen(.speaking, estimate: 1, voicePhrase: 2, voiceWord: 5, mode: .both).screenTokens
+        #expect(tokens.filter { $0.inVoicePhrase }.map(\.word.text) == ["Down", "to", "three hundred", "boats."])
+        #expect(tokens.filter { $0.isVoiceWord }.map(\.word.text) == ["to"])
+        // Waiting, the phrase stays lit and no word is being said.
+        let waiting = screen(.waiting, estimate: 1, voicePhrase: 2, voiceWord: 7, mode: .both).screenTokens
+        #expect(waiting.filter { $0.inVoicePhrase }.count == 4)
+        #expect(!waiting.contains { $0.isVoiceWord })
+        // On the screen alone, nothing is lit.
+        #expect(!screen(.reading, estimate: 1, voicePhrase: 2, voiceWord: 5).screenTokens.contains { $0.inVoicePhrase })
+    }
+
+    @Test func lostAndHeldKeepTheMark() {
+        #expect(screen(.lost, estimate: 3).screenTokens.filter { $0.isMark }.map(\.word.text) == ["footpath."])
+        #expect(screen(.held, estimate: 3).screenTokens.filter { $0.isMark }.map(\.word.text) == ["footpath."])
+        #expect(screen(.held, estimate: 3).diagnostics != nil)
+    }
 }

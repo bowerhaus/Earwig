@@ -193,7 +193,16 @@ struct PromptViewModelTests {
         let waiting = screen(.waiting, estimate: 1, voicePhrase: 2, voiceWord: 7, mode: .voice).screenTokens
         #expect(waiting.filter { $0.inVoicePhrase }.count == 4)
         #expect(!waiting.contains { $0.isVoiceWord })
-        // On the screen alone, nothing is lit.
+        // Not lit when the light is off (the Debug flag), nor on the screen alone.
+        var unlit = setup
+        unlit.mode = .voice
+        unlit.screenWords = ScreenText.words(phraseList: setup.phraseList, firstWord: setup.firstWord)
+        var speaking = FollowSnapshot()
+        speaking.status = .speaking
+        speaking.voicePhrase = 2
+        speaking.voiceWord = 5
+        let off = PromptViewModel(phase: .running, snapshot: speaking, route: route(out: .bluetoothA2DP), setup: unlit, lightsVoice: false)
+        #expect(!off.screenTokens.contains { $0.inVoicePhrase || $0.isVoiceWord })
         #expect(!screen(.reading, estimate: 1, voicePhrase: 2, voiceWord: 5).screenTokens.contains { $0.inVoicePhrase })
     }
 

@@ -46,10 +46,21 @@ struct PhraseSplitterTests {
         ])
     }
 
-    @Test func clauseLongerThanTheLimitIsCutEvenly() {
+    /// A clause with no break in it is not cut short of `maxClauseWords`: a cut there sounds
+    /// like a full stop (plan 009).
+    @Test func aLongClauseIsOnePhrase() {
+        let text = "Before the bridge, the ferry left from the north pier every hour on the hour in summer."
+        #expect(texts(text) == [
+            "Before the bridge,",
+            "the ferry left from the north pier every hour on the hour in summer.",
+        ])
         let words = (1...20).map { "w\($0)" }.joined(separator: " ")
-        let phrases = splitter.phrases(in: words + ".")
-        #expect(phrases.map(\.tokens.count) == [10, 10])
+        #expect(splitter.phrases(in: words + ".").map(\.tokens.count) == [20])
+    }
+
+    @Test func clauseLongerThanTheClauseLimitIsCutEvenly() {
+        let words = (1...24).map { "w\($0)" }.joined(separator: " ")
+        #expect(splitter.phrases(in: words + ".").map(\.tokens.count) == [12, 12])
     }
 
     @Test func closingQuotesDoNotHideASentenceEnd() {

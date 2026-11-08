@@ -1,6 +1,6 @@
 # Earwig - Product Requirements Document (PRD)
 
-**Status:** Draft v0.10, 2026-11-08. Changes by version are in the Document History at the end.
+**Status:** Draft v0.11, 2026-11-08. Changes by version are in the Document History at the end.
 **Name:** Earwig (decided 2026-11-05: UK slang for listening in). Bundle identifier `com.bowerhaus.Earwig`.
 
 ## Executive Summary
@@ -101,7 +101,7 @@ None at run time. Development needs Xcode 27 or later, `xcodegen`, `swiftlint`.
 | **Step** | A numbered section of a script. From Cutaway's `script.md` a step is `## N. Title`; plain text has one step per blank-line-separated block, or a single step. Takes are started from a step. |
 | **Line** | A spoken sentence or item within a step. In Cutaway's format, each `- ` item under `Says:`. |
 | **Direction** | Text in a step that is not spoken by the presenter: a step's title and `Shows:` field, anything in brackets inside a line, a `Footage:` or `Open:` field. Directions are never matched against what the presenter says. Some are read as cues (section 4.2). |
-| **Phrase** | The unit of playback and gating: a line split at sentence ends and at clause breaks (commas, dashes, semicolons) so no phrase is longer than about twelve words. The voice can only wait at a phrase boundary. |
+| **Phrase** | The unit of playback and gating: a line split at sentence ends and, in a sentence of more than about twelve words, at clause breaks (commas, dashes, semicolons, colons), packing clauses into phrases of up to twelve words. A clause itself is not cut unless it is longer than twenty words, since a cut with no punctuation sounds like a full stop (plan 009). The voice can only wait at a phrase boundary. |
 | **Rendering** | A phrase's audio in one voice, with the start time of every word in it. The phrases of the step a take starts from are rendered when the step is chosen, and kept in memory while the app runs by voice, rate and text (plan 004). |
 | **Lead** | How far ahead of the presenter the voice runs, set in words, with the equivalent in seconds shown: the head start the presenter feels, since the engine allows for the recogniser's delay itself (5.4). Default 5, the author's pick against 3 on real takes in plan 005. |
 | **Position** | Two positions in the script, both as a word index: the voice's (where playback is) and the presenter's (the last script word confidently heard). The engine's job is to keep the difference near the lead. |
@@ -337,7 +337,9 @@ estimated position, the speed, the lead error, and the measured delay and rate.
   to 2 s; the rate over the last 10 s of finals, pauses over a second left out, default 2.5
   words a second). Off script it stays at the last confident word. After a final the
   presenter has paused, so it stays there, unless the voice has since started a phrase the
-  presenter has not begun: a lead's worth of time later they are taken to have begun it,
+  presenter has not begun and they were heard within three words of it (at the end of the
+  phrase before, or short of it by a misheard word or two; stopped further back they have not
+  reached it, plan 009): a lead's worth of time later they are taken to have begun it,
   and no further, which bridges a first interim result that is late after a pause while
   letting silence through a gate only for a phrase of `lead + 1` words or fewer. It never
   passes what the voice has given. For a gate, the coast does not cross a phrase end: it
@@ -753,6 +755,7 @@ shared between recording and listening.
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.11 | 2026-11-08 | Plan 009, longer phrases: a clause with no break is cut only past twenty words, after the voice stopped mid-clause on the phone ("…that ground flour for"); stored scripts are split again (3, "Phrase"). After a final, the presenter is taken to have begun the voice's phrase only if heard within three words of it, after silence let two phrases through once Andy had stopped mid-phrase (5.4). Stopping the voice for a fluff, and the text going back to the phrase's start after one, were tried on the phone and dropped: the recogniser mishears some words every time, and each looked like a fluff (recorded in the plan). |
 | 0.10 | 2026-11-08 | Plan 008 (#25), stage 6: Screen mode as built and judged on the phone. Every take scrolls the script, With Voice or Screen Only, chosen on the start card or in Settings and fixed for the take; Ear alone dropped (Executive Summary, 4.6, 4.8, 8.3, Flow 2, Flow 3). The eyeline with the heard words dimmed, no word marker; the voice's phrase lit as a setting, off by default (4.6). Following with no voice, the screen's place as the word after the last one heard, and what was said before Back or Forward not followed (5.4a). The start card, Start Take on the step's card (8.2). The Prompt screen's one layout (8.3). ScreenText and the screen's view models (7.2, 7.3). Stage 6 done (12). |
 | 0.9 | 2026-11-08 | Plan 007 (#21): the app icon, the mark and the splash, with the launch colour and the splash's rules (10); the plan noted beside the stages (12); folders (7.3). Checked on the iPhone 14 Pro: the icon in the three appearances, the splash on a cold launch only, no visual refresh asked for. |
 | 0.8 | 2026-11-08 | Plan 006 results (#18, #19): a take whose listening gives up stops and says why (4.3, 8.3); for a gate, the presenter estimate does not coast across a phrase end until a word of the next phrase is heard, so off-script speech after a phrase end holds the voice (5.4). Checked on the iPhone 14 Pro: off script at a phrase end, a misheard phrase end, a clean read, a filler, and listening giving up. |

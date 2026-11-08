@@ -44,12 +44,15 @@ struct Phrase: Codable, Equatable, Sendable {
     }
 }
 
-/// Splits spoken text into phrases of at most `maxWords` words (PRD §3, "Phrase"): first at
-/// sentence ends and line breaks, then, for a sentence that is too long, at commas, semicolons,
-/// colons and dashes, packing clauses together while they fit. A clause longer than the limit
-/// is cut into near-equal pieces.
+/// Splits spoken text into phrases (PRD §3, "Phrase"): first at sentence ends and line breaks,
+/// then, for a sentence longer than `maxWords`, at commas, semicolons, colons and dashes,
+/// packing clauses together while they fit in `maxWords`. A clause is never cut unless it is
+/// longer than `maxClauseWords`, and then into near-equal pieces of at most `maxWords`: each
+/// phrase is rendered alone and ends with a sentence's fall, so a cut with no punctuation
+/// sounds like a full stop ("…that ground flour for", plan 009).
 struct PhraseSplitter {
     var maxWords = 12
+    var maxClauseWords = 20
 
     func phrases(in text: String) -> [Phrase] {
         sentences(in: text).flatMap(split).map(Phrase.init(tokens:))
@@ -104,7 +107,8 @@ struct PhraseSplitter {
             var length = 0
             for start in stride(from: end - 1, through: 0, by: -1) {
                 length += units[start].words.count
-                if length > maxWords { break }
+                // A clause longer than the packing limit is a phrase alone.
+                if length > maxWords, start < end - 1 { break }
                 guard let previous = best[start] else { continue }
                 let penalty = start == 0 ? 0 : units[start - 1].breakPenalty
                 let score = Score(count: previous.score.count + 1, penalty: previous.score.penalty + penalty, imbalance: previous.score.imbalance + length * length)
@@ -126,7 +130,7 @@ struct PhraseSplitter {
         var units: [Unit] = []
         let clauses = clauses(of: sentence)
         for (index, clause) in clauses.enumerated() {
-            let pieces = clause.count > maxWords ? evenPieces(of: clause) : [clause]
+            let pieces = clause.count > maxClauseWords ? evenPieces(of: clause) : [clause]
             for piece in pieces { units.append(Unit(words: piece, breakPenalty: 2)) }
             guard let last = clause.last else { continue }
             let nextIsDash = index + 1 < clauses.count && clauses[index + 1].first.map(Self.isDash) == true

@@ -18,7 +18,8 @@ struct ScriptImporterTests {
         #expect(result.script.title == "The Harbour Walk")
         #expect(result.script.format == .cutaway)
         #expect(result.script.orderedSteps.count == 3)
-        #expect(result.script.phraseCount == 27)
+        // 26 since plan 009: "The path climbs … half a mile." is no longer cut in two.
+        #expect(result.script.phraseCount == 26)
         #expect(count == 1)
     }
 

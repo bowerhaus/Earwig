@@ -47,6 +47,13 @@ struct FollowSettings: Equatable, Sendable {
     /// A confident position this many words or more behind the last is a step back.
     var stepBackWords = 3
 
+    /// After a pause, the presenter is taken to have begun the voice's phrase (the late first
+    /// result) only if they were heard within this many words of its start: at the end of the
+    /// phrase before, or short of it by a misheard word or two. Stopped mid-phrase further back,
+    /// it moved them on to the voice's phrase through silence, and let the next phrase through
+    /// (plan 009, on the phone).
+    var lateStartReach = 3
+
     /// How long the presenter estimate goes on advancing with no new result.
     var maxCoast: TimeInterval = 0.5
     var defaultDelay: TimeInterval = 0.9

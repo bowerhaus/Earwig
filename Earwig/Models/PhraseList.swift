@@ -20,7 +20,8 @@ struct StepPhrase: Codable, Equatable, Sendable {
 /// stable (PRD §6.1). A list from an older parser is rebuilt from the script's source text.
 struct PhraseList: Codable, Equatable, Sendable {
     /// Bump when the splitting or the script words change, so stored lists are rebuilt.
-    static let currentVersion = 1
+    /// 2: a clause is cut only past `PhraseSplitter.maxClauseWords` (plan 009).
+    static let currentVersion = 2
 
     var parserVersion: Int
     var phrases: [StepPhrase]

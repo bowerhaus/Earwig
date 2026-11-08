@@ -140,9 +140,9 @@ Two other ways were weighed and not chosen (2026-11-08):
 - On the iPhone 14 Pro, installed with `devicectl` and the console read live, one at a time, with the sample script (made up). Lead 5, hybrid, tones only, voice speed 0.95x (the defaults):
   1. **Filming and following at once** (step 1, before the rest is built): as step 1. 1a to 1c done on 2026-11-08 (Results). **1d, deferred by Andy to here:** ten minutes of filmed takes at 4K30 for heat and battery, and the last take's final sentence in the picture (the fix after 1c).
   2. **Sound only, in the hand.** Record Sound, With Voice, the SK18. Read a step, then Play Back. Andy's verdict on hearing his reading; the file in Files under the script's name.
-  3. **Video on the mount, With Voice and Screen Only.** Frame on the preview, Start, read a step, Play Back. Andy's verdicts on framing, on the dot and time, and on the picture and sync at 1080p. The take's waits against a take with recording off.
+  3. **Video on the mount, With Voice and Screen Only.** Frame on the preview (it shows as soon as the camera runs, while the take gets ready), Start, read a step. Finished shows "Saving the recording…" with Next Take and Done held, then Play Video and Play Sound. Andy's verdicts on framing, on the dot and time, and on the picture and sync at 1080p. The take's waits against a take with recording off.
   4. **4K30.** The same at 4K30; the file's size; Share to the Mac by AirDrop and Save Video to Photos.
-  5. **Locked mid-take.** Lock the phone during a video take and unlock it at the end. The voice carries on, Finished says when the video stopped, and the file has the sound to the end.
+  5. **Locked mid-take.** Lock the phone during a video take and unlock it at the end. The voice carries on, the dot turns to the sound icon, Finished says "Video stopped at m:ss: the phone was locked or Earwig left the screen.", and the file has the sound to the end.
   6. **Keeping.** With Keep Recordings off, two takes leave one file; on, two takes leave two. Settings shows the size, and Delete All empties the folder.
 
 ## Results

@@ -86,6 +86,14 @@ struct TakeSetup {
     /// Ear, Screen or both, fixed for the take (plan 008, decision 6).
     var mode = TakeMode.ear
 
+    /// The engine's settings: voiced exactly when the take has the ear, so the engine and the
+    /// host cannot disagree about it (review C3).
+    var engineSettings: FollowSettings {
+        var engine = settings
+        engine.voiced = mode.ear
+        return engine
+    }
+
     /// The step's words and the slate's, each once, as written, for the analyser's context.
     static func contextWords(phraseList: PhraseList, slateText: String) -> [String] {
         let tokens = phraseList.spoken.flatMap { $0.phrase.tokens.map(\.text) } + slateText.split(whereSeparator: \.isWhitespace).map(String.init)
@@ -155,7 +163,7 @@ final class TakeHost: Identifiable {
         self.clock = clock
         self.ticks = ticks
         self.log = log
-        engine = FollowEngine(script: setup.script, settings: setup.settings, slateWords: setup.slateWords)
+        engine = FollowEngine(script: setup.script, settings: setup.engineSettings, slateWords: setup.slateWords)
         summary = TakeSummary(wordCount: setup.script.words.count)
     }
 

@@ -56,7 +56,11 @@ struct ScreenPlaceTests {
         run(&place, from: 0, to: 3) { min(3 * $0, 6) }
         #expect(place.place <= 6 + ScreenPlace.overrun + 1e-9)
         #expect(place.place > 5.5)
-        #expect(place.speed == 0 || place.place < 6.5)
+        // Stopped: half a second more and it has not moved.
+        let stopped = place.place
+        run(&place, from: 3, to: 3.5) { _ in 6 }
+        #expect(place.speed == 0)
+        #expect(place.place == stopped)
     }
 
     @Test func aFallInTheEstimateDoesNotMoveItBack() {
@@ -76,6 +80,20 @@ struct ScreenPlaceTests {
         run(&place, from: 4, to: 5.5, confident: 3) { _ in 3 }
         #expect(abs(place.place - 3) < 0.3)
         #expect(place.speed == 0)
+    }
+
+    @Test func aMoveAskedForGlidesHoweverNear() {
+        var place = ScreenPlace()
+        run(&place, from: 0, to: 4, confident: 11) { _ in 12 }
+        // Back into a one-word phrase: the confident word falls by only two.
+        place.move()
+        run(&place, from: 4, to: 5.5, confident: 9) { _ in 9 }
+        #expect(abs(place.place - 9) < 0.3)
+        // Without the move, a fall that small is waited out.
+        var waited = ScreenPlace()
+        run(&waited, from: 0, to: 4, confident: 11) { _ in 12 }
+        run(&waited, from: 4, to: 5.5, confident: 9) { _ in 9 }
+        #expect(waited.place >= 12)
     }
 
     @Test func aJumpForwardGlidesQuicklyAndNeverTurnsBack() {

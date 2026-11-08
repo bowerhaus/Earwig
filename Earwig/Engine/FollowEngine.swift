@@ -43,8 +43,8 @@ struct FollowEngine: Sendable {
     private var phase: Phase = .idle
     private var voice: Voice = .idle
     private var held = false
-    /// With no voice, where the presenter was estimated to be when Hold was pressed: the place
-    /// shown while held, so the text stays still (plan 008, decision 1).
+    /// Where the presenter was estimated to be when Hold was pressed: the place shown while
+    /// held, so the text stays still (plan 008, decisions 1 and 4).
     private var heldPlace: Double?
     /// The phrase the voice last started, when, and the word it is saying.
     private var voicePhrase: Int?
@@ -476,9 +476,9 @@ extension FollowEngine {
             heldPlace = nil
             return reanchor(.release)
         }
-        // With no voice the place is kept while held, and released to wherever the presenter
-        // has been heard since.
-        if !settings.voiced { heldPlace = presenterNow() }
+        // The place shown is kept while held, so the text stays still, and released to
+        // wherever the presenter has been heard since (plan 008, decision 4; review C1).
+        heldPlace = presenterNow()
         held = true
         pacer.pause()
         if case .playing(let phrase) = voice {

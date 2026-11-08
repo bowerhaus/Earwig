@@ -16,9 +16,6 @@ struct ScreenTextView: View {
 
     /// Where the reading line is, as a share of the height.
     static let readingLine = 1.0 / 3
-    /// How long the text waits after a drag before following again.
-    static let dragHold: TimeInterval = 3
-
     @State private var follower = ScreenFollower()
     @State private var layout = ScreenLayout(words: [], frames: [:])
     @State private var pinchBase: Double?
@@ -43,7 +40,7 @@ struct ScreenTextView: View {
             .gesture(drag)
             .simultaneousGesture(pinch)
         }
-        .onChange(of: resume) { follower.resume() }
+        .onChange(of: resume) { follower.moved() }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Script")
         .accessibilityValue(accessibilityValue)
@@ -78,45 +75,6 @@ struct ScreenTextView: View {
     private var accessibilityValue: String {
         guard let mark = tokens.firstIndex(where: \.isMark) else { return "" }
         return tokens[mark...].prefix(12).map(\.word.text).joined(separator: " ")
-    }
-}
-
-/// Steps the shown place each frame and adds any offset dragged by hand, which fades away
-/// `dragHold` seconds after the drag ends. A reference type, so the frame's update is not a
-/// state change.
-@MainActor
-final class ScreenFollower {
-    private var screenPlace = ScreenPlace()
-    /// Points dragged, positive when the text was pulled down (back).
-    private var dragged: CGFloat = 0
-    private var dragStart: CGFloat?
-    private var heldUntil: TimeInterval?
-    private var lastTime: TimeInterval?
-
-    func y(at time: TimeInterval, place: Double, confident: Int, layout: ScreenLayout) -> CGFloat {
-        defer { lastTime = time }
-        screenPlace.step(toward: place, confident: confident, at: time)
-        if dragStart == nil, dragged != 0, let lastTime, time >= heldUntil ?? 0 {
-            dragged *= CGFloat(exp(-(time - lastTime) / ScreenPlace.jumpGlide))
-            if abs(dragged) < 0.5 { dragged = 0 }
-        }
-        return layout.y(at: screenPlace.place) - dragged
-    }
-
-    func drag(by translation: CGFloat) {
-        if dragStart == nil { dragStart = dragged }
-        dragged = (dragStart ?? 0) + translation
-        heldUntil = .infinity
-    }
-
-    func endDrag(at time: TimeInterval) {
-        dragStart = nil
-        heldUntil = time + ScreenTextView.dragHold
-    }
-
-    func resume() {
-        dragStart = nil
-        heldUntil = nil
     }
 }
 
@@ -157,6 +115,8 @@ private struct WordView: View {
     var body: some View {
         Text(token.word.text)
             .font(.system(size: size, weight: .semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.4)
             .foregroundStyle(foreground)
             .padding(.horizontal, size * 0.12)
             .padding(.vertical, size * 0.1)
@@ -221,7 +181,9 @@ private struct WordFlow: Layout {
         var y: CGFloat = 0
         var rowHeight: CGFloat = 0
         for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
+            // A word wider than the column is offered the column, and scales down to fit (review C4).
+            var size = subview.sizeThatFits(.unspecified)
+            if size.width > width { size = subview.sizeThatFits(ProposedViewSize(width: width, height: nil)) }
             let newParagraph = subview[StartsParagraph.self] && !frames.isEmpty
             if newParagraph || (x > 0 && x + size.width > width) {
                 y += rowHeight + (newParagraph ? paragraphSpacing : 0)

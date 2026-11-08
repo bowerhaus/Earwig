@@ -141,7 +141,7 @@
      - Lost and found;
      - no phrase commands at any point.
    - The simulated takes gain a voiceless run: a clean read, a stop and resume, a fluff and step back, and a wander off script, at 2.5 and 4 words a second with 1 s bursts. Each asserts:
-     - the estimate within two words of the presenter's true place for 95% of samples while reading;
+     - the estimate near the presenter's place, pinned at what was measured (review C6): within two words for 87% of samples at 2.5 words a second and 55% at 4 in bursts, within three for 97% and 77%. The 95% first asked for was not reachable from the raw estimate at the phone's pace, where each burst moves it four words. What the screen shows is the smoothed place (decision 3), measured and pinned in `ScreenPlaceScenarioTests`;
      - completion;
      - Lost shown while off script.
    - Every existing test passes unchanged.
@@ -192,3 +192,143 @@
 ## Results
 
 *To be filled in at the device check.*
+
+## Review pass — 2026-11-08
+
+Findings from `/review-branch` on branch `screen-mode`, **unresolved as written**. Each is a claim
+from a review on that date, not an established fact, and each verdict under *Assessment* is a
+recommendation, not a decision. Work through them and annotate each with what was done — fixed,
+or rejected and why. A finding that turns out to be wrong should say so here rather than be
+deleted.
+
+### Code
+
+Review of branch `screen-mode` against `main`, judged on plan 008's Goal, Scope, Design decisions and Verification. All changes are committed. There are no unstaged, staged or untracked files. I did not run the build or the tests.
+
+Overall the branch matches the plan:
+- **Engine:** `voiced` is a branch in `FollowEngine`, not a second engine.
+- **Prompt screen:** `.reading` status, the compact layout in portrait and landscape, and the mode label.
+- **Starting a take:** Start works without rendering in Screen mode, and Next Take keeps the take's mode.
+- **Settings:** the Screen group with Mode and Text size, and the pinch.
+- **Route check and summary:** the earpiece is not judged in a take with no voice, and the summary line gives the mode.
+
+Engine purity, all colours in `EarwigTheme`, and UK spelling are respected. `project.yml` picks new files up from the folders, so no project change is needed. I found no build-breaking changes.
+
+**C1 — WARNING: Hold does not freeze the text in Ear and Screen.**
+- Decision 4 says "While Held, the text stays still", and the plan does not limit that to Screen alone. But the held place is only kept with no voice (`if !settings.voiced { heldPlace = presenterNow() }`).
+- With a voice, `snapshot.presenterEstimate` keeps changing while held:
+  - matching carries on (`afterHearing` only skips re-anchoring);
+  - the voice's `voiceStartedAt` is not cleared;
+  - `PresenterEstimate.position` keeps creeping toward the start of the held phrase (lines 97–100), up to the cap `firstWord[p] - 1`.
+- `PromptViewModel.place` feeds this estimate straight into the scroll and the mark, so in Both mode the text and the underline keep moving during Hold.
+- Fix: set `heldPlace` whatever `voiced` is. It only changes the snapshot; the pacer and the gates use `presenterNow()` directly and are skipped while held.
+- Files: `/Users/andybower/Projects/Earwig/Earwig/Engine/FollowEngine.swift:479-481` (and 171), `/Users/andybower/Projects/Earwig/Earwig/ViewModels/PromptViewModel.swift:171`.
+
+**C2 — SUGGESTION: the scroll can miss Back and Restart when the confident word falls by two words or fewer.**
+- `ScreenPlace` only moves back when the confident word falls by more than `backJump` (2). Decision 3 says it moves back on Back and Restart.
+- Cases that miss it:
+  - Voiceless Back from the start of a phrase into a one- or two-word phrase.
+  - Voiced Back, which sets the confident word from the voice's phrase (ahead of the presenter), so it can land within two words of where the presenter is, or even ahead.
+- In both cases the text stays where it was while the estimate falls back.
+- The view already counts `moves` on Back, Forward and Restart (`PromptView.move`), but only uses it to cancel a drag. Passing that signal into `ScreenPlace` to force a glide would make it reliable.
+- File: `/Users/andybower/Projects/Earwig/Earwig/ViewModels/ScreenPlace.swift:56`.
+
+**C3 — SUGGESTION: the take's mode is stored twice in `TakeSetup`.**
+- `TakeSetup` has both `mode` and `settings.voiced`, and each is set on its own (`ScriptDetailViewModel.startTake` sets both; `TakeHostTests` sets both by hand and empties `audio.phrases`).
+- If they ever disagree, `TakeHost.deviceLost` and the route check (which use `mode`) would act differently from the engine (which uses `voiced`).
+- Deriving one from the other, for example `settings.voiced` from `mode` when the setup is built, would remove that risk.
+- Files: `/Users/andybower/Projects/Earwig/Earwig/Services/TakeHost.swift:87`, `/Users/andybower/Projects/Earwig/Earwig/ViewModels/ScriptDetailViewModel.swift:117-120`.
+
+**C4 — SUGGESTION: a word wider than the column is clipped.**
+- `WordFlow` sizes each word at its natural width and never breaks or scales it.
+- At the top text size (72 pt) on an iPhone 14 Pro in portrait (about 353 pt of column), or in landscape's narrower column beside the controls, a long word runs past the clipped edge.
+- Fix: limit the width offered to each word to the column width (and let it scale down), or lower the top of `textSizeRange`.
+- File: `/Users/andybower/Projects/Earwig/Earwig/Views/Prompt/ScreenTextView.swift:224`.
+
+**C5 — SUGGESTION: the summary's mode names repeat `TakeMode`'s.**
+- `TakeSummary.line` has its own `switch` from `TakeMode` to `ear` / `screen` / `ear+screen`, beside `TakeMode`'s existing `label` and `title`.
+- A `logName` (or similar) on `TakeMode` would keep the names in one place.
+- File: `/Users/andybower/Projects/Earwig/Earwig/Services/TakeSummary.swift:91-95`.
+
+**C6 — SUGGESTION: the plan and the simulated-take thresholds disagree.**
+- Plan step 1 asks the voiceless runs to keep the estimate within two words for 95% of samples while reading.
+- `FollowReadingScenarioTests` sets that pass mark at the measured results instead: 87% at 2.5 words a second, and 55% at 4 words a second in bursts.
+- The thresholds are recorded as measured in `progress.md` and in the test's doc comment, but the plan still says 95%. It should be reconciled in the plan's Results (or decision 3) so the plan matches what was accepted.
+- The new `-EarwigScreen` and `-EarwigReads` launch flags also still need adding to CLAUDE.md, which is planned for the Finish step.
+- File: `/Users/andybower/Projects/Earwig/EarwigTests/Simulation/FollowReadingScenarioTests.swift:27-30`.
+
+### Tests
+
+Test review of branch screen-mode against main. I read the committed test diff and every new suite in full. There are no unstaged, staged or untracked test changes. Overall the coverage is good: the engine running with no voice, ScreenText, ScreenLayout, ScreenPlace, the Screen-mode paths in PromptViewModel, TakeHost (no voice, earpiece put away), ScriptDetailViewModel (start without rendering, Next Take keeping the mode), TakeSummary and AppSettings are all tested. My findings:
+
+T1. WARNING: Tests that call `startTake` without a mode now depend on the app's real stored setting.
+`startTake` now reads `AppSettings.take.mode` from `UserDefaults.standard`, which the test host shares with the app in the simulator. If the author picks Screen in Settings or beside Start, then runs the tests in the same simulator:
+- `withCuesOffATakeHasNoCuePhrases` fails, because its audio phrases are empty and its count check (`setup.audio.phrases.count == setup.phraseList.phrases.count`) breaks.
+- `startOpensATakeNumberedAfterTheStepsLast` silently runs as a Screen take.
+- The Next Take check in `onTheScreenAloneATakeStartsWithNothingRendered` claims "whatever the setting" but never sets the setting. It only proves the mode was kept if the stored setting happens to be Ear.
+
+Fix: pass `mode: .ear` explicitly in those existing calls, and in the Next Take test set the stored mode to `.ear` first (or inject `TakeSettings`).
+File: /Users/andybower/Projects/Earwig/EarwigTests/ScriptDetailViewModelTests.swift, lines 52, 79-81, 106-108.
+
+T2. SUGGESTION: The drag-and-resume logic in `ScreenFollower` is untested.
+It holds a hand drag, fades it out `dragHold` seconds after the drag ends, and Back, Forward and Restart cancel the hold through `resume()`. This is real behaviour the presenter relies on, it is plain logic with time passed in, and it currently lives in a view file. Moving it beside `ScreenPlace` and adding one or two tests would cover it: a drag holds, the hold then fades away, and `resume()` follows again at once.
+File: /Users/andybower/Projects/Earwig/Earwig/Views/Prompt/ScreenTextView.swift, lines 88-122.
+
+T3. SUGGESTION: The two scenario suites duplicate each other's helpers and some of each other's runs.
+Each defines its own `Pace` struct, `run`, `share` and a "from the fifth word on" filter. The voiceless rows of `ScreenPlaceScenarioTests` also run the same three takes (same acts, settings and paces) as `FollowReadingScenarioTests`, measuring only a different series. `TakeSimulation` already records both `placeErrors` and `screenErrors` in one run. Shared helpers in a `TakeSimulation` extension, plus asserting both measures on the same voiceless runs, would remove about 6 duplicate simulated takes with no loss of coverage.
+Files: /Users/andybower/Projects/Earwig/EarwigTests/Simulation/FollowReadingScenarioTests.swift (lines 26-57) and /Users/andybower/Projects/Earwig/EarwigTests/Simulation/ScreenPlaceScenarioTests.swift (lines 30-52, 66-79).
+
+T4. SUGGESTION: `TakeSimulation.measure()` repeats the same reading guard twice.
+The `screenErrors` and `placeErrors` blocks each check `presenter.position >= 0, let last = presenter.spoken.last, last.word.script != nil, time - last.end < 0.7`. Computing it once as a local `isReading` would make the two series easier to compare.
+File: /Users/andybower/Projects/Earwig/EarwigTests/Simulation/TakeSimulation.swift, lines 352-358.
+
+T5. SUGGESTION: One assertion in `aPauseStopsItHalfAWordPastTheEstimate` checks almost nothing.
+`#expect(place.speed == 0 || place.place < 6.5)` can only fail when the place is exactly 6.5 with a non-zero speed, and the first expectation already bounds the place at 6.5 or below. The behaviour the test is named for is that the place stops, so `#expect(place.speed == 0)` (possibly after a few more steps) would test it.
+File: /Users/andybower/Projects/Earwig/EarwigTests/ScreenPlaceTests.swift, line 59.
+
+T6. SUGGESTION: `aWholeReadSendsNoPhraseCommands` overlaps with the scenario suite.
+`FollowReadingScenarioTests.aCleanReadIsFollowed` already checks that a clean voiceless read completes and that the voice never plays (`neverPlays`) at two paces. The unit test adds little beyond that and could go. Even after removing it, the other 13 tests in the file each cover a distinct branch.
+File: /Users/andybower/Projects/Earwig/EarwigTests/FollowEngineReadingTests.swift, line 180.
+
+T7. SUGGESTION: Back or Forward pressed during Hold, with no voice, is not tested.
+`moveReading` clears `held` and `heldPlace`, so a move releases the hold and moves the place, but no test exercises that combination. One extra step in `holdKeepsThePlaceAndReleaseGoesToWhereThePresenterIs` (or in the Back/Forward test) would cover it.
+Files: /Users/andybower/Projects/Earwig/EarwigTests/FollowEngineReadingTests.swift, lines 104-130; source /Users/andybower/Projects/Earwig/Earwig/Engine/FollowEngine.swift, `moveReading`.
+
+T8. SUGGESTION: Two small tidy-ups in `ScreenLayoutTests`.
+- `theWordsAreAsExpected` re-tests `ScreenText` output that `ScreenTextTests` already covers. As a fixture sanity check it could be dropped or folded into one of the layout tests.
+- The `words` fixture builds the same `PhraseList` twice. Building it once would make the fixture easier to read.
+File: /Users/andybower/Projects/Earwig/EarwigTests/ScreenLayoutTests.swift, lines 10-24.
+
+### Assessment
+
+- C1 — FIX: real; `heldPlace` is set only when voiceless (`FollowEngine.swift:481`), so in Ear and Screen the estimate the scroll follows creeps during Hold. Set it in both; only the snapshot reads it.
+- C2 — FIX: real; Back into a one-word phrase ("Morning!") or a voiced Back near the presenter drops the confident word by two or fewer, which `ScreenPlace` ignores. Back, Forward and Restart force a glide through the follower's `resume()`.
+- C3 — FIX: real duplication; `TakeHost` builds the engine from `setup.settings` with `voiced` taken from `setup.mode`, so the two cannot disagree; `followSettings` loses its `for:` parameter.
+- C4 — FIX: real at 72 pt ("breakfast." is near the column's width); a word is offered at most the column's width and scales down to fit.
+- C5 — FIX: cheap; `TakeMode.logName`.
+- C6 — FIX (part): reconcile the plan's 95% with the pinned, measured thresholds in Step 1's text; the CLAUDE.md flags are already in Finish.
+- T1 — FIX: real; pass `mode: .ear` in the two existing `startTake` calls, and set the stored mode to Ear around the Next Take check, restoring it after.
+- T2 — FIX: move `ScreenFollower` beside `ScreenPlace` (no SwiftUI needed) with time passed in, and test that a drag holds then fades and that `resume()` follows again at once and forces a glide (with C2).
+- T3 — SKIP: the simulated takes are cheap (under a second together) and each suite reads as its own measure with its own documented numbers; merging couples them for little gain.
+- T4 — FIX: trivial; one `isReading` local.
+- T5 — FIX: assert the speed is 0 once the place has stopped.
+- T6 — SKIP: it pins at the engine's own level that no `.stopVoice` or `.setSpeed` is ever sent, which the scenario's `neverPlays` does not check (it sees plays and speeds only).
+- T7 — FIX: one step: Forward during Hold releases it and moves the place.
+- T8 — FIX: build the fixture's phrase list once and drop `theWordsAreAsExpected`, folding its check of the word indices into a layout test.
+
+### Outcome — 2026-11-08
+
+- C1 — fixed: the held place is kept with a voice too (`FollowEngine.toggleHold`); `whileHeldThePlaceShownStaysStill` pins it.
+- C2 — fixed: `ScreenPlace.move()` forces a glide either way; the follower's `moved()` calls it on Back, Forward and Restart; `aMoveAskedForGlidesHoweverNear`.
+- C3 — fixed: `TakeSetup.engineSettings` takes `voiced` from the mode, and `TakeHost` builds the engine from it; `followSettings` has no mode parameter.
+- C4 — fixed: a word wider than the column is offered the column and scales down (`WordFlow`, `WordView`). Checked at the device check.
+- C5 — fixed: `TakeMode.logName`.
+- C6 — fixed (part): Step 1's 95% now records the pinned, measured thresholds; the CLAUDE.md flags are written at Finish.
+- T1 — fixed: the two existing `startTake` calls pass `.ear`, and the Next Take check sets the stored mode to Ear and restores it.
+- T2 — fixed: `ScreenFollower` is in `ViewModels/ScreenFollower.swift` with time passed in; `ScreenFollowerTests` covers a drag holding then fading and a move following at once.
+- T3 — not done: the simulated takes are cheap and each suite is its own measure with its own numbers.
+- T4 — fixed: one `reading` local in `TakeSimulation.measure()`.
+- T5 — fixed: the pause test checks the speed is 0 and the place stays put.
+- T6 — not done: the unit test pins that no `.stopVoice` or `.setSpeed` is sent, which the scenario does not see.
+- T7 — fixed: Forward during Hold releases it and moves the place.
+- T8 — fixed: the fixture's phrase list is built once and `theWordsAreAsExpected` folded into a layout test.

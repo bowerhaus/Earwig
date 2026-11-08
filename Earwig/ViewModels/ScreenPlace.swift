@@ -35,11 +35,18 @@ struct ScreenPlace: Equatable, Sendable {
     private(set) var speed = 0.0
     private var lastTime: TimeInterval?
     private var lastConfident: Int?
-    private enum Glide { case none, forward, back }
+    /// `either` is a move the presenter asked for, which may go either way.
+    private enum Glide { case none, forward, back, either }
     private var glide = Glide.none
 
     init(place: Double = -1) {
         self.place = place
+    }
+
+    /// Back, Forward or Restart was pressed: glide to wherever the estimate goes, however near,
+    /// either way (review C2: a Back of two words or fewer was not followed).
+    mutating func move() {
+        glide = .either
     }
 
     /// Moves the place on to `time`, toward the engine's estimate then; `confident` is the

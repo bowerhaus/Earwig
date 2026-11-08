@@ -89,7 +89,6 @@ struct TakeHostTests {
         let audio = TakeAudio(phrases: phrases.map { TakeAudio.Phrase(kind: .spoken, buffer: silence(seconds: $0.duration)) }, slate: nil, tones: silence(seconds: Tones.duration))
         var settings = FollowSettings()
         settings.start = start
-        settings.voiced = mode.ear
         var setup = TakeSetup(
             stepNumber: 1, stepTitle: "The footpath", take: 2,
             phraseList: PhraseList(lines: Self.lines),

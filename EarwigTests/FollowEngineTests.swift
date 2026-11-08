@@ -251,6 +251,17 @@ struct FollowEngineTests {
         #expect(engine.handle(.hold, at: 5.5) == [.play(phrase: 2, speed: 1)])
     }
 
+    @Test func whileHeldThePlaceShownStaysStill() {
+        var engine = following()
+        _ = engine.handle(.voiceProgress(phrase: 0, offset: 1.6), at: 3.4)
+        _ = engine.handle(.interim("morning all here"), at: 3.4)
+        _ = engine.handle(.hold, at: 3.5)
+        let place = engine.snapshot.presenterEstimate
+        _ = engine.handle(.interim("morning all here we are the tide"), at: 5)
+        _ = engine.tick(at: 6)
+        #expect(engine.snapshot.presenterEstimate == place)
+    }
+
     @Test func holdWhileWaitingStopsNothing() {
         var engine = following()
         _ = engine.handle(.phraseEnded(0), at: 3.8)

@@ -15,8 +15,8 @@ Andy's choices (2026-11-08): Ear off follows the presenter directly; reading lin
 - [x] Step 2: settings, the take's mode, Start without rendering (mode picker in the rendering row; a lost earpiece does not hold a voiceless take)
 - [x] Step 3: the text: `ScreenText`, `ScreenPlace` (tracker in words), `ScreenLayout`, `ScreenTextView`, compact layout, `-EarwigScreen` and `-EarwigReads`; simulator screenshots in the scratchpad `shots/` (screen-c, both, landscape)
 - [x] Step 4: the pinch (in `ScreenTextView`; checked on the device only)
-- [ ] Tests + lint
-- [ ] Review + fixes
+- [x] Tests + lint (322 tests pass, SwiftLint clean, at ea4512e)
+- [x] Review + fixes (Review pass and Outcome in the plan; #25 comment; 325 tests pass, lint clean)
 - [ ] Manual test: device (Verification 1–6)
 - [ ] Complete (commit + PR)
 

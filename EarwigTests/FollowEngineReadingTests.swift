@@ -112,6 +112,11 @@ struct FollowEngineReadingTests {
         #expect(engine.handle(.hold, at: 5.5) == [])
         #expect(engine.snapshot.status == .reading)
         #expect(engine.snapshot.presenterWord == 6)
+        // Forward while held releases the hold and moves the place.
+        _ = engine.handle(.hold, at: 6)
+        #expect(engine.handle(.forward, at: 6.5) == [])
+        #expect(engine.snapshot.status == .reading)
+        #expect(engine.snapshot.presenterWord == 9)
     }
 
     @Test func backAndForwardMoveThePlaceAPhraseAndPassOverCues() {

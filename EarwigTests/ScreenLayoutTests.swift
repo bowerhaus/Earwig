@@ -7,8 +7,10 @@ struct ScreenLayoutTests {
 
     /// Two rows of 50-point lines: words 0 and 1 on the first (x 0–100, 100–200), word 2 on the
     /// second (x 0–100), a cue and word 3 in a new paragraph at y 130.
-    private let words = ScreenText.words(phraseList: PhraseList(lines: ["One two three.", "[Look] Four."]),
-                                         firstWord: FollowScript(phraseList: PhraseList(lines: ["One two three.", "[Look] Four."])).firstWord)
+    private let words: [ScreenWord] = {
+        let list = PhraseList(lines: ["One two three.", "[Look] Four."])
+        return ScreenText.words(phraseList: list, firstWord: FollowScript(phraseList: list).firstWord)
+    }()
 
     private var frames: [Int: CGRect] {
         [0: CGRect(x: 0, y: 0, width: 100, height: 50),
@@ -18,12 +20,8 @@ struct ScreenLayoutTests {
          4: CGRect(x: 80, y: 130, width: 100, height: 50)]
     }
 
-    @Test func theWordsAreAsExpected() {
-        #expect(words.map(\.text) == ["One", "two", "three.", "[Look]", "Four."])
-        #expect(words.map(\.word) == [0, 1, 2, nil, 3])
-    }
-
     @Test func beforeTheFirstWordIsTheFirstRow() {
+        #expect(words.map(\.word) == [0, 1, 2, nil, 3])
         let layout = ScreenLayout(words: words, frames: frames)
         #expect(layout.y(at: -1) == 0)
     }

@@ -346,15 +346,13 @@ struct TakeSimulation {
 
     private mutating func measure() {
         statuses.append(engine.snapshot.status)
+        let reading = presenter.position >= 0 && presenter.spoken.last.map { $0.word.script != nil && time - $0.end < 0.7 } == true
         let shown = screen.place
         screen.step(toward: engine.snapshot.presenterEstimate, confident: engine.snapshot.presenterWord, at: time)
         if screen.place < shown - 0.001 { screenBackSteps.append((time, shown - screen.place)) }
-        if presenter.position >= 0, let last = presenter.spoken.last, last.word.script != nil, time - last.end < 0.7 {
-            screenErrors.append((time, screen.place - Double(presenter.position)))
-        }
+        if reading { screenErrors.append((time, screen.place - Double(presenter.position))) }
         if !engine.settings.voiced {
-            guard presenter.position >= 0, let last = presenter.spoken.last, last.word.script != nil, time - last.end < 0.7 else { return }
-            placeErrors.append((time, engine.snapshot.presenterEstimate - Double(presenter.position)))
+            if reading { placeErrors.append((time, engine.snapshot.presenterEstimate - Double(presenter.position))) }
             return
         }
         guard player.isSpeakingAPhrase, let voice = player.word, presenter.position >= 0,

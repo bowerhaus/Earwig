@@ -114,7 +114,7 @@ final class ScriptDetailViewModel {
             audio: built.audio,
             slateText: slateText,
             slateWords: Slate.replyWords(for: step, take: number),
-            settings: AppSettings.take.followSettings(for: mode),
+            settings: AppSettings.take.followSettings,
             contextWords: TakeSetup.contextWords(phraseList: phraseList, slateText: slateText),
             voiceSpeed: AppSettings.take.voiceSpeed,
             mode: mode

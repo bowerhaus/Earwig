@@ -25,14 +25,11 @@ struct AppSettingsTests {
         settings.lead = 4
         settings.pacing = .phraseGated
         settings.startMode = .slate
-        let follow = settings.followSettings(for: .both)
+        let follow = settings.followSettings
         #expect(follow.lead == 4)
         #expect(follow.pacing == .phraseGated)
         #expect(follow.start == .slate)
         #expect(follow.minSpeed == FollowSettings().minSpeed)
-        #expect(follow.voiced)
-        #expect(settings.followSettings(for: .ear).voiced)
-        #expect(!settings.followSettings(for: .screen).voiced)
     }
 
     @Test func theModeIsKept() {

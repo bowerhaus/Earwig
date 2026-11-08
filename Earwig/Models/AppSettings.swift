@@ -37,6 +37,15 @@ enum TakeMode: String, CaseIterable, Sendable {
         }
     }
 
+    /// The name in the take summary's line.
+    var logName: String {
+        switch self {
+        case .ear: "ear"
+        case .screen: "screen"
+        case .both: "ear+screen"
+        }
+    }
+
     /// The full name, for Settings and the Prompt screen.
     var title: String {
         switch self {
@@ -124,14 +133,13 @@ struct TakeSettings {
         nonmutating set { defaults.set(newValue, forKey: Self.voiceSpeedKey) }
     }
 
-    /// The engine's settings for a take: the defaults with these, voiced unless the take is
-    /// on the screen alone.
-    func followSettings(for mode: TakeMode) -> FollowSettings {
+    /// The engine's settings for a take: the defaults with these three. Whether it is voiced
+    /// comes from the take's mode (`TakeSetup.engineSettings`).
+    var followSettings: FollowSettings {
         var settings = FollowSettings()
         settings.lead = lead
         settings.pacing = pacing
         settings.start = startMode
-        settings.voiced = mode.ear
         return settings
     }
 

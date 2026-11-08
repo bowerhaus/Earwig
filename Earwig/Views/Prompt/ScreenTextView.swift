@@ -10,6 +10,8 @@ struct ScreenTextView: View {
     /// The engine's estimate and confident word.
     let place: Double
     let confident: Int
+    /// The presenter has paused, as the engine judges it.
+    let paused: Bool
     @Binding var textSize: Double
     /// With no voice the presenter's place is a block on the word; with one, an underline, so
     /// it does not compete with the voice's word on the accent (Andy, device check 1).
@@ -30,8 +32,8 @@ struct ScreenTextView: View {
             let readingY = geometry.size.height * Self.readingLine
             // Redrawn every frame only while the text is moving, so a take in a pocket costs
             // little more than a still screen.
-            TimelineView(.animation(minimumInterval: nil, paused: follower.isStill(toward: place, confident: confident) && !dragging)) { context in
-                let y = follower.y(at: context.date.timeIntervalSinceReferenceDate, place: place, confident: confident, layout: layout)
+            TimelineView(.animation(minimumInterval: nil, paused: follower.isStill(toward: place, confident: confident, paused: paused) && !dragging)) { context in
+                let y = follower.y(at: context.date.timeIntervalSinceReferenceDate, place: place, confident: confident, paused: paused, layout: layout)
                 WordColumn(tokens: tokens, mark: follower.mark, blocksMark: blocksMark, size: textSize, width: geometry.size.width)
                     .equatable()
                     .offset(y: readingY - y)

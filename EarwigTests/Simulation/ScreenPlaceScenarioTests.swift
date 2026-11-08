@@ -100,6 +100,23 @@ struct ScreenPlaceScenarioTests {
         #expect(take.screenBackSteps.isEmpty)
     }
 
+    /// Device check 1 a third time: a pause after "village", where the script has no comma,
+    /// ran the mark into the next words. Once the recogniser settles, it comes back to "for".
+    @Test(arguments: paces)
+    func aPauseNoPunctuationMarksComesBackToTheNextWord(_ pace: Pace) {
+        let script = SimulationScripts.harbour(step: 0)
+        guard let village = script.words.firstIndex(where: { $0.text == "village" }) else {
+            Issue.record("no village")
+            return
+        }
+        let take = run([.read(0...village), .pause(3), .read((village + 1)...(script.words.count - 1))], pace, script: script)
+        let resume = take.presenter.spoken.first { $0.word.script == village + 1 }?.start ?? 0
+        let settled = take.screenPlaces.filter { $0.time > resume - 0.5 && $0.time < resume }.map(\.place)
+        #expect(!settled.isEmpty)
+        #expect(settled.allSatisfy { Int($0.rounded(.down)) == village + 1 })
+        #expect(take.outcome == .completed)
+    }
+
     @Test(arguments: paces)
     func aFluffAndStepBack(_ pace: Pace) {
         // A step back of two words, which the text waits out rather than moving back for.

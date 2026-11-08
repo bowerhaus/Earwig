@@ -72,6 +72,37 @@ struct ScreenPlaceTests {
         #expect(place.place >= reached)
     }
 
+    @Test func pausedPastTheNextWordItSlidesBack() {
+        var place = ScreenPlace()
+        // Ran on to 12 while the presenter, heard to word 7, had in fact stopped.
+        run(&place, from: 0, to: 2, confident: 7) { _ in 12 }
+        #expect(place.place > 11)
+        var time = 2.0
+        while time < 3.5 {
+            time += 1.0 / 60
+            place.step(toward: 7, confident: 7, paused: true, at: time)
+        }
+        #expect(abs(place.place - 8) < 0.1)
+        // Not paused, the same fall is waited out.
+        var waited = ScreenPlace()
+        run(&waited, from: 0, to: 2, confident: 7) { _ in 12 }
+        run(&waited, from: 2, to: 3.5, confident: 7) { _ in 7 }
+        #expect(waited.place > 11)
+    }
+
+    @Test func pausedJustPastTheNextWordItStays() {
+        // At a punctuation pause the place waits half a word into the next word: no slide.
+        var place = ScreenPlace()
+        run(&place, from: 0, to: 2, confident: 7) { _ in 8 }
+        let reached = place.place
+        var time = 2.0
+        while time < 3 {
+            time += 1.0 / 60
+            place.step(toward: 7, confident: 7, paused: true, at: time)
+        }
+        #expect(place.place == reached)
+    }
+
     @Test func aStepBackGlidesBackQuickly() {
         var place = ScreenPlace()
         run(&place, from: 0, to: 4, confident: 11) { _ in 12 }

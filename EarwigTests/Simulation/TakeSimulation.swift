@@ -350,7 +350,8 @@ struct TakeSimulation {
         statuses.append(engine.snapshot.status)
         let reading = presenter.position >= 0 && presenter.spoken.last.map { $0.word.script != nil && time - $0.end < 0.7 } == true
         let shown = screen.place
-        screen.step(toward: engine.snapshot.presenterPlace, confident: engine.snapshot.presenterWord, at: time)
+        screen.step(toward: engine.snapshot.presenterPlace, confident: engine.snapshot.presenterWord,
+                    paused: engine.snapshot.presenterPaused, at: time)
         if screen.place < shown - 0.001 { screenBackSteps.append((time, shown - screen.place)) }
         screenPlaces.append((time, screen.place))
         if reading { screenErrors.append((time, screen.place - Double(presenter.position))) }

@@ -15,6 +15,9 @@ import Foundation
 ///   text that slipped back at every phrase end would be hard to read.
 /// - A move like that, or the estimate jumping more than `forwardJump` words ahead (Forward,
 ///   found ahead), glides there quickly.
+/// - When the presenter has paused (the recogniser has settled and heard nothing since) and the
+///   place ran on past the word after the one they stopped at, it slides back to that word: a
+///   pause the punctuation did not mark (Andy's choice, device check 1).
 struct ScreenPlace: Equatable, Sendable {
     /// How quickly the tracker follows, in radians a second, critically damped.
     static let response = 2.5
@@ -27,6 +30,8 @@ struct ScreenPlace: Equatable, Sendable {
     /// How far past the estimate the place may run.
     static let overrun = 0.5
     static let maxSpeed = 8.0
+    /// How far past the word after a pause the place may sit before it slides back.
+    static let settleSlack = 0.6
     /// The longest step taken at once, so a stall in frames is not a leap.
     static let maxStep: TimeInterval = 0.1
 
@@ -36,7 +41,7 @@ struct ScreenPlace: Equatable, Sendable {
     private var lastTime: TimeInterval?
     private var lastConfident: Int?
     /// `either` is a move the presenter asked for, which may go either way.
-    private enum Glide { case none, forward, back, either }
+    private enum Glide { case none, forward, back, either, settle }
     private var glide = Glide.none
 
     init(place: Double = -1) {
@@ -45,8 +50,9 @@ struct ScreenPlace: Equatable, Sendable {
 
     /// Whether a step toward this estimate would leave the place where it is: no glide, at rest,
     /// and not behind the estimate, nor the confident word fallen back far enough to glide.
-    func isAtRest(toward estimate: Double, confident: Int) -> Bool {
+    func isAtRest(toward estimate: Double, confident: Int, paused: Bool = false) -> Bool {
         guard glide == .none, speed == 0, estimate <= place + 0.01 else { return false }
+        if paused, place > Double(confident + 1) + Self.settleSlack { return false }
         return lastConfident.map { confident >= $0 - Int(Self.backJump) } ?? false
     }
 
@@ -58,7 +64,7 @@ struct ScreenPlace: Equatable, Sendable {
 
     /// Moves the place on to `time`, toward the engine's estimate then; `confident` is the
     /// engine's last confident word.
-    mutating func step(toward estimate: Double, confident: Int, at time: TimeInterval) {
+    mutating func step(toward estimate: Double, confident: Int, paused: Bool = false, at time: TimeInterval) {
         defer {
             lastTime = time
             lastConfident = confident
@@ -70,17 +76,43 @@ struct ScreenPlace: Equatable, Sendable {
         if let lastConfident, confident < lastConfident - Int(Self.backJump) { glide = .back }
         let interval = min(max(time - lastTime, 0), Self.maxStep)
         guard interval > 0 else { return }
+        if settle(confident: confident, paused: paused, interval: interval) { return }
+        if glideIfMoving(toward: estimate, interval: interval) { return }
+        track(estimate, interval: interval)
+    }
+
+    /// Paused past the word after the one the presenter stopped at: slide back to it. Heard
+    /// again, the slide is given up and the place follows as ever. Whether it moved.
+    private mutating func settle(confident: Int, paused: Bool, interval: TimeInterval) -> Bool {
+        let settled = Double(confident + 1)
+        if paused, glide == .none, place > settled + Self.settleSlack { glide = .settle }
+        guard glide == .settle else { return false }
+        guard paused else {
+            glide = .none
+            return false
+        }
+        place += (settled - place) * (1 - exp(-interval / Self.jumpGlide))
+        speed = 0
+        if abs(settled - place) <= 0.05 { glide = .none }
+        return true
+    }
+
+    /// A move: glide there, from rest. A glide forward never turns back. Whether it moved.
+    private mutating func glideIfMoving(toward estimate: Double, interval: TimeInterval) -> Bool {
         let error = estimate - place
         if glide == .none, error > Self.forwardJump { glide = .forward }
-        if glide != .none {
-            // A move: glide there, from rest. A glide forward never turns back.
-            var change = error * (1 - exp(-interval / Self.jumpGlide))
-            if glide == .forward { change = max(change, 0) }
-            place += change
-            speed = 0
-            if abs(estimate - place) <= 0.25 || (glide == .forward && error <= 0) { glide = .none }
-            return
-        }
+        guard glide != .none else { return false }
+        var change = error * (1 - exp(-interval / Self.jumpGlide))
+        if glide == .forward { change = max(change, 0) }
+        place += change
+        speed = 0
+        if abs(estimate - place) <= 0.25 || (glide == .forward && error <= 0) { glide = .none }
+        return true
+    }
+
+    /// Reading on: the second-order tracker, never back, and never more than `overrun` past.
+    private mutating func track(_ estimate: Double, interval: TimeInterval) {
+        let error = estimate - place
         let omega = Self.response
         speed = min(max(speed + omega * omega * error * interval, 0), Self.maxSpeed)
         let next = place + max((speed + 2 * omega * error) * interval, 0)

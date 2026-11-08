@@ -149,6 +149,7 @@ struct PromptViewModel: Equatable {
     /// While following, never before the first word, so the mark is on it from the tones on.
     var place: Double { following ? max(snapshot.presenterPlace, 0) : -1 }
     var confident: Int { following ? snapshot.presenterWord : -1 }
+    var paused: Bool { following && snapshot.presenterPaused }
 
     /// The step's words as the screen shows them now.
     var screenTokens: [ScreenToken] {

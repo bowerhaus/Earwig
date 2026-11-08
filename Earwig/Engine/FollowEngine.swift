@@ -170,6 +170,7 @@ struct FollowEngine: Sendable {
         snapshot.presenterWord = current.confident
         snapshot.presenterEstimate = presenterNow()
         snapshot.presenterPlace = heldPlace ?? presenterNow(atGate: true, atPause: true)
+        snapshot.presenterPaused = isPaused
         snapshot.confident = current.run >= (current.lost ? settings.lostRun : settings.run) && current.sinceMatch == 0
         snapshot.speed = pacer.speed
         snapshot.error = lastError
@@ -547,5 +548,12 @@ extension FollowEngine {
         if current.confident >= last { return true }
         guard current.confident >= script.firstWord[lastPhrase], let at = current.confidentAt else { return false }
         return now - at >= settings.endGrace
+    }
+
+    /// Following, not held, and nothing confidently heard since the last final: the presenter
+    /// has paused (plan 008).
+    private var isPaused: Bool {
+        phase == .following && !held && current.confident >= 0
+            && lastFinalAt.map { (current.confidentAt ?? -.infinity) <= $0 } == true
     }
 }

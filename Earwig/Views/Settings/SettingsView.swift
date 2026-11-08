@@ -10,6 +10,7 @@ struct SettingsView: View {
     @AppStorage(TakeSettings.startModeKey) private var start: StartMode = TakeSettings.defaultStartMode
     @AppStorage(TakeSettings.modeKey) private var mode: TakeMode = TakeSettings.defaultMode
     @AppStorage(TakeSettings.textSizeKey) private var textSize = TakeSettings.defaultTextSize
+    @AppStorage(TakeSettings.lightsVoiceKey) private var lightsVoice = false
 
     var body: some View {
         NavigationStack {
@@ -53,6 +54,7 @@ struct SettingsView: View {
                     Picker("Mode", selection: $mode) {
                         ForEach(TakeMode.allCases, id: \.self) { Label($0.label, systemImage: $0.systemImage).tag($0) }
                     }
+                    Toggle("Light the Voice's Phrase", isOn: $lightsVoice)
                     VStack(alignment: .leading, spacing: 8) {
                         LabeledContent("Text size") {
                             Text("\(Int(textSize)) pt").monospacedDigit()
@@ -99,7 +101,7 @@ struct SettingsView: View {
 
     private var modeFooter: String {
         switch mode {
-        case .voice: "The voice reads the script into your ear while it scrolls on the screen with you. Also beside Start on the Script screen. Pinch the text during a take to size it."
+        case .voice: "The voice reads the script into your ear while it scrolls on the screen with you. Lit, its phrase shows on the screen ahead of you. Also beside Start on the Script screen. Pinch the text during a take to size it."
         case .screen: "The script scrolls on the screen with you, and no voice reads it. Also beside Start on the Script screen. Pinch the text during a take to size it."
         }
     }

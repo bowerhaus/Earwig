@@ -117,7 +117,8 @@ final class ScriptDetailViewModel {
             settings: AppSettings.take.followSettings,
             contextWords: TakeSetup.contextWords(phraseList: phraseList, slateText: slateText),
             voiceSpeed: AppSettings.take.voiceSpeed,
-            mode: mode
+            mode: mode,
+            lightsVoice: AppSettings.take.lightsVoice
         )
         let session = AudioSessionManager()
         session.onEvent = { Log.event($0) }

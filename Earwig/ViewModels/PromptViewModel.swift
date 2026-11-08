@@ -41,12 +41,8 @@ struct PromptViewModel: Equatable {
     /// Why the take stopped, when listening gave up (#18).
     let stopReason: String?
 
-    /// Whether the voice's phrase is lit in the scrolling text (with the voice).
-    let lightsVoice: Bool
-
     init(phase: TakeHost.Phase, snapshot: FollowSnapshot, route: AudioRoute, setup: TakeSetup.Summary,
-         downloadProgress: Double? = nil, stopReason: String? = nil, lightsVoice: Bool = true) {
-        self.lightsVoice = lightsVoice
+         downloadProgress: Double? = nil, stopReason: String? = nil) {
         self.phase = phase
         self.snapshot = snapshot
         self.route = route
@@ -57,14 +53,8 @@ struct PromptViewModel: Equatable {
 
     @MainActor
     init(host: TakeHost) {
-        var lightsVoice = true
-        #if DEBUG
-        // `-EarwigNoVoiceLight YES`: the voice's phrase not lit, to judge on the mount whether
-        // the light helps or distracts (device check 3 of plan 008).
-        lightsVoice = !UserDefaults.standard.bool(forKey: "EarwigNoVoiceLight")
-        #endif
         self.init(phase: host.phase, snapshot: host.snapshot, route: host.route, setup: host.summaryForScreen,
-                  downloadProgress: host.downloadProgress, stopReason: host.stopReason, lightsVoice: lightsVoice)
+                  downloadProgress: host.downloadProgress, stopReason: host.stopReason)
     }
 
     // MARK: - Top
@@ -154,7 +144,7 @@ struct PromptViewModel: Equatable {
 
     /// The step's words as the screen shows them now.
     var screenTokens: [ScreenToken] {
-        let voicing = following && setup.mode.voiced && lightsVoice
+        let voicing = following && setup.mode.voiced && setup.lightsVoice
         return setup.screenWords.map { word in
             var token = ScreenToken(word: word, isWaiting: !following)
             guard following, !word.isCue else { return token }
@@ -211,12 +201,14 @@ extension TakeSetup {
         var phraseList: PhraseList
         var firstWord: [Int]
         var mode = TakeMode.voice
+        var lightsVoice = false
         /// The step's words for the screen, built once per take.
         var screenWords: [ScreenWord] = []
     }
 
     var summary: Summary {
         Summary(number: stepNumber, title: stepTitle, take: take, start: settings.start, phraseList: phraseList, firstWord: script.firstWord, mode: mode,
+                lightsVoice: lightsVoice,
                 screenWords: ScreenText.words(phraseList: phraseList, firstWord: script.firstWord))
     }
 }

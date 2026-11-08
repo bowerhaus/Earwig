@@ -83,8 +83,10 @@ struct TakeSetup {
     var contextWords: [String]
     /// The voice's base speed (#14).
     var voiceSpeed = 1.0
-    /// Ear, Screen or both, fixed for the take (plan 008, decision 6).
+    /// With the voice or the screen only, fixed for the take (plan 008, decision 6).
     var mode = TakeMode.voice
+    /// Whether, with the voice, its phrase is lit in the scrolling text.
+    var lightsVoice = false
 
     /// The engine's settings: voiced exactly when the take has the ear, so the engine and the
     /// host cannot disagree about it (review C3).

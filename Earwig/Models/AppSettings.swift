@@ -77,6 +77,7 @@ struct TakeSettings {
     static let modeKey = "takeMode"
     /// The voice, as before Screen mode, for the beach (plan 008, decision 6).
     static let defaultMode = TakeMode.voice
+    static let lightsVoiceKey = "lightsVoicePhrase"
     static let textSizeKey = "textSize"
     /// The Prompt screen's text size in points (plan 008, decision 8).
     static let textSizeRange = 24.0...72.0
@@ -106,6 +107,13 @@ struct TakeSettings {
     var mode: TakeMode {
         get { defaults.string(forKey: Self.modeKey).flatMap(TakeMode.init(stored:)) ?? Self.defaultMode }
         nonmutating set { defaults.set(newValue.rawValue, forKey: Self.modeKey) }
+    }
+
+    /// Whether, with the voice, its phrase is lit in the scrolling text. Off unless set: Andy,
+    /// trying both on the mount (device check 3 of plan 008).
+    var lightsVoice: Bool {
+        get { defaults.bool(forKey: Self.lightsVoiceKey) }
+        nonmutating set { defaults.set(newValue, forKey: Self.lightsVoiceKey) }
     }
 
     /// The Prompt screen's text size, kept within `textSizeRange`.

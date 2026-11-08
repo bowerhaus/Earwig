@@ -19,6 +19,7 @@ struct AppSettingsTests {
         #expect(settings.startMode == .tonesOnly)
         #expect(settings.mode == .voice)
         #expect(settings.textSize == 40)
+        #expect(!settings.lightsVoice)
     }
 
     @Test func theFollowSettingsCarryThem() {

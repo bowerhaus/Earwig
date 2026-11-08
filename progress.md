@@ -17,7 +17,7 @@ Andy's choices (2026-11-08): Ear off follows the presenter directly; reading lin
 - [x] Step 4: the pinch (in `ScreenTextView`; checked on the device only)
 - [x] Tests + lint (322 tests pass, SwiftLint clean, at ea4512e)
 - [x] Review + fixes (Review pass and Outcome in the plan; #25 comment; 325 tests pass, lint clean)
-- [ ] Manual test: device (Verification 1–6). Check 1 passed; two fixes from it are installed (the mark follows the smoothed place, no tick; the screen's place keeps the gate's rule at a phrase end, `presenterPlace`). Open: Andy's choice of underline or block (decision 4), and his look at the phrase-end fix. Then check 2. Console: scratchpad console.log (earlier: console-check1.log, console-check1b.log).
+- [ ] Manual test: device (Verification, revised: two modes). Check 1 passed with changes (all in the plan's device check section): two modes With Voice / Screen Only, the place stops at punctuation, the first word trusted alone with no voice, a block mark on Screen Only, redraw paused while still. Installed at the commit after d88d94f; the phone was locked, so relaunch the console (devicectl --console) before the next check. Open: Andy picks a start-card restyle (A slim bar, B on the step card, C a start button per mode); then check 2 onward.
 - [ ] Complete (commit + PR)
 
 ## Notes

@@ -49,6 +49,9 @@ struct PromptViewModelTests {
         #expect(model(.gettingReady, .idle, download: 0.4).instruction == "Downloading speech for listening: 40%")
         #expect(model(.failed("No mic"), .idle).instruction == "No mic")
         #expect(model(.finished(.stopped), .finished).instruction == "Stopped")
+        let gaveUp = PromptViewModel(phase: .finished(.stopped), snapshot: FollowSnapshot(), route: route(out: .bluetoothA2DP), setup: setup,
+                                     stopReason: "listening stopped after two failures in ten seconds")
+        #expect(gaveUp.instruction == "Stopped: listening stopped after two failures in ten seconds")
     }
 
     @Test func thePhraseWithTheVoicesWord() {

@@ -122,6 +122,9 @@ final class ScriptDetailViewModel {
         // `-EarwigNoListen YES`: a take that hears nothing, for the simulator, which cannot
         // transcribe en-GB.
         if UserDefaults.standard.bool(forKey: "EarwigNoListen") { heard = SilentHeardSource() }
+        // `-EarwigListenGivesUp YES`: listening gives up ten seconds into the take, to see the
+        // take stop and say why on the phone (plan 006, decision 7).
+        if UserDefaults.standard.bool(forKey: "EarwigListenGivesUp") { heard = GivingUpHeardSource(heard) }
         #endif
         take = TakeHost(
             setup: setup,
@@ -197,8 +200,50 @@ final class ScriptDetailViewModel {
 final class SilentHeardSource: HeardSource {
     var onHeard: ((FollowEvent, TimeInterval) -> Void)?
     var onRestart: (() -> Void)?
+    var onGaveUp: ((String) -> Void)?
     var downloadProgress: Double? { nil }
     func listen(contextWords: [String]) async -> String? { nil }
     func stopListening() async {}
+}
+
+/// Listens as the source it wraps, then gives up ten seconds after listening starts, as the
+/// `Listener` does after two failures in ten seconds: it stops listening and says so.
+@MainActor
+final class GivingUpHeardSource: HeardSource {
+    private let inner: HeardSource
+    private var timer: Task<Void, Never>?
+    var onGaveUp: ((String) -> Void)?
+
+    init(_ inner: HeardSource) { self.inner = inner }
+
+    var onHeard: ((FollowEvent, TimeInterval) -> Void)? {
+        get { inner.onHeard }
+        set { inner.onHeard = newValue }
+    }
+
+    var onRestart: (() -> Void)? {
+        get { inner.onRestart }
+        set { inner.onRestart = newValue }
+    }
+
+    var downloadProgress: Double? { inner.downloadProgress }
+
+    func listen(contextWords: [String]) async -> String? {
+        if let problem = await inner.listen(contextWords: contextWords) { return problem }
+        timer = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(10))
+            guard !Task.isCancelled, let self else { return }
+            Log.event("debug: listening gives up (-EarwigListenGivesUp)")
+            await inner.stopListening()
+            onGaveUp?("listening stopped (Debug: -EarwigListenGivesUp)")
+        }
+        return nil
+    }
+
+    func stopListening() async {
+        timer?.cancel()
+        timer = nil
+        await inner.stopListening()
+    }
 }
 #endif

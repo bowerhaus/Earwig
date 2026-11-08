@@ -39,6 +39,7 @@ struct TakeHostTests {
         let calls: Calls
         var onHeard: ((FollowEvent, TimeInterval) -> Void)?
         var onRestart: (() -> Void)?
+        var onGaveUp: ((String) -> Void)?
         var downloadProgress: Double?
         var failure: String?
         var context: [String] = []
@@ -249,6 +250,32 @@ struct TakeHostTests {
         heard.onRestart?()
         pass(0.05, host)
         #expect(host.snapshot.presenterWord == -1)
+    }
+
+    @Test func listeningThatGivesUpMidTakeStopsItAndSaysWhy() async {
+        let host = host()
+        await throughTheSlate(host)
+        pass(0.5, host)
+        heard.onGaveUp?("listening stopped after two failures in ten seconds")
+        #expect(host.phase == .finished(.stopped))
+        #expect(host.stopReason == "listening stopped after two failures in ten seconds")
+        #expect(recorder.finished.map(\.outcome) == [.stopped])
+        #expect(output.stopped.contains(.voice))
+        // Nothing more reaches the engine, and everything is let go.
+        let played = output.played.count
+        hear(.interim("We follow the footpath"))
+        pass(1, host)
+        #expect(output.played.count == played)
+        for _ in 0..<20 where session.deactivated == 0 { await Task.yield() }
+        #expect(heard.stopped == 1)
+        #expect(heard.onGaveUp == nil)
+    }
+
+    @Test func aTakeStoppedByThePresenterHasNoStopReason() async {
+        let host = host()
+        await throughTheSlate(host)
+        host.control(.stop)
+        #expect(host.stopReason == nil)
     }
 
     @Test func aCallStopsTheTake() async {

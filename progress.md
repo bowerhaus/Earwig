@@ -2,13 +2,25 @@
 
 Scratch state for the plan in flight. Overwritten at the start of a plan, emptied to a stub when it completes.
 
-**Plan in flight:** 006, when the take can't hear the script (`plans/006-take-hearing.md`), on branch `take-hearing` from `main` at `253d080`. Covers #18 (listening gives up mid-take) and #19 (off script at a phrase end releases the next phrase); no issue of its own.
+**Mode:** autopilot (/plan_autopilot). On resume, carry on through the checklist to the PR; stop only for the manual test or a real decision. Merging is Andy's.
 
-**State:** drafted, awaiting Andy's review. Nothing built yet. Not pushed.
+**Plan:** 006, when the take can't hear the script (`plans/006-take-hearing.md`).
+**Branch:** `take-hearing`, from `main` at `253d080`.
+**Issues:** #18 and #19 (no issue of its own; the PR closes both).
+**Manual test:** device, on the iPhone 14 Pro with the SK18 (the plan's Verification, five checks, one at a time).
 
-**Next:** on approval, Step 1 (#18) and commit; then Step 2 (reproduce #19 with `interimInterval` and 4 words a second) before any change to the estimate.
+## Checklist
 
-**Notes:**
+- [ ] Step 1: #18, listening gives up (`onGaveUp`, the take stops with a reason, the Finished text, the Debug flag); commit
+- [ ] Step 2: #19 reproduction (`interimInterval`, 4 w/s scenario disabled as reproducing, release moment recorded in the plan, misheard-end wait pinned); commit
+- [ ] Step 3: #19 rule (candidates A, B, C; the kept one passes all scenarios at both rates; `PresenterEstimateTests`); commit
+- [ ] Tests + lint
+- [ ] Review + fixes
+- [ ] Manual test: device (iPhone 14 Pro, SK18)
+- [ ] Complete (commit + PR)
+
+## Notes
+
 - Reading `PresenterEstimate.position`, the release in #19 may come on the phrase-end word itself (coast of rate × delay, about four words at 4 w/s), not on the stray word. Step 2 settles which, and that picks candidate A or B.
 - Screen mode becomes plan 007.
-- Still open, not in this plan: #5, #6, #9, #10, #13, #14, #16, #20, #21, #22; outdoors and the Osmo on the next shoot; the Scripts toolbar's Paste pill showing only its icon (unchecked whether it predates plan 005).
+- Still open, not in this plan: #5, #6, #9, #10, #13, #14, #16, #20, #21, #22; outdoors and the Osmo on the next shoot; the Scripts toolbar's Paste pill showing only its icon.

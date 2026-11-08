@@ -66,6 +66,11 @@ struct TakeSummaryTests {
         #expect(line.contains("speed 0.95–1.10"))
     }
 
+    @Test func theLineSaysWhyATakeStopped() {
+        let line = run().line(duration: 6, outcome: .stopped, note: "not listening")
+        #expect(line.hasPrefix("take summary: 6.0 s, stopped (not listening); controls none"))
+    }
+
     @Test func aTakeWithNoSpeaking() {
         let summary = TakeSummary(wordCount: 5)
         #expect(summary.withinTwoShare == nil)

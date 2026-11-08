@@ -141,6 +141,8 @@ struct PromptViewModel: Equatable {
     /// Where the presenter is, for the scroll: the engine's place for the screen.
     /// While following, never before the first word.
     var place: Double { following ? max(snapshot.presenterPlace, 0) : -1 }
+    /// Moves of the place made by the engine, after a fluff: the text glides for each.
+    var placeMoves: Int { snapshot.placeMoves }
 
     /// The step's words as the screen shows them now.
     var screenTokens: [ScreenToken] {

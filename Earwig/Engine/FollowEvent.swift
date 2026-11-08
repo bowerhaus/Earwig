@@ -81,6 +81,9 @@ struct FollowSnapshot: Equatable, Sendable {
     /// Where the screen shows the presenter (plan 008): the word after the last one confidently
     /// heard, kept still while held.
     var presenterPlace = -1.0
+    /// How many times the engine has moved the screen's place back after a fluff (plan 009),
+    /// so the screen glides there as it does for Back.
+    var placeMoves = 0
     /// Whether the last word heard was part of a confident run.
     var confident = false
     var speed = 1.0

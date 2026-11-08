@@ -282,6 +282,19 @@ struct FollowScenarioTests {
         #expect(furthest <= 46 + 5 + 3 + Int((rate * 1.5).rounded(.up)), "the voice reached word \(furthest)")
     }
 
+    /// Plan 009, on the phone: a pause at the end of a phrase, for a direction or a full stop,
+    /// with the voice well into the next. Taken as a fluff, it took back a phrase while Andy
+    /// pointed, and cut the last phrase short. A clean phrase end is a pause, not a fluff.
+    @Test(arguments: Self.paces.indices)
+    func aPauseAtAPhraseEndStopsNothing(pace: Int) {
+        let (rate, interval) = Self.paces[pace]
+        // Phrase 3 ends at word 33; phrase 4 is ten words.
+        let take = atLeadFive([.read(0...33), .pause(2.5), .read(34...75)], rate: rate, interval: interval)
+        #expect(take.outcome == .completed)
+        #expect(take.player.stops == 0)
+        #expect(take.played == everyPhraseOnce)
+    }
+
     /// The scenarios above at the app's lead and every pace: each completes with the presenter
     /// never waiting for the voice.
     static let scenarios: [(name: String, acts: [PresenterAct], writes: [Int: String])] = [

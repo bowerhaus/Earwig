@@ -53,6 +53,12 @@ struct FollowEngine: Sendable {
     /// When the voice was stopped for a presenter who had stopped (plan 009): no gate opens
     /// until a script word is heard after it, so nothing is given again by itself.
     private var stoppedForPresenterAt: TimeInterval?
+    /// After a fluff, the place the screen shows: the start of the phrase the presenter stopped
+    /// in, until a script word is heard (plan 009). `fluffMoves` counts the moves back, so the
+    /// screen glides.
+    private var fluffPlace: Double?
+    private var fluffAt: TimeInterval?
+    private var fluffMoves = 0
 
     /// The matcher's state at the last final, and with the current interim block on top.
     private var settled = MatchState()
@@ -154,7 +160,7 @@ struct FollowEngine: Sendable {
         } else {
             lastError = nil
         }
-        commands += stopForAStoppedPresenter()
+        commands += noticeAStoppedPresenter()
         commands += advance()
         return commands
     }
@@ -173,7 +179,8 @@ struct FollowEngine: Sendable {
         snapshot.voiceWord = voiceWord
         snapshot.presenterWord = current.confident
         snapshot.presenterEstimate = presenterNow()
-        snapshot.presenterPlace = heldPlace ?? screenPlace
+        snapshot.presenterPlace = heldPlace ?? fluffPlace ?? screenPlace
+        snapshot.placeMoves = fluffMoves
         snapshot.confident = current.run >= (current.lost ? settings.lostRun : settings.run) && current.sinceMatch == 0
         snapshot.speed = pacer.speed
         snapshot.error = lastError
@@ -248,6 +255,7 @@ struct FollowEngine: Sendable {
     /// Steps back, jumps ahead or picks up again when the presenter's confident position says so.
     private mutating func afterHearing(_ previous: MatchState) -> [FollowCommand] {
         if let stopped = stoppedForPresenterAt, (current.confidentAt ?? -.infinity) > stopped { stoppedForPresenterAt = nil }
+        if let at = fluffAt, (current.confidentAt ?? -.infinity) > at { clearFluff() }
         guard !held else { return [] }
         if previous.lost && !current.lost { return reanchor(.found) }
         guard current.confident >= 0 else { return [] }
@@ -431,6 +439,7 @@ extension FollowEngine {
         held = false
         heldPlace = nil
         stoppedForPresenterAt = nil
+        clearFluff()
         voicePhrase = nil
         voiceStartedAt = nil
         voiceWord = nil
@@ -463,6 +472,7 @@ extension FollowEngine {
             held = false
             heldPlace = nil
             stoppedForPresenterAt = nil
+            clearFluff()
             return reanchor(.release)
         }
         // The place shown is kept while held, so the text stays still, and released to
@@ -521,6 +531,7 @@ extension FollowEngine {
         held = false
         heldPlace = nil
         stoppedForPresenterAt = nil
+        clearFluff()
         settled = MatchState(last: script.firstWord[phrase] - 1, confident: script.firstWord[phrase] - 1)
         current = settled
         // What was said before the press reaches the recogniser up to a delay later; taken as
@@ -543,17 +554,44 @@ extension FollowEngine {
 // MARK: - Stopping for the presenter
 
 extension FollowEngine {
-    /// A presenter who has stopped, or gone off script, well behind what the voice has given:
-    /// the voice stops (or, between phrases, takes back what it gave) and queues the first phrase
-    /// they have not begun, and waits for them to be heard again (plan 009). A phrase used to play
-    /// to its end whatever happened, and the gate after it could open on the estimate's coast in
-    /// the recogniser's delay: after a fluff on the phone the voice read two phrases on. The
-    /// silence and the margin keep it out of a read with pauses at phrase ends.
+    /// A presenter who has stopped after a fluff (plan 009): heard since the start or the last
+    /// move, then either a word off the script and nothing of it for `stopSilenceOffScript`, or
+    /// stopped inside a phrase and nothing heard for `inPhrase` seconds. Stopped at the end of a
+    /// phrase, with nothing wrong heard, is a pause, at a full stop or for a direction: on the
+    /// phone, taken as a fluff there, it took back a phrase while Andy pointed, and cut the last
+    /// phrase short at a full stop.
+    private func presenterHasStopped(inPhrase silence: TimeInterval) -> Bool {
+        guard let heardAt = current.confidentAt else { return false }
+        let offScript = current.sinceMatch > 0
+        let inPhrase = script.phrase(containing: current.confident).map { script.lastWord(of: $0) != current.confident } ?? false
+        guard offScript || inPhrase else { return false }
+        return now - heardAt >= (offScript ? settings.stopSilenceOffScript : silence)
+    }
+
+    /// The screen goes back to the start of the phrase the presenter stopped in, so they can
+    /// see where to take it again from (`screenBackSilence` inside a phrase, as a pause there
+    /// can be meant: device check 1 of plan 008); and the voice, if it is well ahead, stops.
+    private mutating func noticeAStoppedPresenter() -> [FollowCommand] {
+        guard phase == .following, !held else { return [] }
+        if fluffAt == nil, presenterHasStopped(inPhrase: settings.screenBackSilence),
+           let phrase = script.phrase(containing: Int(screenPlace)) {
+            let start = Double(script.firstWord[phrase])
+            fluffAt = now
+            if start < screenPlace {
+                fluffPlace = start
+                fluffMoves += 1
+            }
+        }
+        return settings.voiced && presenterHasStopped(inPhrase: settings.stopSilence) ? stopForAStoppedPresenter() : []
+    }
+
+    /// With the voice more than `lead + stopMargin` words past the last word heard, it stops (or,
+    /// between phrases, takes back what it gave) and queues the first phrase the presenter has
+    /// not begun, and no gate opens until they are heard again. A phrase used to play to its end
+    /// whatever happened, and the gate after it could open on the estimate's coast in the
+    /// recogniser's delay: after a fluff on the phone the voice read two phrases on.
     private mutating func stopForAStoppedPresenter() -> [FollowCommand] {
-        guard phase == .following, settings.voiced, !held, stoppedForPresenterAt == nil,
-              let heardAt = current.confidentAt,
-              now - heardAt >= (current.sinceMatch > 0 ? settings.stopSilenceOffScript : settings.stopSilence),
-              let target = script.firstPhrase(after: current.confident) else { return [] }
+        guard stoppedForPresenterAt == nil, let target = script.firstPhrase(after: current.confident) else { return [] }
         let given: Int
         let playing: Bool
         switch voice {
@@ -574,6 +612,11 @@ extension FollowEngine {
         pacer.pause()
         stoppedForPresenterAt = now
         return playing ? [.stopVoice] : []
+    }
+
+    private mutating func clearFluff() {
+        fluffPlace = nil
+        fluffAt = nil
     }
 }
 

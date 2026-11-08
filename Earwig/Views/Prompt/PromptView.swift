@@ -259,7 +259,7 @@ struct PromptView: View {
     }
 }
 
-/// A control in Screen mode's row: an icon, its name for VoiceOver only, lit while on (Hold).
+/// A control in the take's row: an icon, its name for VoiceOver only, lit while on (Hold).
 private struct IconControl: View {
     let title: String
     let systemImage: String

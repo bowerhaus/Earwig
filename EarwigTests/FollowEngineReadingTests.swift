@@ -1,7 +1,7 @@
 @testable import Earwig
 import Testing
 
-/// The engine with no voice (plan 008, decision 1): Screen mode with Ear off, where it follows
+/// The engine with no voice (plan 008, decision 1): Screen Only, where it follows
 /// the presenter alone.
 struct FollowEngineReadingTests {
 
@@ -78,6 +78,7 @@ struct FollowEngineReadingTests {
         _ = engine.handle(.interim("breakfast waits at the"), at: 3.5)
         _ = engine.tick(at: 3.7)
         #expect(engine.snapshot.presenterEstimate <= 19)
+        #expect(engine.snapshot.presenterPlace <= 19)
     }
 
     @Test func lostAndFound() {
@@ -117,34 +118,32 @@ struct FollowEngineReadingTests {
         #expect(engine.handle(.forward, at: 6.5) == [])
         #expect(engine.snapshot.status == .reading)
         #expect(engine.snapshot.presenterWord == 9)
+        #expect(engine.snapshot.presenterPlace == 10)
     }
 
+    /// The confident word is the one before the phrase moved to, and the screen's place is the
+    /// phrase's first word.
     @Test func backAndForwardMoveThePlaceAPhraseAndPassOverCues() {
         var engine = reading()
-        #expect(engine.handle(.forward, at: 2.5) == [])
-        // At the start of phrase 1: the place is the word before it.
-        #expect(engine.snapshot.presenterWord == 4)
-        _ = engine.handle(.forward, at: 2.6)
-        // Phrase 2 is a cue, so Forward goes to phrase 3.
-        #expect(engine.snapshot.presenterWord == 9)
-        _ = engine.handle(.back, at: 2.7)
-        #expect(engine.snapshot.presenterWord == 4)
-        _ = engine.handle(.back, at: 2.8)
-        #expect(engine.snapshot.presenterWord == -1)
-        _ = engine.handle(.back, at: 2.9)
-        #expect(engine.snapshot.presenterWord == -1)
-    }
-
-    @Test func afterAMoveTheScreensPlaceIsThePhrasesFirstWord() {
-        var engine = reading()
         _ = engine.handle(.final([FinalWord(text: "morning", start: 2.2), FinalWord(text: "all", start: 2.6)]), at: 3.5)
-        _ = engine.handle(.forward, at: 4)
-        // At the start of phrase 1 (words 5–9): the confident word is 4, the screen's place 5.
+        #expect(engine.handle(.forward, at: 4) == [])
+        // At the start of phrase 1 (words 5–9).
         #expect(engine.snapshot.presenterWord == 4)
         #expect(engine.snapshot.presenterPlace == 5)
         _ = engine.tick(at: 5)
         #expect(engine.snapshot.presenterPlace == 5)
-        _ = engine.handle(.back, at: 5.5)
+        // Phrase 2 is a cue, so Forward goes to phrase 3.
+        _ = engine.handle(.forward, at: 5.1)
+        #expect(engine.snapshot.presenterWord == 9)
+        #expect(engine.snapshot.presenterPlace == 10)
+        _ = engine.handle(.back, at: 5.2)
+        #expect(engine.snapshot.presenterWord == 4)
+        #expect(engine.snapshot.presenterPlace == 5)
+        _ = engine.handle(.back, at: 5.3)
+        #expect(engine.snapshot.presenterWord == -1)
+        #expect(engine.snapshot.presenterPlace == 0)
+        _ = engine.handle(.back, at: 5.4)
+        #expect(engine.snapshot.presenterWord == -1)
         #expect(engine.snapshot.presenterPlace == 0)
     }
 

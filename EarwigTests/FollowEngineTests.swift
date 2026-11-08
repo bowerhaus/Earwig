@@ -148,7 +148,7 @@ struct FollowEngineTests {
         #expect(engine.tick(at: 7) == [])
         #expect(engine.snapshot.status == .waiting)
         #expect(engine.snapshot.presenterEstimate > 7)
-        // The screen's place keeps the gate's rule: at the next phrase's first word (plan 008).
+        // The screen's place is the word after the last one heard: the next phrase's first (plan 008).
         #expect(engine.snapshot.presenterPlace == 5)
         #expect(engine.handle(.interim("morning all here we are the tide"), at: 7.2) == [.play(phrase: 2, speed: 1)])
     }
@@ -265,6 +265,25 @@ struct FollowEngineTests {
         #expect(engine.snapshot.presenterPlace == place)
     }
 
+    /// Forward while held releases the hold, and the place shown goes with the presenter
+    /// (review T1 of plan 008, where it stayed at the held place).
+    @Test func forwardWhileHeldReleasesThePlaceShown() {
+        var engine = following()
+        _ = engine.handle(.interim("morning all here"), at: 3.4)
+        _ = engine.handle(.final([FinalWord(text: "morning", start: 2.4), FinalWord(text: "all", start: 2.8),
+                                  FinalWord(text: "here", start: 3.1)]), at: 3.45)
+        _ = engine.handle(.hold, at: 3.5)
+        #expect(engine.handle(.forward, at: 4) == [.play(phrase: 1, speed: 1)])
+        #expect(engine.snapshot.status == .speaking)
+        #expect(engine.snapshot.presenterPlace == 5)
+        // Heard from a delay after the press (4 + 0.9).
+        _ = engine.handle(.interim("the tide"), at: 5.5)
+        #expect(engine.snapshot.presenterPlace == 7)
+        // A press of Hold now holds again.
+        _ = engine.handle(.hold, at: 6)
+        #expect(engine.snapshot.status == .held)
+    }
+
     @Test func holdWhileWaitingStopsNothing() {
         var engine = following()
         _ = engine.handle(.phraseEnded(0), at: 3.8)
@@ -288,6 +307,24 @@ struct FollowEngineTests {
         #expect(engine.snapshot.presenterWord == 4)
         #expect(engine.handle(.back, at: 3) == [.stopVoice, .play(phrase: 0, speed: 1)])
         #expect(engine.handle(.back, at: 3.5) == [.stopVoice, .play(phrase: 0, speed: 1)])
+    }
+
+    /// As with no voice (`FollowEngineReadingTests`): what was said before the press, reaching
+    /// the recogniser late, does not pull the place back.
+    @Test func whatWasSaidBeforeAMoveIsNotFollowed() {
+        var engine = following()
+        // Heard to "all", the voice is on phrase 1; Forward at 3.3 takes it to the cue, phrase 2.
+        _ = engine.handle(.interim("morning all"), at: 3.0)
+        #expect(engine.handle(.forward, at: 3.3) == [.stopVoice, .play(phrase: 2, speed: 1)])
+        #expect(engine.snapshot.presenterWord == 9)
+        // The rest of what was said before the press arrives late: it does not pull the place back.
+        _ = engine.handle(.interim("morning all here we"), at: 3.9)
+        _ = engine.handle(.final([FinalWord(text: "morning", start: 2.0), FinalWord(text: "all", start: 2.4),
+                                  FinalWord(text: "here", start: 2.8), FinalWord(text: "we", start: 3.1)]), at: 4.5)
+        #expect(engine.snapshot.presenterWord == 9)
+        // What is said after it is.
+        _ = engine.handle(.interim("gulls wheel"), at: 5)
+        #expect(engine.snapshot.presenterWord == 11)
     }
 
     @Test func forwardFromTheLastPhraseDoesNothing() {

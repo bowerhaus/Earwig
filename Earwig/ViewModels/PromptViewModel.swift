@@ -1,6 +1,6 @@
 import Foundation
 
-/// What the Prompt screen shows in Ear mode (PRD §8.3; plan 005, decision 7), worked out from the
+/// What the Prompt screen shows (PRD §8.3; plan 005, decision 7), worked out from the
 /// take host's phase, the engine's snapshot and the route. Plain values in, text and states out,
 /// so it is tested without audio.
 struct PromptViewModel: Equatable {
@@ -198,17 +198,14 @@ extension TakeSetup {
         var title: String
         var take: Int
         var start: StartMode
-        var phraseList: PhraseList
-        var firstWord: [Int]
+        /// The step's words for the screen, built once per take.
+        var screenWords: [ScreenWord]
         var mode = TakeMode.voice
         var lightsVoice = false
-        /// The step's words for the screen, built once per take.
-        var screenWords: [ScreenWord] = []
     }
 
     var summary: Summary {
-        Summary(number: stepNumber, title: stepTitle, take: take, start: settings.start, phraseList: phraseList, firstWord: script.firstWord, mode: mode,
-                lightsVoice: lightsVoice,
-                screenWords: ScreenText.words(phraseList: phraseList, firstWord: script.firstWord))
+        Summary(number: stepNumber, title: stepTitle, take: take, start: settings.start,
+                screenWords: ScreenText.words(phraseList: phraseList, firstWord: script.firstWord), mode: mode, lightsVoice: lightsVoice)
     }
 }

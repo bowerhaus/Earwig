@@ -8,7 +8,8 @@ struct PromptViewModelTests {
     private let setup: TakeSetup.Summary = {
         let list = PhraseList(lines: ["We follow the footpath. [Point] Down to three hundred boats."])
         let script = FollowScript(phraseList: list)
-        return TakeSetup.Summary(number: 3, title: "The footpath", take: 2, start: .slateWithReply, phraseList: list, firstWord: script.firstWord)
+        return TakeSetup.Summary(number: 3, title: "The footpath", take: 2, start: .slateWithReply,
+                                 screenWords: ScreenText.words(phraseList: list, firstWord: script.firstWord))
     }()
 
     private func route(out: AVAudioSession.Port, in input: AVAudioSession.Port = .builtInMic) -> AudioRoute {
@@ -86,7 +87,7 @@ struct PromptViewModelTests {
         #expect(handsFree.earpiece == .unknown)
         #expect(handsFree.mic == .wrong)
         #expect(handsFree.routeNote == "Not listening on the iPhone's mic.")
-        // With the voice on the screen too, the earpiece is judged as in Ear mode.
+        // With Voice, the earpiece is judged.
         #expect(model(route: route(out: .builtInSpeaker), mode: .voice).earpiece == .caution)
     }
 
@@ -144,73 +145,63 @@ struct PromptViewModelTests {
 
     // MARK: - Screen mode
 
-    private func screen(_ status: FollowStatus, estimate: Double = -1, voicePhrase: Int? = nil, voiceWord: Int? = nil,
-                        mode: TakeMode = .screen, phase: TakeHost.Phase = .running) -> PromptViewModel {
+    private func screen(_ status: FollowStatus, place: Double = -1, voicePhrase: Int? = nil, voiceWord: Int? = nil,
+                        mode: TakeMode = .screen, lightsVoice: Bool = true) -> PromptViewModel {
         var snapshot = FollowSnapshot()
         snapshot.status = status
-        snapshot.presenterEstimate = estimate
-        snapshot.presenterPlace = estimate
-        snapshot.presenterWord = Int(estimate.rounded(.down))
+        snapshot.presenterPlace = place
         snapshot.voicePhrase = voicePhrase
         snapshot.voiceWord = voiceWord
         var setup = setup
         setup.mode = mode
-        setup.lightsVoice = true
-        setup.screenWords = ScreenText.words(phraseList: setup.phraseList, firstWord: setup.firstWord)
-        return PromptViewModel(phase: phase, snapshot: snapshot, route: route(out: .builtInSpeaker), setup: setup)
+        setup.lightsVoice = lightsVoice
+        return PromptViewModel(phase: .running, snapshot: snapshot, route: route(out: .builtInSpeaker), setup: setup)
     }
 
     @Test func beforeFollowingEveryWordWaits() {
         let model = screen(.tones)
         #expect(model.screenTokens.allSatisfy { $0.isWaiting })
-        #expect(!model.screenTokens.contains { $0.isHeard(before: 2) })
         #expect(model.place == -1)
         #expect(screen(.reading).status == "Reading")
     }
 
-    @Test func whatHasBeenHeardIsDimmed() {
+    /// Which words are dimmed is the caller's cut-off (the follower's mark); a cue and a word
+    /// still waiting are never dimmed.
+    @Test func wordsBeforeTheCutOffAreHeardButNotCuesOrWaitingWords() {
         // Words: We(0) follow(1) the(2) footpath.(3) [Point] Down(4) to(5) three hundred(6) boats.(7)
-        let model = screen(.reading, estimate: 2.6)
-        let tokens = model.screenTokens
+        let tokens = screen(.reading, place: 2.6).screenTokens
         #expect(tokens.filter { $0.isHeard(before: 2) }.map(\.word.text) == ["We", "follow"])
         #expect(!tokens.contains { $0.isHeard(before: nil) })
-        #expect(!tokens.contains { $0.inVoicePhrase })
-        #expect(model.place == 2.6)
+        #expect(tokens.first { $0.word.isCue }?.isHeard(before: 6) == false)
+        #expect(!screen(.tones).screenTokens.contains { $0.isHeard(before: 2) })
+        #expect(screen(.reading, place: 2.6).place == 2.6)
     }
 
-    @Test func aCueIsNeverDimmedOrLit() {
-        let tokens = screen(.speaking, estimate: 6, voicePhrase: 1, mode: .voice).screenTokens
-        let cue = tokens.first { $0.word.isCue }
+    @Test func aCueIsNeverLit() {
+        let cue = screen(.speaking, place: 6, voicePhrase: 1, mode: .voice).screenTokens.first { $0.word.isCue }
         #expect(cue?.word.text == "[Point]")
-        #expect(cue?.isHeard(before: 6) == false)
         #expect(cue?.inVoicePhrase == false)
     }
 
     @Test func withTheVoiceItsPhraseIsLitAndItsWordMarked() {
-        let tokens = screen(.speaking, estimate: 1, voicePhrase: 2, voiceWord: 5, mode: .voice).screenTokens
+        let tokens = screen(.speaking, place: 1, voicePhrase: 2, voiceWord: 5, mode: .voice).screenTokens
         #expect(tokens.filter { $0.inVoicePhrase }.map(\.word.text) == ["Down", "to", "three hundred", "boats."])
         #expect(tokens.filter { $0.isVoiceWord }.map(\.word.text) == ["to"])
         // Waiting, the phrase stays lit and no word is being said.
-        let waiting = screen(.waiting, estimate: 1, voicePhrase: 2, voiceWord: 7, mode: .voice).screenTokens
+        let waiting = screen(.waiting, place: 1, voicePhrase: 2, voiceWord: 7, mode: .voice).screenTokens
         #expect(waiting.filter { $0.inVoicePhrase }.count == 4)
         #expect(!waiting.contains { $0.isVoiceWord })
         // Not lit when the setting is off, nor on the screen alone.
-        var unlit = setup
-        unlit.mode = .voice
-        unlit.screenWords = ScreenText.words(phraseList: setup.phraseList, firstWord: setup.firstWord)
-        var speaking = FollowSnapshot()
-        speaking.status = .speaking
-        speaking.voicePhrase = 2
-        speaking.voiceWord = 5
-        unlit.lightsVoice = false
-        let off = PromptViewModel(phase: .running, snapshot: speaking, route: route(out: .bluetoothA2DP), setup: unlit)
+        let off = screen(.speaking, place: 1, voicePhrase: 2, voiceWord: 5, mode: .voice, lightsVoice: false)
         #expect(!off.screenTokens.contains { $0.inVoicePhrase || $0.isVoiceWord })
-        #expect(!screen(.reading, estimate: 1, voicePhrase: 2, voiceWord: 5).screenTokens.contains { $0.inVoicePhrase })
+        #expect(!screen(.reading, place: 1, voicePhrase: 2, voiceWord: 5).screenTokens.contains { $0.inVoicePhrase })
     }
 
+    /// Lost or held, the place and the diagnostics stay live.
     @Test func lostAndHeldStillFollow() {
-        #expect(screen(.lost, estimate: 3).screenTokens.filter { $0.isHeard(before: 3) }.map(\.word.text) == ["We", "follow", "the"])
-        #expect(screen(.held, estimate: 3).place == 3)
-        #expect(screen(.held, estimate: 3).diagnostics != nil)
+        for status in [FollowStatus.lost, .held] {
+            #expect(screen(status, place: 3).place == 3)
+            #expect(screen(status, place: 3).diagnostics != nil)
+        }
     }
 }

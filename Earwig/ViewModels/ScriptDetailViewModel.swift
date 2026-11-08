@@ -77,7 +77,7 @@ final class ScriptDetailViewModel {
     /// Opens the Prompt screen on a take of the start step, numbered after the step's last take
     /// (plan 005, decisions 3 and 8). The take is recorded once its slate plays.
     /// `mode` is the take's, from the setting unless given (Next Take keeps the last take's).
-    /// With Ear off nothing needs rendering: the engine follows the presenter alone (plan 008,
+    /// Screen Only needs nothing rendered: the engine follows the presenter alone (plan 008,
     /// decision 7).
     func startTake(with renderer: ScriptRenderer, in context: ModelContext, mode given: TakeMode? = nil) {
         // One take at a time: a second Start (the card's and the row's) does not orphan one.
@@ -221,7 +221,7 @@ final class SilentHeardSource: HeardSource {
 
 /// Reads the step aloud as heard words, for the simulator, which cannot transcribe en-GB: four
 /// seconds after listening starts (past the tones), the step's words one every 0.4 s as one
-/// growing interim block, settled by a final at each sentence end (plan 008, `-EarwigScreen`).
+/// growing interim block, settled by a final at each sentence end (plan 008, `-EarwigReads`).
 @MainActor
 final class ReadingHeardSource: HeardSource {
     var onHeard: ((FollowEvent, TimeInterval) -> Void)?

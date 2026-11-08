@@ -523,3 +523,21 @@ Overall the amount of testing fits the change. Apart from T1 and T2, the gaps ar
 - T5 — FIX: the helper takes `place` and sets only `presenterPlace`; one `isHeard` test; `lostAndHeldStillFollow` keeps only `place` and `diagnostics`.
 - T6 — FIX: one forward-glide test with both triggers; the follower's mark test keeps `nil` and the rounding down.
 - T7 — FIX: merge the two voiceless move tests, and assert `presenterPlace` in the cap test.
+
+### Outcome — 2026-11-08
+
+Andy: "fix all". Every finding was fixed as assessed:
+
+- **T1 — fixed.** Voiced and voiceless Back/Forward now share `takePresenter(toStartOf:)`, which clears `heldPlace` along with `held`. New voiced test `forwardWhileHeldReleasesThePlaceShown` (Hold, Forward, then `presenterPlace` follows, and Hold holds again); the voiceless Hold test asserts `presenterPlace` after Forward.
+- **C1 — fixed.** `ScreenTextView` keeps a `resting` state, set from each frame when the follower's stillness changes (and cleared on Back, Forward and Restart), so the body runs again as the text comes to rest and the timeline pauses. Not checked on the device.
+- **T2 — fixed.** A voiced `whatWasSaidBeforeAMoveIsNotFollowed`. With a voice, "morning all" has already moved the voice to phrase 1, so Forward goes to the cue (phrase 2) and the place stays at word 9 through the late speech.
+- **T3 — fixed.** The three pause tests are one, `aPauseRestsOnTheNextWord`, over the paces and three pauses (after "1890", a phrase end; after "simple", a colon; after "village", no punctuation): in the last second of the pause the place rests on the next word, the text never moves back, and the take completes.
+- **C2 — fixed.** The shared re-anchor helper above, and one `isComplete(voiceDoneAt:)` with the voice-done time optional.
+- **C3 — fixed.** `TakeSetup.Summary` drops `phraseList` and `firstWord`; `screenWords` is required, so a summary cannot be built without its text. The tests build it with `ScreenText`.
+- **C4 — fixed.** `AccentPill` has its doc again, `ReadingHeardSource` names `-EarwigReads`, and "Ear off", "Ear mode", "Screen mode's row" and "reading line" are gone from the code's comments.
+- **T4 — fixed.** The three test comments.
+- **T5 — fixed.** The `screen(...)` helper takes `place` and sets only `presenterPlace`; one test for what is dimmed (the cut-off, cues, waiting words); `lostAndHeldStillFollow` checks only `place` and `diagnostics`.
+- **T6 — fixed.** `aGlideForwardMarksTheTargetAtOnce`, over a big jump and a move; the follower's mark test keeps `nil` and the rounding down.
+- **T7 — fixed.** The two voiceless move tests are one, asserting `presenterWord` and `presenterPlace`; the cap test asserts `presenterPlace`.
+
+Tests: 322 passed (324 before; three pause tests became one with three cases). SwiftLint clean, no warnings.

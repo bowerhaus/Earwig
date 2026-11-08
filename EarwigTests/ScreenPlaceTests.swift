@@ -67,19 +67,24 @@ struct ScreenPlaceTests {
         #expect(place.markPlace == place.place)
     }
 
-    @Test func aMoveForwardNeverShowsTheWordBefore() {
+    /// A glide forward, after a big jump or a move, puts the mark on the target at once, never
+    /// on a word before it, and ends there.
+    @Test(arguments: [false, true])
+    func aGlideForwardMarksTheTargetAtOnce(_ moved: Bool) {
         var place = ScreenPlace()
-        run(&place, from: 0, to: 2) { _ in 7 }
-        // Forward to a phrase starting at word 12: the mark is on 12 at once, and stays there.
-        place.move()
+        run(&place, from: 0, to: 2) { _ in moved ? 7 : 0 }
+        // Forward to a phrase starting at word 12, or a jump to word 20.
+        let target: Double = moved ? 12 : 20
+        if moved { place.move() }
         var marks: [Int] = []
         var time = 2.0
-        while time < 4 {
+        while time < 5 {
             time += 1.0 / 60
-            place.step(toward: 12, at: time)
+            place.step(toward: target, at: time)
             marks.append(Int(place.markPlace.rounded(.down)))
         }
-        #expect(marks.allSatisfy { $0 == 12 })
+        #expect(marks.allSatisfy { $0 == Int(target) })
+        #expect(((target - 0.1)..<(target + ScreenPlace.runOn + 0.01)).contains(place.place))
     }
 
     @Test func aMoveGlidesHoweverNear() {
@@ -89,16 +94,6 @@ struct ScreenPlaceTests {
         place.move()
         run(&place, from: 2, to: 3.5) { _ in 11 }
         #expect(abs(place.place - 11) < 0.1)
-    }
-
-    @Test func aJumpForwardGlides() {
-        var place = ScreenPlace()
-        run(&place, from: 0, to: 1) { _ in 0 }
-        place.step(toward: 20, at: 1 + 1.0 / 60)
-        #expect(Int(place.markPlace.rounded(.down)) == 20)
-        run(&place, from: 1 + 1.0 / 60, to: 4) { _ in 20 }
-        #expect((19.9..<(20 + ScreenPlace.runOn + 0.01)).contains(place.place))
-        #expect(Int(place.markPlace.rounded(.down)) == 20)
     }
 
     @Test func aStallInFramesIsNotALeap() {

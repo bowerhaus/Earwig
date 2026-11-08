@@ -359,7 +359,7 @@ struct FollowEngine: Sendable {
     /// Gates and the end of the take, after anything that may have moved them.
     private mutating func advance() -> [FollowCommand] {
         guard phase == .following, !held else { return [] }
-        guard settings.voiced else { return isCompleteReading ? finish(.completed) : [] }
+        guard settings.voiced else { return isComplete(voiceDoneAt: nil) ? finish(.completed) : [] }
         if case .waiting(let next) = voice {
             guard next < script.phrases.count else {
                 voice = .done(now)
@@ -393,14 +393,17 @@ struct FollowEngine: Sendable {
     }
 
     /// The take completes when the last word is heard, or, with the presenter in the last spoken
-    /// phrase, a while after both the voice finished and they were last heard there: the
-    /// recogniser may miss the last words, but a presenter who comes back to the last phrase
-    /// long after the voice is not cut off at its first word (device check 6 of plan 005).
-    private func isComplete(voiceDoneAt: TimeInterval) -> Bool {
+    /// phrase, a while after both the voice finished (if there is one) and they were last heard
+    /// there: the recogniser may miss the last words, but a presenter who comes back to the last
+    /// phrase long after the voice is not cut off at its first word (device check 6 of plan 005).
+    /// With no voice, `voiceDoneAt` is nil and the while runs from when they were last heard
+    /// (plan 008, decision 1).
+    private func isComplete(voiceDoneAt: TimeInterval?) -> Bool {
         guard let last = script.lastSpokenWord, let lastPhrase = script.phrase(containing: last) else { return true }
         if current.confident >= last { return true }
-        let since = max(voiceDoneAt, current.confidentAt ?? voiceDoneAt)
-        return now - since >= settings.endGrace && current.confident >= script.firstWord[lastPhrase]
+        guard current.confident >= script.firstWord[lastPhrase],
+              let since = [voiceDoneAt, current.confidentAt].compactMap({ $0 }).max() else { return false }
+        return now - since >= settings.endGrace
     }
 
     private mutating func finish(_ outcome: FollowOutcome) -> [FollowCommand] {
@@ -508,14 +511,7 @@ extension FollowEngine {
         guard at + offset < script.phrases.count else { return [] }
         if case .playing = voice { commands.append(.stopVoice) }
         let target = max(at + offset, 0)
-        held = false
-        settled = MatchState(last: script.firstWord[target] - 1, confident: script.firstWord[target] - 1)
-        current = settled
-        // What was said before the press reaches the recogniser up to a delay later; taken as
-        // heard, it pulled the place straight back from where the move put it (device check 2
-        // of plan 008). As after the tones: heard from a delay on, spoken from now.
-        ignoreHeardBefore = now + estimate.delay
-        ignoreSpokenBefore = now
+        takePresenter(toStartOf: target)
         return commands + startPhrase(target)
     }
 
@@ -529,26 +525,23 @@ extension FollowEngine {
         let next = min(max(current.confident + 1, 0), lastWord)
         guard let inPhrase = script.phrase(containing: next), let at = spoken.firstIndex(of: inPhrase) else { return [] }
         guard at + offset < spoken.count else { return [] }
-        let target = spoken[max(at + offset, 0)]
+        takePresenter(toStartOf: spoken[max(at + offset, 0)])
+        return []
+    }
+
+    /// After Back or Forward, with a voice or without: the presenter is taken to be at the start
+    /// of `phrase`, and a hold is released with the place shown going with them (review T1 of
+    /// plan 008, where a voiced move left the screen's place held).
+    private mutating func takePresenter(toStartOf phrase: Int) {
         held = false
         heldPlace = nil
-        settled = MatchState(last: script.firstWord[target] - 1, confident: script.firstWord[target] - 1)
+        settled = MatchState(last: script.firstWord[phrase] - 1, confident: script.firstWord[phrase] - 1)
         current = settled
         // What was said before the press reaches the recogniser up to a delay later; taken as
         // heard, it pulled the place straight back from where the move put it (device check 2
         // of plan 008). As after the tones: heard from a delay on, spoken from now.
         ignoreHeardBefore = now + estimate.delay
         ignoreSpokenBefore = now
-        return []
-    }
-
-    /// With no voice, the take completes when the last word is heard, or with the presenter in
-    /// the last spoken phrase and not heard there for `endGrace` (plan 008, decision 1).
-    private var isCompleteReading: Bool {
-        guard let last = script.lastSpokenWord, let lastPhrase = script.phrase(containing: last) else { return true }
-        if current.confident >= last { return true }
-        guard current.confident >= script.firstWord[lastPhrase], let at = current.confidentAt else { return false }
-        return now - at >= settings.endGrace
     }
 
     /// Where the screen shows the presenter: the word after the last one confidently heard, the

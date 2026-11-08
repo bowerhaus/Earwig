@@ -256,7 +256,6 @@ struct ScriptDetailView: View {
     }
 }
 
-/// A filled accent capsule with dark text, for the main action on a row or a sheet.
 /// A mode as a large tile on the start card: its icon and name, on the accent when chosen.
 /// It only chooses; Start Take is on the start step's card.
 private struct ModeTile: View {
@@ -287,6 +286,7 @@ private struct ModeTile: View {
     }
 }
 
+/// A filled accent capsule with dark text, for the main action on a row or a sheet.
 struct AccentPill: View {
     let title: String
     let systemImage: String

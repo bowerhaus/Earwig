@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The scrolling text of Screen mode (PRD §4.6; plan 008, decisions 2 to 5, 8): the take's step
-/// in large type, kept with the presenter's place at a reading line a third of the way down. The
+/// The scrolling text of every take (PRD §4.6; plan 008, decisions 2 to 5, 8): the take's step
+/// in large type, kept with the presenter's place at an eyeline a third of the way down. The
 /// place is smoothed by `ScreenPlace` and turned into a y by `ScreenLayout` every frame, so the
 /// text rises continuously as the presenter reads. A drag moves it by hand for a while; a pinch
 /// sizes it.
@@ -13,7 +13,7 @@ struct ScreenTextView: View {
     /// Changed by the Prompt screen on Back, Forward and Restart: the text follows again at once.
     let resume: Int
 
-    /// Where the reading line is, as a share of the height.
+    /// Where the eyeline is, as a share of the height.
     static let readingLine = 1.0 / 3
     @State private var follower = ScreenFollower()
     @State private var layout = ScreenLayout(words: [], frames: [:])
@@ -24,14 +24,18 @@ struct ScreenTextView: View {
     @State private var pinchScale = 1.0
     /// A state change as a drag starts and ends, so a paused redraw starts again for it.
     @State private var dragging = false
+    /// Whether the last frame found the text at rest. The follower is not observed, so without
+    /// a state change as it comes to rest the body would not run again and the redraw would
+    /// never pause: the snapshot is published only when it changes (review C1 of plan 008).
+    @State private var resting = false
 
     var body: some View {
         GeometryReader { geometry in
             let readingY = geometry.size.height * Self.readingLine
             // Redrawn every frame only while the text is moving, so a take in a pocket costs
             // little more than a still screen.
-            TimelineView(.animation(minimumInterval: nil, paused: follower.isStill(toward: place) && !dragging)) { context in
-                let y = follower.y(at: context.date.timeIntervalSinceReferenceDate, place: place, layout: layout)
+            TimelineView(.animation(minimumInterval: nil, paused: resting && follower.isStill(toward: place) && !dragging)) { context in
+                let y = frameY(at: context.date)
                 WordColumn(tokens: tokens, heard: follower.mark, size: textSize, width: geometry.size.width)
                     .equatable()
                     .offset(y: readingY - y)
@@ -47,10 +51,21 @@ struct ScreenTextView: View {
             .gesture(drag)
             .simultaneousGesture(pinch)
         }
-        .onChange(of: resume) { follower.moved() }
+        .onChange(of: resume) {
+            follower.moved()
+            resting = false
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Script")
         .accessibilityValue(accessibilityValue)
+    }
+
+    /// The text's y this frame, noting whether it has come to rest, so the redraw pauses.
+    private func frameY(at date: Date) -> CGFloat {
+        let y = follower.y(at: date.timeIntervalSinceReferenceDate, place: place, layout: layout)
+        let still = follower.isStill(toward: place)
+        if still != resting { Task { @MainActor in resting = still } }
+        return y
     }
 
     private var drag: some Gesture {
@@ -109,7 +124,7 @@ private struct WordColumn: View, Equatable {
         }
         .coordinateSpace(.named(Self.space))
         .frame(width: width, alignment: .topLeading)
-        // Room below the last line, so it can reach the reading line.
+        // Room below the last line, so it can reach the eyeline.
         .padding(.bottom, 600)
     }
 

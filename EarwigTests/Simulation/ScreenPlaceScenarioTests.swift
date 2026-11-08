@@ -72,48 +72,35 @@ struct ScreenPlaceScenarioTests {
         expectFollowed(run([.read(0...27), .pause(6), .read(28...75)], pace), pace)
     }
 
-    /// Device check 1: pausing after a phrase, the mark showed the second word of the next one.
-    /// Through a pause it waits at the phrase's last word or the next phrase's first.
-    @Test(arguments: paces)
-    func aPauseAtAPhraseEndWaitsAtTheNextPhrasesStart(_ pace: Pace) {
-        // Phrase 0 is words 0–6.
-        let take = run([.read(0...6), .pause(3), .read(7...75)], pace)
-        let resume = take.presenter.spoken.first { $0.word.script == 7 }?.start ?? 0
-        let paused = take.screenPlaces.filter { $0.time > resume - 2 && $0.time < resume }.map(\.place)
-        #expect(!paused.isEmpty)
-        #expect(paused.allSatisfy { (6...7).contains(Int($0.rounded(.down))) })
-        expectFollowed(take, pace)
+    /// Where a pause falls. On the device the mark ran on past each of these (device check 1):
+    /// a phrase end, a colon mid-phrase and a word with no punctuation after it.
+    struct Pause: CustomTestStringConvertible, Sendable {
+        let step: Int
+        /// The last word read before the pause.
+        let after: String
+        var testDescription: String { "after \"\(after)\"" }
     }
 
-    /// Device check 1 again: "The plan is simple:" then a pause, and the mark was on "up the
-    /// cliff path", five words into the same phrase. It now waits at the colon's next word.
-    @Test(arguments: paces)
-    func aPauseAtAColonMidPhraseWaitsAtTheNextWord(_ pace: Pace) {
-        // Step 1: "Morning! … tide turns." is words 0–11, "The plan is simple:" 12–15.
-        let script = SimulationScripts.harbour(step: 0)
-        #expect(script.words[15].text == "simple")
-        let take = run([.read(0...15), .pause(3), .read(16...(script.words.count - 1))], pace, script: script)
-        let resume = take.presenter.spoken.first { $0.word.script == 16 }?.start ?? 0
-        let paused = take.screenPlaces.filter { $0.time > resume - 2 && $0.time < resume }.map(\.place)
-        #expect(!paused.isEmpty)
-        #expect(paused.allSatisfy { Int($0.rounded(.down)) <= 16 })
-        #expect(take.screenBackSteps.isEmpty)
-    }
+    static let pauses = [
+        Pause(step: 1, after: "1890"),
+        Pause(step: 0, after: "simple"),
+        Pause(step: 0, after: "village"),
+    ]
 
-    /// Device check 1 a third time: a pause after "village", where the script has no comma,
-    /// ran the mark into the next words. Once the recogniser settles, it comes back to "for".
-    @Test(arguments: paces)
-    func aPauseNoPunctuationMarksComesBackToTheNextWord(_ pace: Pace) {
-        let script = SimulationScripts.harbour(step: 0)
-        guard let village = script.words.firstIndex(where: { $0.text == "village" }) else {
-            Issue.record("no village")
+    /// Through a pause the place rests on the next word, and the text never moves back.
+    @Test(arguments: paces, pauses)
+    func aPauseRestsOnTheNextWord(_ pace: Pace, _ pause: Pause) {
+        let script = SimulationScripts.harbour(step: pause.step)
+        guard let after = script.words.firstIndex(where: { $0.text == pause.after }) else {
+            Issue.record("no \(pause.after)")
             return
         }
-        let take = run([.read(0...village), .pause(3), .read((village + 1)...(script.words.count - 1))], pace, script: script)
-        let resume = take.presenter.spoken.first { $0.word.script == village + 1 }?.start ?? 0
-        let settled = take.screenPlaces.filter { $0.time > resume - 0.5 && $0.time < resume }.map(\.place)
-        #expect(!settled.isEmpty)
-        #expect(settled.allSatisfy { Int($0.rounded(.down)) == village + 1 })
+        let take = run([.read(0...after), .pause(3), .read((after + 1)...(script.words.count - 1))], pace, script: script)
+        let resume = take.presenter.spoken.first { $0.word.script == after + 1 }?.start ?? 0
+        let resting = take.screenPlaces.filter { $0.time > resume - 1 && $0.time < resume }.map(\.place)
+        #expect(!resting.isEmpty)
+        #expect(resting.allSatisfy { Int($0.rounded(.down)) == after + 1 })
+        #expect(take.screenBackSteps.isEmpty)
         #expect(take.outcome == .completed)
     }
 

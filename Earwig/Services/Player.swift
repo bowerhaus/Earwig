@@ -1,24 +1,9 @@
 import AVFoundation
 
-/// A take's audio, loaded before it starts: the step's phrases by phrase index, the slate and
-/// the tones (plan 004, decision 9).
-struct TakeAudio {
-    struct Phrase {
-        var kind: PhraseKind
-        var buffer: AVAudioPCMBuffer
-        /// A sound started with the phrase on the tone channel and left to ring on past its end:
-        /// the chime for a direction, whose `buffer` is then the short hold the voice waits for.
-        var ring: AVAudioPCMBuffer? = nil
-    }
-
-    var phrases: [Phrase]
-    var slate: AVAudioPCMBuffer?
-    var tones: AVAudioPCMBuffer
-}
-
 /// Turns the follow engine's commands into sound and sound back into its events (PRD §5.2,
 /// §7.2; plan 004, decisions 8 to 10). A spoken phrase plays on the voice channel at the
-/// engine's speed; a cue phrase and the slate on the cue channel at 1.0x; the tones on their own.
+/// engine's speed times the voice's base speed (#14); a cue phrase and the slate on the cue
+/// channel at 1.0x; the tones on their own.
 /// Progress is reported where the presenter hears the voice, the output latency allowed for.
 @MainActor
 final class Player {
@@ -36,9 +21,13 @@ final class Player {
     /// One-line descriptions for the console.
     var onLog: ((String) -> Void)?
 
-    init(output: PlayerOutput, audio: TakeAudio) {
+    /// The voice's base speed: the engine's 1.0x plays at this.
+    let baseSpeed: Double
+
+    init(output: PlayerOutput, audio: TakeAudio, baseSpeed: Double = 1) {
         self.output = output
         self.audio = audio
+        self.baseSpeed = baseSpeed
     }
 
     func handle(_ commands: [FollowCommand]) {
@@ -50,7 +39,7 @@ final class Player {
         case .play(let phrase, let speed):
             play(phrase: phrase, speed: speed)
         case .setSpeed(let speed):
-            output.speed = speed
+            output.speed = speed * baseSpeed
         case .stopVoice:
             stopVoice()
         case .playCue(.slate):
@@ -90,7 +79,7 @@ final class Player {
         stopVoice()
         let item = audio.phrases[phrase]
         let channel: AudioChannel = item.kind == .cue ? .cue : .voice
-        if channel == .voice { output.speed = speed }
+        if channel == .voice { output.speed = speed * baseSpeed }
         if let ring = item.ring {
             output.stop(.tone)
             start(ring, on: .tone) {}

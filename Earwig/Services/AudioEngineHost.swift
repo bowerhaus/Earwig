@@ -46,6 +46,9 @@ final class AudioEngineHost: PlayerOutput {
 
     /// Called with a one-line description of engine events (configuration changes, restarts).
     var onEvent: ((String) -> Void)?
+    /// Called after the engine restarted itself from a configuration change. Whatever was
+    /// playing was cut off and its completion will not come.
+    var onRestarted: (() -> Void)?
     /// Bumped on every `play` and `stop` of a channel, so a stale completion is ignored.
     private var tokens: [AudioChannel: Int] = [:]
     private(set) var outputLatency: TimeInterval = 0
@@ -88,6 +91,7 @@ final class AudioEngineHost: PlayerOutput {
             do {
                 try start()
                 onEvent?("engine configuration changed (running \(wasRunning)); restarted for playback")
+                onRestarted?()
             } catch {
                 onEvent?("engine configuration changed; restart failed: \(error.localizedDescription)")
             }
@@ -96,6 +100,7 @@ final class AudioEngineHost: PlayerOutput {
         do {
             try installMicTap(micBlock)
             onEvent?("engine configuration changed (running \(wasRunning)); restarted with mic \(Int(micFormat.sampleRate)) Hz")
+            onRestarted?()
         } catch {
             onEvent?("engine configuration changed; restart failed: \(error.localizedDescription)")
         }

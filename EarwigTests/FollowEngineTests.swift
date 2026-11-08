@@ -261,6 +261,17 @@ struct FollowEngineTests {
         #expect(engine.handle(.back, at: 3.5) == [.stopVoice, .play(phrase: 0, speed: 1)])
     }
 
+    @Test func forwardFromTheLastPhraseDoesNothing() {
+        var engine = following()
+        for time in [2.1, 2.2, 2.3, 2.4] { _ = engine.handle(.forward, at: time) }
+        // Playing the last phrase: it is not cut off or played again.
+        #expect(engine.handle(.forward, at: 2.5) == [])
+        #expect(engine.snapshot.status == .speaking)
+        // Finished and waiting at the end: still nothing.
+        _ = engine.handle(.phraseEnded(4), at: 4.2)
+        #expect(engine.handle(.forward, at: 4.5) == [])
+    }
+
     @Test func restartGoesBackThroughTheTones() {
         var engine = following()
         #expect(engine.handle(.restart, at: 3) == [.stopVoice, .playTones])
@@ -293,8 +304,19 @@ struct FollowEngineTests {
         for time in [2.1, 2.2, 2.3, 2.4] { _ = engine.handle(.forward, at: time) }
         _ = engine.handle(.phraseEnded(4), at: 4.2)
         _ = engine.handle(.interim("breakfast waits"), at: 5)
-        #expect(engine.tick(at: 7.1) == [])
-        #expect(engine.tick(at: 7.2) == [.finished(.completed)])
+        // Three seconds after they were last heard there (5), not after the voice finished (4.2).
+        #expect(engine.tick(at: 7.9) == [])
+        #expect(engine.tick(at: 8.0) == [.finished(.completed)])
+    }
+
+    @Test func aPresenterWhoComesBackToTheLastPhraseLateIsNotCutOff() {
+        var engine = following()
+        for time in [2.1, 2.2, 2.3, 2.4] { _ = engine.handle(.forward, at: time) }
+        _ = engine.handle(.phraseEnded(4), at: 4.2)
+        // Ten seconds later they start the last phrase: the take goes on while they say it.
+        #expect(engine.handle(.interim("breakfast waits"), at: 14.2) == [])
+        #expect(engine.tick(at: 15) == [])
+        #expect(engine.handle(.interim("breakfast waits at the end"), at: 15.4) == [.finished(.completed)])
     }
 
     // MARK: - Speed

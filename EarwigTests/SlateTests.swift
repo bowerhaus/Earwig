@@ -30,4 +30,19 @@ struct SlateTests {
         #expect(Slate.text(for: step, take: 3, cuesOn: true) == "Step 2. The sea wall. Walking shot along the wall. Step 2, take 3.")
         #expect(Slate.text(for: step, take: 3, cuesOn: false) == "Step 2, take 3.")
     }
+
+    @Test func theReplyIsTheNumberTakeAndTakeNumber() {
+        #expect(Slate.replyWords(number: 3, shotID: nil, take: 2) == [.number(3), ScriptWord(text: "take"), .number(2)])
+    }
+
+    @Test func aShotIDsReplyHasItsLettersAndDigitsApart() {
+        let words = Slate.replyWords(number: 3, shotID: "W31", take: 2)
+        #expect(words.map(\.text) == ["w", "3", "1", "take", "2"])
+        #expect(Slate.replyWords(number: 4, shotID: "--", take: 1) == [.number(4), ScriptWord(text: "take"), .number(1)])
+    }
+
+    @Test func theReplyForAStoredStep() {
+        let step = Step(sortOrder: 0, number: 12, title: "The sea wall")
+        #expect(Slate.replyWords(for: step, take: 10) == [.number(12), ScriptWord(text: "take"), .number(10)])
+    }
 }

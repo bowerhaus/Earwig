@@ -3,8 +3,9 @@ import AVFoundation
 import Testing
 
 /// Records what the player asks of the audio, and lets a test end a buffer or set a position.
+/// As a take's output, it also records starting and stopping the engine.
 @MainActor
-final class FakeOutput: PlayerOutput {
+final class FakeOutput: TakeOutput {
     struct Played {
         var channel: AudioChannel
         var frames: AVAudioFrameCount
@@ -18,6 +19,20 @@ final class FakeOutput: PlayerOutput {
     var speed = 1.0
     var outputLatency: TimeInterval = 0.2
     private var completions: [AudioChannel: @MainActor () -> Void] = [:]
+    var onRestarted: (() -> Void)?
+    /// Told "output.start" and "output.stop", for the order of getting ready.
+    var calls: ((String) -> Void)?
+    var isRunning = false
+
+    func start() throws {
+        isRunning = true
+        calls?("output.start")
+    }
+
+    func stop() {
+        isRunning = false
+        calls?("output.stop")
+    }
 
     func play(_ buffer: AVAudioPCMBuffer, on channel: AudioChannel, delay: TimeInterval, completion: @escaping @MainActor () -> Void) throws {
         played.append(Played(channel: channel, frames: buffer.frameLength, delay: delay, speed: speed))
@@ -109,6 +124,17 @@ struct PlayerTests {
         player.handle(.play(phrase: 0, speed: 1.0))
         player.handle(.setSpeed(0.9))
         #expect(output.speed == 0.9)
+    }
+
+    @Test func theBaseSpeedScalesTheVoiceButNotACue() {
+        let player = Player(output: output, audio: audio, baseSpeed: 0.85)
+        player.handle(.play(phrase: 0, speed: 1.0))
+        #expect(abs(output.speed - 0.85) < 1e-9)
+        player.handle(.setSpeed(1.2))
+        #expect(abs(output.speed - 1.02) < 1e-9)
+        player.handle(.play(phrase: 1, speed: 1.0))
+        #expect(output.played.last?.channel == .cue)
+        #expect(abs(output.speed - 1.02) < 1e-9)
     }
 
     @Test func stopVoiceStopsBothAndNoEndIsReported() {

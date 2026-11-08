@@ -199,6 +199,13 @@ final class ScriptRenderer {
         return result
     }
 
+    /// Renders text now in the presenter's voice, without keeping it: the Listening check's
+    /// Say Test (plan 005, decision 12).
+    func renderPresenter(_ text: String) async throws -> RenderedPhrase {
+        guard let voices else { throw RenderFailure.noVoice }
+        return try await renderer.render(Phrase(tokens: text.split(whereSeparator: \.isWhitespace).map(String.init)), voiceIdentifier: voices.presenter.identifier, rate: rate)
+    }
+
     /// Renders a cue now, in the cue voice, without keeping it: the slate (decision 6).
     func renderCue(_ text: String) async throws -> RenderedPhrase {
         guard let voices else { throw RenderFailure.noVoice }
@@ -206,9 +213,12 @@ final class ScriptRenderer {
     }
 }
 
-/// One-line events for the console, read live from the phone with `devicectl --console`.
+/// One-line events for the console, read live from the phone with `devicectl --console`, each
+/// with the seconds since the first event, so the device check can time what happened.
 enum Log {
+    private static let start = HostClock.now
+
     static func event(_ text: String) {
-        print("Earwig: \(text)")
+        print(String(format: "Earwig: %8.2f ", HostClock.now - start) + text)
     }
 }

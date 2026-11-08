@@ -27,6 +27,12 @@ struct ScriptDetailView: View {
         }
     }
 
+    /// Whether the start step is rendered, so a take can start.
+    private var isReady: Bool {
+        if case .ready = model.renderState(renderer) { return true }
+        return false
+    }
+
     private var content: some View {
         List {
             Section {
@@ -41,13 +47,20 @@ struct ScriptDetailView: View {
 
             ForEach(Array(script.orderedSteps.enumerated()), id: \.element.persistentModelID) { index, step in
                 Section {
-                    Button {
-                        model.select(step: index, in: context, renderer: renderer)
-                    } label: {
-                        StepView(step: step, isStart: index == script.lastStep, takes: script.takes(forStep: index))
+                    if index == script.lastStep {
+                        // The start step: its Start button starts a take; the card itself is not
+                        // a button, so the two never nest.
+                        StepView(step: step, isStart: true, takes: script.takes(forStep: index), nextTake: script.nextTakeNumber(forStep: index),
+                                 start: isReady ? { model.startTake(with: renderer, in: context) } : nil)
+                    } else {
+                        Button {
+                            model.select(step: index, in: context, renderer: renderer)
+                        } label: {
+                            StepView(step: step, isStart: false, takes: script.takes(forStep: index), nextTake: script.nextTakeNumber(forStep: index))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Starts takes from this step")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Starts takes from this step")
                 }
                 .listRowBackground(rowBackground(isStart: index == script.lastStep))
             }
@@ -83,8 +96,24 @@ struct ScriptDetailView: View {
                     model.listen(with: renderer)
                 }
             }
+            // `-EarwigTake YES` starts a take once the start step is ready.
+            if case .ready = state, UserDefaults.standard.bool(forKey: "EarwigTake"), model.take == nil {
+                Task {
+                    try? await Task.sleep(for: .seconds(1))
+                    model.startTake(with: renderer, in: context)
+                }
+            }
         }
         #endif
+        .fullScreenCover(isPresented: Binding(get: { model.take != nil }, set: { if !$0 { model.endTake() } })) {
+            if let take = model.take {
+                PromptView(
+                    host: take,
+                    onNextTake: { model.nextTake(with: renderer, in: context) },
+                    onDone: { model.endTake() }
+                )
+            }
+        }
         .sheet(item: $model.preview) { preview in
             ListenView(preview: preview, title: model.startStep.map { "Step \($0.number)" } ?? "Listen")
         }
@@ -137,6 +166,24 @@ struct ScriptDetailView: View {
                 ProgressView(value: Double(done), total: Double(max(total, 1)))
                     .tint(EarwigTheme.accent)
             }
+            if case .ready = state {
+                // Start, not a tap on a step: a take started by accident while scrolling is
+                // worse than one more tap (plan 005, decision 8).
+                HStack(spacing: 12) {
+                    Button { model.listen(with: renderer) } label: {
+                        Label("Listen", systemImage: "headphones")
+                            .font(.subheadline.bold())
+                            .frame(minHeight: 34)
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .tint(EarwigTheme.accent)
+                    Button { model.startTake(with: renderer, in: context) } label: {
+                        AccentPill(title: "Start Take \(model.nextTakeNumber)", systemImage: "play.fill", expands: true)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
             if let voices = renderer.voices, !voices.presenterIsPreferred {
                 Text("\(VoiceCatalogue.preferredName) (Enhanced) isn't on this iPhone, so the voice is \(voices.presenter.displayName). \(VoiceCatalogue.downloadHint)")
                     .font(.footnote)
@@ -180,10 +227,7 @@ struct ScriptDetailView: View {
     private func renderAction(_ state: ScriptRenderer.State) -> some View {
         switch state {
         case .ready:
-            Button { model.listen(with: renderer) } label: {
-                AccentPill(title: "Listen", systemImage: "headphones")
-            }
-            .buttonStyle(.plain)
+            EmptyView()
         case .failed, .idle:
             Button("Render") { model.renderStartStep(with: renderer) }
                 .buttonStyle(.bordered)

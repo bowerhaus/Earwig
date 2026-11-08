@@ -7,6 +7,7 @@ struct ScriptsView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Script.updatedAt, order: .reverse) private var scripts: [Script]
     @State private var model = ScriptsViewModel()
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack(path: $model.path) {
@@ -22,6 +23,11 @@ struct ScriptsView: View {
             .navigationTitle("Scripts")
             .toolbarBackground(EarwigTheme.background, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showingSettings = true } label: {
+                        Label("Settings", systemImage: "gearshape")
+                    }
+                }
                 if !scripts.isEmpty {
                     ToolbarItem(placement: .primaryAction) { pasteButton }
                         // No glass capsule around the pill (iOS 26 draws one for every item).
@@ -31,6 +37,7 @@ struct ScriptsView: View {
             .navigationDestination(for: Script.self) { script in
                 ScriptDetailView(script: script)
             }
+            .sheet(isPresented: $showingSettings) { SettingsView() }
             .alert("Can't paste that", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
                 Button("OK", role: .cancel) {}
             } message: {

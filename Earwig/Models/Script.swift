@@ -47,5 +47,10 @@ final class Script {
         (takes ?? []).filter { $0.stepIndex == index }.sorted { $0.startedAt > $1.startedAt }
     }
 
+    /// The number the next take of a step gets: one past the highest so far.
+    func nextTakeNumber(forStep index: Int) -> Int {
+        ((takes ?? []).filter { $0.stepIndex == index }.map(\.number).max() ?? 0) + 1
+    }
+
     var lastTake: Take? { (takes ?? []).max { $0.startedAt < $1.startedAt } }
 }

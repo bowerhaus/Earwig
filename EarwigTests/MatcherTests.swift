@@ -60,6 +60,17 @@ struct MatcherTests {
         #expect(state.run == 7)
     }
 
+    @Test func aMisreadWordIsNotAJumpToALaterMatch() {
+        // Device check 7: "on the side" for "on one side", with "the other side" in the next
+        // line. The run carries on at "side"; it does not jump to "the other side".
+        let words = ScriptWords.words(in: "with ten grams of salt on one side. Add the yeast on the other side, so the salt doesn't touch it.")
+        let matcher = Matcher(words: words, settings: FollowSettings())
+        var state = matcher.align(heard("with ten grams of salt on the side"), from: MatchState(), prefixLast: false)
+        #expect(state.confident == 7)
+        state = matcher.align(heard("with ten grams of salt on the side and the yeast on"), from: MatchState(), prefixLast: false)
+        #expect(state.confident == 11)
+    }
+
     @Test func anInsertedWordBreaksTheRun() {
         var state = matcher.align(heard("the sea wall um was"), from: MatchState(), prefixLast: false)
         #expect(state.confident == 2)

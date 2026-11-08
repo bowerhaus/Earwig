@@ -96,6 +96,22 @@ struct FollowScenarioTests {
         #expect(errors.allSatisfy { abs($0) <= 3 })
     }
 
+    @Test func aFluffThenARestartOfThePreviousSentenceIsFollowed() {
+        // Device check 4 of plan 005, on the step Andy read (words 12–23 "The plan is simple:
+        // along the sea wall, up the cliff path," and 24–32 "and back through the village for a
+        // late breakfast."): "And back to the village foot", then "The plan is simple" and a
+        // stop. Sixteen words behind, outside a 12-word window, it went lost and was never found.
+        var take = TakeSimulation(script: SimulationScripts.harbour(step: 0), acts: [
+            .read(0...28), .say(["foot"]), .pause(1), .read(12...15), .pause(4), .read(16...69),
+        ])
+        take.run()
+        #expect(take.outcome == .completed)
+        // Seen as a step back at once, never lost; in the pause the voice waits, and gives
+        // nothing again (Andy, take 12: "we're making this resetting too complex").
+        #expect(!take.statuses.contains(.lost))
+        #expect(take.player.said[12]?.count == 1)
+    }
+
     @Test func aWanderOffScriptIsWaitedForAndPickedUp() {
         let take = run([.read(0...21), .say(["rosie", "come", "back", "here", "girl", "leave", "that", "squirrel", "good", "dog"]), .read(22...75)])
         #expect(take.statuses.contains(.lost))

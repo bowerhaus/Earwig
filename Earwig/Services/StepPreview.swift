@@ -78,25 +78,10 @@ final class StepPreview: Identifiable {
             let slate = try await renderer.renderCue(slateText)
             // Stopped (or the sheet dismissed) while the slate rendered.
             guard status == .preparing else { return }
-            guard let tones = Tones.buffer(), let chime = Tones.Chime.buffer(), let hold = Tones.Chime.holdBuffer() else {
-                throw VoiceRenderer.RenderError.conversion
-            }
-            // Chimed, a direction is the chime, ringing on under the next line, and the voice
-            // waits only for its hold.
-            let chimed = inline == .chime
-            script = FollowScript(phraseList: phraseList) { index in
-                if chimed, phraseList.phrases[index].kind == .cue { return PhraseTiming(wordStarts: [], duration: Tones.Chime.hold) }
-                return PhraseTiming(phrase: rendered[index].phrase, tokenStarts: rendered[index].tokenStarts, duration: rendered[index].duration)
-            }
-            let audio = TakeAudio(
-                phrases: zip(phraseList.phrases, rendered).map { stepPhrase, rendered in
-                    chimed && stepPhrase.kind == .cue
-                        ? TakeAudio.Phrase(kind: .cue, buffer: hold, ring: chime)
-                        : TakeAudio.Phrase(kind: stepPhrase.kind, buffer: rendered.buffer)
-                },
-                slate: slate.buffer,
-                tones: tones
-            )
+            let built = try TakeAudio.build(phraseList: phraseList, rendered: rendered, inline: inline)
+            script = built.script
+            var audio = built.audio
+            audio.slate = slate.buffer
             let player = Player(output: host, audio: audio)
             player.onEvent = { [weak self] in self?.handle($0) }
             player.onLog = { Log.event($0) }

@@ -52,6 +52,22 @@ struct PhraseList: Codable, Equatable, Sendable {
 
     var spoken: [StepPhrase] { phrases.filter { $0.kind == .spoken } }
 
+    /// The phrases of the sentence holding a phrase, for the Prompt screen while the voice
+    /// waits (plan 005, device check 3): back to the last sentence end on the same line, and on
+    /// to the next. A cue phrase never ends a sentence; a line's end always does.
+    func sentence(containing index: Int) -> ClosedRange<Int> {
+        guard phrases.indices.contains(index) else { return index...index }
+        func ends(_ phrase: Int) -> Bool {
+            phrases[phrase].kind == .spoken && (phrases[phrase].phrase.tokens.last.map { PhraseSplitter.endsSentence($0.text) } ?? false)
+        }
+        let line = phrases[index].line
+        var start = index
+        while start > 0, phrases[start - 1].line == line, !ends(start - 1) { start -= 1 }
+        var end = index
+        while end + 1 < phrases.count, phrases[end + 1].line == line, !ends(end) { end += 1 }
+        return start...end
+    }
+
     /// The words the presenter says in this step, in order: what the engine matches.
     var scriptWords: [ScriptWord] { spoken.flatMap(\.phrase.scriptWords) }
 }

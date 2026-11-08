@@ -1,4 +1,5 @@
 @testable import Earwig
+import Foundation
 import SwiftData
 import Testing
 
@@ -35,5 +36,61 @@ struct ScriptDetailViewModelTests {
         // Another script's render is not this one's.
         ScriptDetailViewModel(script: other).appeared(in: context, renderer: renderer)
         #expect(model.renderState(renderer) == .idle)
+    }
+
+    @Test func startOpensATakeNumberedAfterTheStepsLast() async throws {
+        let context = container.mainContext
+        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
+        let model = ScriptDetailViewModel(script: script)
+        model.appeared(in: context, renderer: renderer)
+        await renderer.finished()
+        let earlier = Take(stepIndex: 0, number: 4)
+        context.insert(earlier)
+        earlier.script = script
+
+        model.startTake(with: renderer, in: context)
+        let setup = try #require(model.take?.setup)
+        #expect(setup.take == 5)
+        #expect(setup.slateText.hasSuffix("take 5."))
+        #expect(setup.slateWords.last == .number(5))
+        #expect(setup.script.phrases.count == setup.phraseList.phrases.count)
+
+        // Closed while getting ready: nothing is recorded.
+        model.endTake()
+        #expect(model.take == nil)
+        #expect(script.takes(forStep: 0).count == 1)
+    }
+
+    @Test func withCuesOffATakeHasNoCuePhrases() async throws {
+        let context = container.mainContext
+        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        script.cuesOn = false
+        let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
+        let model = ScriptDetailViewModel(script: script)
+        model.appeared(in: context, renderer: renderer)
+        await renderer.finished()
+        #expect(model.startStep?.phraseList.phrases.contains { $0.kind == .cue } == true)
+
+        model.startTake(with: renderer, in: context)
+        let setup = try #require(model.take?.setup)
+        #expect(setup.phraseList.phrases.allSatisfy { $0.kind == .spoken })
+        #expect(setup.audio.phrases.count == setup.phraseList.phrases.count)
+        model.endTake()
+    }
+
+    @Test func aTakeIsRecordedAtItsSlateAndFinishedAtItsEnd() throws {
+        let context = container.mainContext
+        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let recorder = ScriptTakeRecorder(script: script, stepIndex: 1, number: 3, context: context)
+        recorder.started(at: Date())
+        #expect(script.takes(forStep: 1).map(\.number) == [3])
+        #expect(script.takes(forStep: 1).first?.outcome == .stopped)
+        #expect(script.nextTakeNumber(forStep: 1) == 4)
+        #expect(script.nextTakeNumber(forStep: 0) == 1)
+
+        recorder.finished(duration: 42.5, outcome: .completed)
+        #expect(script.takes(forStep: 1).first?.outcome == .completed)
+        #expect(script.takes(forStep: 1).first?.duration == 42.5)
     }
 }

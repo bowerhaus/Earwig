@@ -133,6 +133,15 @@ struct Matcher: Sendable {
                 consider(script: script, scriptCount: 1, heardCount: 2, strength: .exact)
             }
         }
+        // A word that would leave the run, when the word heard after it carries the run on as if
+        // this one were misheard: a misreading, not a jump. "Salt on the side" for "salt on one
+        // side" took "the side" for "the other side" in the next line and jumped seven words
+        // (device check 7 of plan 005).
+        if let found = best, !found.continues, state.run > 0, state.sinceMatch == 0, let next,
+           state.last + 2 < words.count,
+           WordFolding.match(next, words[state.last + 2], allowPrefix: prefixLast && index + 1 == heard.count - 1) != nil {
+            return nil
+        }
         return best
     }
 

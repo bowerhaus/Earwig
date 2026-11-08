@@ -18,6 +18,10 @@ struct ScreenTextView: View {
     @State private var follower = ScreenFollower()
     @State private var layout = ScreenLayout(words: [], frames: [:])
     @State private var pinchBase: Double?
+    /// While pinching, the text is scaled as a picture about the eyeline, and laid out again at
+    /// the new size only when the pinch ends: laying out every word at each step of the pinch
+    /// made it jumpy (device check 5 of plan 008).
+    @State private var pinchScale = 1.0
     /// A state change as a drag starts and ends, so a paused redraw starts again for it.
     @State private var dragging = false
 
@@ -33,6 +37,7 @@ struct ScreenTextView: View {
                     .offset(y: readingY - y)
             }
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+            .scaleEffect(pinchScale, anchor: UnitPoint(x: 0, y: Self.readingLine))
             .clipped()
             .contentShape(Rectangle())
             .onPreferenceChange(WordFrames.self) { frames in
@@ -65,9 +70,14 @@ struct ScreenTextView: View {
             .onChanged { value in
                 let base = pinchBase ?? textSize
                 pinchBase = base
-                textSize = TakeSettings.clampTextSize(base * value.magnification)
+                pinchScale = TakeSettings.clampTextSize(base * value.magnification) / base
             }
-            .onEnded { _ in pinchBase = nil }
+            .onEnded { value in
+                let base = pinchBase ?? textSize
+                textSize = TakeSettings.clampTextSize(base * value.magnification)
+                pinchScale = 1
+                pinchBase = nil
+            }
     }
 
     private var accessibilityValue: String {

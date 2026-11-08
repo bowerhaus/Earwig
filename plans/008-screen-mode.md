@@ -364,3 +364,7 @@ File: /Users/andybower/Projects/Earwig/EarwigTests/ScreenLayoutTests.swift, line
 
 3. **With Voice, on the mount, with the SK18.** Andy: the eyeline "is correct", and Forward and Back "seem to behave okay". The console: a With Voice take completed, 36.6 s, all 70 words heard, seven waits with the longest 3.5 s, speed 1.00–1.18, delay 0.85 s, Back once. A Screen Only take before it completed with Back twice and Forward five times. Andy asked to try it without the lit phrase, to see whether the light helps or distracts: a Debug launch flag, `-EarwigNoVoiceLight YES`, turns it off for the trial.
    Having tried it without, Andy: "make it a setting, but off by default". **Light the Voice's Phrase** is in the Screen group in Settings (`TakeSettings.lightsVoice`, off unless set), read when a take starts. The Debug flag is removed.
+
+4. **Choosing the mode.** Passed (Andy): the tiles beside Start and Settings show the same mode, each take's top bar shows it, and Next Take keeps it.
+
+5. **Size and orientation.** Passed (Andy): pinching, landscape on the mount with the controls down the side, and the size from Settings at the next take. The default of 40 pt "sounds good". The pinch was "a little bit jumpy", because every word was laid out again at each step of the pinch. Changed: while pinching, the text is scaled as a picture about the eyeline, and laid out again at the new size when the pinch ends.

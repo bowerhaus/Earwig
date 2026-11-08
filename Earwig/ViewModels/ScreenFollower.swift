@@ -28,6 +28,12 @@ final class ScreenFollower {
         return layout.y(at: screenPlace.place) - dragged
     }
 
+    /// The word the presenter is at, as the screen shows it: the smoothed place's word, which
+    /// only goes back when the scroll does. `nil` before the first word.
+    var mark: Int? {
+        screenPlace.place >= 0 ? Int(screenPlace.place.rounded(.down)) : nil
+    }
+
     func drag(by translation: CGFloat) {
         if dragStart == nil { dragStart = dragged }
         dragged = (dragStart ?? 0) + translation

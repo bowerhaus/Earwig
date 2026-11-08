@@ -17,7 +17,7 @@ Andy's choices (2026-11-08): Ear off follows the presenter directly; reading lin
 - [x] Step 4: the pinch (in `ScreenTextView`; checked on the device only)
 - [x] Tests + lint (322 tests pass, SwiftLint clean, at ea4512e)
 - [x] Review + fixes (Review pass and Outcome in the plan; #25 comment; 325 tests pass, lint clean)
-- [ ] Manual test: device (Verification 1–6)
+- [ ] Manual test: device (Verification 1–6). Installed e5c462a on the iPhone 14 Pro (00008120-000471EE14E0201E), console logged to the scratchpad's console.log. Waiting on check 1 (Screen only, on the mount); then 2–6 one at a time.
 - [ ] Complete (commit + PR)
 
 ## Notes

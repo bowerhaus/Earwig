@@ -27,15 +27,25 @@ struct PromptViewModel: Equatable {
     /// A word of the scrolling text with how it is shown (plan 008, decision 4).
     struct ScreenToken: Equatable {
         var word: ScreenWord
-        /// Before the presenter's place: dimmed.
-        var isPassed = false
-        /// The presenter's place: underlined.
-        var isMark = false
         /// In the voice's phrase, and the word the voice is saying.
         var inVoicePhrase = false
         var isVoiceWord = false
         /// Before following starts, every word is dimmed.
         var isWaiting = false
+
+        /// Before the presenter's place, `mark`: dimmed. The mark is the screen's smoothed place,
+        /// the one the text scrolls by, not the engine's estimate, which jumps on with each burst
+        /// of results and falls back at each final (device check 1).
+        func isPassed(mark: Int?) -> Bool {
+            guard let mark, let index = word.word, !isWaiting else { return false }
+            return index < mark
+        }
+
+        /// The presenter's place: underlined.
+        func isMark(_ mark: Int?) -> Bool {
+            guard let mark, !isWaiting else { return false }
+            return word.word == mark
+        }
     }
 
     let phase: TakeHost.Phase
@@ -173,15 +183,10 @@ struct PromptViewModel: Equatable {
 
     /// The step's words as the screen shows them now.
     var screenTokens: [ScreenToken] {
-        let mark = following && snapshot.presenterEstimate >= 0 ? Int(snapshot.presenterEstimate.rounded(.down)) : nil
         let voicing = following && setup.mode.ear
         return setup.screenWords.map { word in
             var token = ScreenToken(word: word, isWaiting: !following)
             guard following, !word.isCue else { return token }
-            if let index = word.word, let mark {
-                token.isPassed = index < mark
-                token.isMark = index == mark
-            }
             if voicing, word.phrase == snapshot.voicePhrase {
                 token.inVoicePhrase = true
                 token.isVoiceWord = snapshot.status == .speaking && word.word != nil && word.word == snapshot.voiceWord

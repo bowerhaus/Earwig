@@ -219,7 +219,7 @@ struct PromptViewModelTests {
     @Test func beforeFollowingEveryWordWaits() {
         let model = screen(.tones)
         #expect(model.screenTokens.allSatisfy { $0.isWaiting })
-        #expect(!model.screenTokens.contains { $0.isMark })
+        #expect(!model.screenTokens.contains { $0.isMark(2) || $0.isPassed(mark: 2) })
         #expect(model.place == -1)
         #expect(screen(.reading).status == "Reading")
     }
@@ -228,8 +228,9 @@ struct PromptViewModelTests {
         // Words: We(0) follow(1) the(2) footpath.(3) [Point] Down(4) to(5) three hundred(6) boats.(7)
         let model = screen(.reading, estimate: 2.6)
         let tokens = model.screenTokens
-        #expect(tokens.filter { $0.isMark }.map(\.word.text) == ["the"])
-        #expect(tokens.filter { $0.isPassed }.map(\.word.text) == ["We", "follow"])
+        #expect(tokens.filter { $0.isMark(2) }.map(\.word.text) == ["the"])
+        #expect(tokens.filter { $0.isPassed(mark: 2) }.map(\.word.text) == ["We", "follow"])
+        #expect(!tokens.contains { $0.isMark(nil) || $0.isPassed(mark: nil) })
         #expect(!tokens.contains { $0.inVoicePhrase })
         #expect(model.place == 2.6)
         #expect(model.confident == 2)
@@ -239,7 +240,8 @@ struct PromptViewModelTests {
         let tokens = screen(.speaking, estimate: 6, voicePhrase: 1, mode: .both).screenTokens
         let cue = tokens.first { $0.word.isCue }
         #expect(cue?.word.text == "[Point]")
-        #expect(cue?.isPassed == false)
+        #expect(cue?.isPassed(mark: 6) == false)
+        #expect(cue?.isMark(6) == false)
         #expect(cue?.inVoicePhrase == false)
     }
 
@@ -255,9 +257,9 @@ struct PromptViewModelTests {
         #expect(!screen(.reading, estimate: 1, voicePhrase: 2, voiceWord: 5).screenTokens.contains { $0.inVoicePhrase })
     }
 
-    @Test func lostAndHeldKeepTheMark() {
-        #expect(screen(.lost, estimate: 3).screenTokens.filter { $0.isMark }.map(\.word.text) == ["footpath."])
-        #expect(screen(.held, estimate: 3).screenTokens.filter { $0.isMark }.map(\.word.text) == ["footpath."])
+    @Test func lostAndHeldStillFollow() {
+        #expect(screen(.lost, estimate: 3).screenTokens.filter { $0.isMark(3) }.map(\.word.text) == ["footpath."])
+        #expect(screen(.held, estimate: 3).place == 3)
         #expect(screen(.held, estimate: 3).diagnostics != nil)
     }
 }

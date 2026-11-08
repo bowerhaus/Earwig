@@ -36,6 +36,16 @@ struct ScreenFollowerTests {
         #expect(abs(frames(follower, from: 4.4, to: 6.5) - resting) < 0.5)
     }
 
+    @Test func theMarkIsTheSmoothedPlacesWord() {
+        let follower = ScreenFollower()
+        #expect(follower.mark == nil)
+        _ = frames(follower, from: 0, to: 1, place: 2.6)
+        #expect(follower.mark == 2)
+        // The estimate falls back a word at a final: the mark does not.
+        _ = frames(follower, from: 1, to: 2, place: 1.6)
+        #expect(follower.mark == 2)
+    }
+
     @Test func aMoveFollowsAtOnce() {
         let follower = ScreenFollower()
         let resting = frames(follower, from: 0, to: 1)

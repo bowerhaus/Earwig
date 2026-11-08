@@ -25,14 +25,13 @@ struct ScreenTextView: View {
             let readingY = geometry.size.height * Self.readingLine
             TimelineView(.animation) { context in
                 let y = follower.y(at: context.date.timeIntervalSinceReferenceDate, place: place, confident: confident, layout: layout)
-                WordColumn(tokens: tokens, size: textSize, width: geometry.size.width)
+                WordColumn(tokens: tokens, mark: follower.mark, size: textSize, width: geometry.size.width)
                     .equatable()
                     .offset(y: readingY - y)
             }
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
             .clipped()
             .contentShape(Rectangle())
-            .overlay(alignment: .topLeading) { readingMark(at: readingY) }
             .onPreferenceChange(WordFrames.self) { frames in
                 let words = tokens.map(\.word)
                 Task { @MainActor in layout = ScreenLayout(words: words, frames: frames) }
@@ -44,16 +43,6 @@ struct ScreenTextView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Script")
         .accessibilityValue(accessibilityValue)
-    }
-
-    /// A small tick at the reading line's left edge, centred on it: the presenter's line passes
-    /// it from its top as they start the line to its bottom as they finish.
-    private func readingMark(at y: CGFloat) -> some View {
-        Capsule()
-            .fill(EarwigTheme.accent)
-            .frame(width: 4, height: textSize * 0.9)
-            .offset(x: -8, y: y - textSize * 0.45)
-            .accessibilityHidden(true)
     }
 
     private var drag: some Gesture {
@@ -73,7 +62,7 @@ struct ScreenTextView: View {
     }
 
     private var accessibilityValue: String {
-        guard let mark = tokens.firstIndex(where: \.isMark) else { return "" }
+        guard let mark = tokens.firstIndex(where: { $0.isMark(follower.mark) }) else { return "" }
         return tokens[mark...].prefix(12).map(\.word.text).joined(separator: " ")
     }
 }
@@ -82,13 +71,15 @@ struct ScreenTextView: View {
 /// does not rebuild three hundred words.
 private struct WordColumn: View, Equatable {
     let tokens: [PromptViewModel.ScreenToken]
+    /// The presenter's place, as the screen shows it.
+    let mark: Int?
     let size: Double
     let width: CGFloat
 
     var body: some View {
         WordFlow(paragraphSpacing: size * 0.6) {
             ForEach(tokens, id: \.word.id) { token in
-                WordView(token: token, size: size)
+                WordView(token: token, isMark: token.isMark(mark), isPassed: token.isPassed(mark: mark), size: size)
                     .layoutValue(key: StartsParagraph.self, value: token.word.startsParagraph)
                     .background {
                         GeometryReader { proxy in
@@ -110,6 +101,8 @@ private struct WordColumn: View, Equatable {
 /// its word on the accent, the presenter's place underlined, a cue in the cue colour.
 private struct WordView: View {
     let token: PromptViewModel.ScreenToken
+    let isMark: Bool
+    let isPassed: Bool
     let size: Double
 
     var body: some View {
@@ -122,7 +115,7 @@ private struct WordView: View {
             .padding(.vertical, size * 0.1)
             .background(background)
             .overlay(alignment: .bottom) {
-                if token.isMark {
+                if isMark {
                     Capsule()
                         .fill(EarwigTheme.accent)
                         .frame(height: max(3, size * 0.08))
@@ -134,7 +127,7 @@ private struct WordView: View {
     private var foreground: Color {
         if token.word.isCue { return EarwigTheme.cue }
         if token.isVoiceWord { return EarwigTheme.onAccent }
-        if token.isWaiting || token.isPassed { return EarwigTheme.secondaryText }
+        if token.isWaiting || isPassed { return EarwigTheme.secondaryText }
         return EarwigTheme.text
     }
 

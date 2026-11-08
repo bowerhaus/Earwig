@@ -332,3 +332,7 @@ File: /Users/andybower/Projects/Earwig/EarwigTests/ScreenLayoutTests.swift, line
 - T6 — not done: the unit test pins that no `.stopVoice` or `.setSpeed` is sent, which the scenario does not see.
 - T7 — fixed: Forward during Hold releases it and moves the place.
 - T8 — fixed: the fixture's phrase list is built once and `theWordsAreAsExpected` folded into a layout test.
+
+## Device check (iPhone 14 Pro), 2026-11-08
+
+1. **Screen only, on the mount.** Two takes of step 1 with no earpiece, both started without a render and both completed: 28.9 s and 49.1 s, all 70 words heard, delay 0.80 s and 0.93 s, rate 4.0 words a second (the console). Andy: the scroll was "smooth and steady", he could keep his place at a glance, and it was steady enough to read from. Two things looked odd. The reading-line tick in the left margin was unclear. The yellow underline jumped backwards and forwards, because it followed the engine's raw estimate while the scroll followed the smoothed place. Changed: the underline and the dimming now follow the smoothed place, as the scroll does, and the tick is gone. Andy then asked why the place is an underline rather than a block (decision 4).

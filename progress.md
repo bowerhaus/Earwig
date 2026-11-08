@@ -2,4 +2,8 @@
 
 Scratch state for the plan in flight. Overwritten at the start of a plan, emptied to a stub when it completes.
 
-No plan in flight. Plan 006 (when the take can't hear the script, #18 and #19) is complete, and the PR from branch `take-hearing` carries it (check `gh pr list --head take-hearing --state all --json number,state`: `MERGED` means `main` has it); see `plans/006-take-hearing.md`, its Results and its review pass. Next is stage 6 of PRD §12, Screen mode, as plan 007, starting with writing `plans/007-…md` on a new branch from `main` (check `git status -sb` first). Open follow-ups: #5, #6, #10, #13, #14, #16, #21, #22 (#9 and #20 closed as not needed); outdoors and the Osmo on the next shoot; seen in passing, the Scripts toolbar's Paste pill shows only its icon (unchecked whether it predates plan 005).
+**Plan 007: app icon, logo and splash (#21)**, branch `app-icon-splash` from `main` at `5b1849e`. The plan is written (`plans/007-app-icon-splash.md`); nothing is built yet. Screen mode (stage 6) moves to plan 008.
+
+- The mark is chosen: 2d-j, the white earwig crawling at 35° on sky blue, from the concepts page https://claude.ai/artifact/8hvAFycZj6MXAquw53z5cL (its "Chosen" section holds the geometry, copied into the plan's decision 2).
+- Next: `/plan_create_issue` is not needed (#21 exists); on Andy's go-ahead, step 1 (the icon script).
+- Open follow-ups: #5, #6, #10, #13, #14, #16, #22; outdoors and the Osmo on the next shoot; the Scripts toolbar's Paste pill shows only its icon (unchecked whether it predates plan 005).

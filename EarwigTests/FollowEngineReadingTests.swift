@@ -75,8 +75,8 @@ struct FollowEngineReadingTests {
     @Test func thePlaceIsCappedAtTheLastWord() {
         var engine = reading()
         for time in [2.1, 2.2, 2.3] { _ = engine.handle(.forward, at: time) }
-        _ = engine.handle(.interim("breakfast waits at the"), at: 3)
-        _ = engine.tick(at: 3.2)
+        _ = engine.handle(.interim("breakfast waits at the"), at: 3.5)
+        _ = engine.tick(at: 3.7)
         #expect(engine.snapshot.presenterEstimate <= 19)
     }
 
@@ -163,6 +163,22 @@ struct FollowEngineReadingTests {
         #expect(engine.snapshot.presenterWord == 14)
     }
 
+    @Test func whatWasSaidBeforeAMoveIsNotFollowed() {
+        var engine = reading()
+        // Said "morning all here we" up to 3.2, heard so far to "all"; then Forward at 3.3.
+        _ = engine.handle(.interim("morning all"), at: 3.0)
+        _ = engine.handle(.forward, at: 3.3)
+        #expect(engine.snapshot.presenterWord == 4)
+        // The rest of what was said before the press arrives late: it does not pull the place back.
+        _ = engine.handle(.interim("morning all here we"), at: 3.9)
+        _ = engine.handle(.final([FinalWord(text: "morning", start: 2.0), FinalWord(text: "all", start: 2.4),
+                                  FinalWord(text: "here", start: 2.8), FinalWord(text: "we", start: 3.1)]), at: 4.5)
+        #expect(engine.snapshot.presenterWord == 4)
+        // What is said after it is.
+        _ = engine.handle(.interim("the tide"), at: 5)
+        #expect(engine.snapshot.presenterWord == 6)
+    }
+
     @Test func restartAndStop() {
         var engine = reading()
         _ = engine.handle(.interim("morning all here"), at: 3)
@@ -177,16 +193,17 @@ struct FollowEngineReadingTests {
     @Test func theTakeCompletesWhenTheLastWordIsHeard() {
         var engine = reading()
         for time in [2.1, 2.2, 2.3] { _ = engine.handle(.forward, at: time) }
-        #expect(engine.handle(.interim("breakfast waits at the"), at: 3) == [])
-        #expect(engine.handle(.interim("breakfast waits at the end"), at: 3.4) == [.finished(.completed)])
+        // Heard from a delay after the last move (2.3 + 0.9).
+        #expect(engine.handle(.interim("breakfast waits at the"), at: 3.5) == [])
+        #expect(engine.handle(.interim("breakfast waits at the end"), at: 3.9) == [.finished(.completed)])
     }
 
     @Test func orAWhileAfterThePresenterWasLastHeardInTheLastPhrase() {
         var engine = reading()
         for time in [2.1, 2.2, 2.3] { _ = engine.handle(.forward, at: time) }
-        _ = engine.handle(.interim("breakfast waits"), at: 3)
-        #expect(engine.tick(at: 5.9) == [])
-        #expect(engine.tick(at: 6.0) == [.finished(.completed)])
+        _ = engine.handle(.interim("breakfast waits"), at: 3.5)
+        #expect(engine.tick(at: 6.4) == [])
+        #expect(engine.tick(at: 6.5) == [.finished(.completed)])
     }
 
     @Test func nothingHeardNeverCompletes() {

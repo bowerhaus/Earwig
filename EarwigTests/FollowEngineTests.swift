@@ -229,8 +229,9 @@ struct FollowEngineTests {
         for time in [2.1, 2.2, 2.3] { _ = engine.handle(.forward, at: time) }
         _ = engine.handle(.voiceProgress(phrase: 3, offset: 0.5), at: 2.8)
         // Skipped to the last phrase: nothing to queue, so the voice stops and is finished.
-        #expect(engine.handle(.interim("breakfast waits at"), at: 3) == [.stopVoice])
-        #expect(engine.handle(.interim("breakfast waits at the end"), at: 4) == [.finished(.completed)])
+        // Heard from a delay after the last move (2.3 + 0.9).
+        #expect(engine.handle(.interim("breakfast waits at"), at: 3.5) == [.stopVoice])
+        #expect(engine.handle(.interim("breakfast waits at the end"), at: 4.5) == [.finished(.completed)])
     }
 
     // MARK: - Controls

@@ -516,8 +516,11 @@ extension FollowEngine {
         held = false
         settled = MatchState(last: script.firstWord[target] - 1, confident: script.firstWord[target] - 1)
         current = settled
-        ignoreHeardBefore = now
-        ignoreSpokenBefore = now - estimate.delay
+        // What was said before the press reaches the recogniser up to a delay later; taken as
+        // heard, it pulled the place straight back from where the move put it (device check 2
+        // of plan 008). As after the tones: heard from a delay on, spoken from now.
+        ignoreHeardBefore = now + estimate.delay
+        ignoreSpokenBefore = now
         return commands + startPhrase(target)
     }
 
@@ -536,8 +539,11 @@ extension FollowEngine {
         heldPlace = nil
         settled = MatchState(last: script.firstWord[target] - 1, confident: script.firstWord[target] - 1)
         current = settled
-        ignoreHeardBefore = now
-        ignoreSpokenBefore = now - estimate.delay
+        // What was said before the press reaches the recogniser up to a delay later; taken as
+        // heard, it pulled the place straight back from where the move put it (device check 2
+        // of plan 008). As after the tones: heard from a delay on, spoken from now.
+        ignoreHeardBefore = now + estimate.delay
+        ignoreSpokenBefore = now
         return []
     }
 

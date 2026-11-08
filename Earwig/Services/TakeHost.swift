@@ -131,6 +131,12 @@ final class TakeHost: Identifiable {
     private(set) var snapshot = FollowSnapshot()
     /// Why the take stopped, when it was not the presenter or a call: listening gave up (#18).
     private(set) var stopReason: String?
+    /// The take's recording once its file is finished; `nil` when not recorded (plan 010).
+    private(set) var recording: RecordingResult?
+    /// What went wrong with the recording, for Finished: the video stopping early, or a failure.
+    private(set) var recordingNote: String?
+    /// Host time at which recording started, for the time shown while recording.
+    private(set) var recordingSince: TimeInterval?
 
     var route: AudioRoute { session.route }
     var downloadProgress: Double? { heard.downloadProgress }
@@ -139,6 +145,7 @@ final class TakeHost: Identifiable {
     @ObservationIgnored private let output: TakeOutput
     @ObservationIgnored private let heard: HeardSource
     @ObservationIgnored private let recorder: TakeRecorder
+    @ObservationIgnored private let capture: TakeCapture?
     @ObservationIgnored private let renderSlate: (String) async throws -> AVAudioPCMBuffer
     @ObservationIgnored private let clock: () -> TimeInterval
     @ObservationIgnored private let ticks: Bool
@@ -154,6 +161,7 @@ final class TakeHost: Identifiable {
     @ObservationIgnored private var ended = false
 
     init(setup: TakeSetup, session: TakeSession, output: TakeOutput, heard: HeardSource, recorder: TakeRecorder,
+         capture: TakeCapture? = nil,
          renderSlate: @escaping (String) async throws -> AVAudioPCMBuffer,
          clock: @escaping () -> TimeInterval = { HostClock.now }, ticks: Bool = true, log: @escaping (String) -> Void = Log.event) {
         self.setup = setup
@@ -161,6 +169,7 @@ final class TakeHost: Identifiable {
         self.output = output
         self.heard = heard
         self.recorder = recorder
+        self.capture = capture
         self.renderSlate = renderSlate
         self.clock = clock
         self.ticks = ticks
@@ -185,10 +194,7 @@ final class TakeHost: Identifiable {
         } catch {
             return await fail("The audio could not start: \(error.localizedDescription)")
         }
-        if let problem = await heard.listen(contextWords: setup.contextWords) {
-            return await fail("Listening could not start: \(problem)")
-        }
-        guard !ended else { return await tearDown() }
+        guard await readyListeningAndCamera() else { return }
         // With tones only no slate is played, so none is rendered (review C3).
         var slate: AVAudioPCMBuffer?
         if setup.settings.start != .tonesOnly {
@@ -200,6 +206,27 @@ final class TakeHost: Identifiable {
             guard !ended else { return await tearDown() }
         }
         begin(slate: slate)
+    }
+
+    /// Listening, then the camera for a video take; `false` once failed or torn down.
+    private func readyListeningAndCamera() async -> Bool {
+        if let problem = await heard.listen(contextWords: setup.contextWords) {
+            await fail("Listening could not start: \(problem)")
+            return false
+        }
+        guard !ended else {
+            await tearDown()
+            return false
+        }
+        if let capture, let problem = await capture.prepare() {
+            await fail(problem)
+            return false
+        }
+        guard !ended else {
+            await tearDown()
+            return false
+        }
+        return true
     }
 
     private func begin(slate: AVAudioPCMBuffer?) {
@@ -225,6 +252,7 @@ final class TakeHost: Identifiable {
 
         recorder.started(at: Date())
         startedAt = clock()
+        startRecording()
         phase = .running
         log("take: started, \(slate == nil ? "no slate" : "slate “\(setup.slateText)”"), route \(session.route.summary)")
         send(.start)
@@ -334,6 +362,31 @@ final class TakeHost: Identifiable {
         }
     }
 
+    // MARK: - Recording
+
+    /// Recording starts as the take is recorded, at its slate (plan 010, decision 3).
+    private func startRecording() {
+        guard let capture else { return }
+        capture.onVideoStopped = { [weak self] reason in
+            guard let self else { return }
+            let at = self.recordingSince.map { self.clock() - $0 } ?? 0
+            self.recordingNote = "Video stopped at \(Self.minutesAndSeconds(at)): \(reason)."
+            self.log("take: video stopped: \(reason)")
+        }
+        capture.onFailed = { [weak self] reason in
+            self?.recordingNote = "Recording stopped: \(reason)."
+            self?.log("take: recording failed: \(reason)")
+        }
+        let now = clock()
+        recordingSince = now
+        capture.start(at: now)
+    }
+
+    static func minutesAndSeconds(_ seconds: TimeInterval) -> String {
+        let whole = max(0, Int(seconds))
+        return String(format: "%d:%02d", whole / 60, whole % 60)
+    }
+
     // MARK: - The end
 
     private func finish(_ outcome: FollowOutcome) {
@@ -358,6 +411,11 @@ final class TakeHost: Identifiable {
     }
 
     private func tearDown() async {
+        if let capture {
+            capture.onVideoStopped = nil
+            capture.onFailed = nil
+            if let result = await capture.finish() { recording = result }
+        }
         ticker?.cancel()
         ticker = nil
         player?.stopAll()

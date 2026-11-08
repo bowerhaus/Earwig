@@ -127,6 +127,7 @@ final class ScriptDetailViewModel {
         let listener = Listener(audio: output)
         listener.onEvent = { Log.event($0) }
         var heard: HeardSource = listener
+        var capture: TakeCapture?
         #if DEBUG
         // `-EarwigNoListen YES`: a take that hears nothing, for the simulator, which cannot
         // transcribe en-GB.
@@ -137,6 +138,11 @@ final class ScriptDetailViewModel {
         // `-EarwigListenGivesUp YES`: listening gives up ten seconds into the take, to see the
         // take stop and say why on the phone (plan 006, decision 7).
         if UserDefaults.standard.bool(forKey: "EarwigListenGivesUp") { heard = GivingUpHeardSource(heard) }
+        // `-EarwigRecordVideo YES`: film the take at 4K30, for plan 010's first device check.
+        if UserDefaults.standard.bool(forKey: "EarwigRecordVideo"),
+           let url = try? RecordingStore.standard.url(scriptTitle: script.title, step: step.number, take: number, video: true) {
+            capture = TakeRecording(url: url, video: true, quality: .uhd4K, audio: output)
+        }
         #endif
         take = TakeHost(
             setup: setup,
@@ -144,6 +150,7 @@ final class ScriptDetailViewModel {
             output: output,
             heard: heard,
             recorder: ScriptTakeRecorder(script: script, stepIndex: stepIndex, number: number, context: context),
+            capture: capture,
             renderSlate: { text in try await renderer.renderCue(text).buffer }
         )
     }

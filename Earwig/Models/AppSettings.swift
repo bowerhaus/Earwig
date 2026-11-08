@@ -55,6 +55,44 @@ enum TakeMode: String, CaseIterable, Sendable {
     var logName: String { rawValue }
 }
 
+/// Whether a take is recorded, and how (plan 010, decision 1). Chosen before the take, fixed
+/// for it, kept by Next Take.
+enum TakeRecordingMode: String, CaseIterable, Sendable {
+    case off
+    case sound
+    case video
+
+    var label: String {
+        switch self {
+        case .off: "Off"
+        case .sound: "Sound"
+        case .video: "Video"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .off: "record.circle"
+        case .sound: "waveform"
+        case .video: "video"
+        }
+    }
+}
+
+/// A video take's size, at 30 frames a second (plan 010, decision 8): 1080p for checking a
+/// performance, 4K for a take meant for use.
+enum VideoQuality: String, CaseIterable, Sendable {
+    case hd1080
+    case uhd4K
+
+    var label: String {
+        switch self {
+        case .hd1080: "1080p"
+        case .uhd4K: "4K"
+        }
+    }
+}
+
 /// What a take is followed by, judged by ear in stage 5 (plan 005, decision 11): the lead, the
 /// pacing and the start mode, kept in `UserDefaults` and read into `FollowSettings` for a take.
 struct TakeSettings {

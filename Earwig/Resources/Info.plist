@@ -22,6 +22,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Earwig films your take with the front camera when you choose Video, so you can watch it back.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Earwig listens to you so the prompt keeps pace with what you say.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
@@ -35,6 +39,8 @@
 	<array>
 		<string>audio</string>
 	</array>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

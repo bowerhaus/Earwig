@@ -2,4 +2,22 @@
 
 Scratch state for the plan in flight. Overwritten at the start of a plan, emptied to a stub when it completes.
 
-**No plan in flight.** Plan 009 (longer phrases, #27) is complete on branch `longer-phrases`, and its PR carries it; `gh pr list --head longer-phrases --state all` finds that PR, and its state says whether `main` has plan 009 yet (`OPEN` means not merged, `MERGED` means it is). Plan 008 is on `main` (PR #26). The next plan is 010, stage 7 (Settings and TestFlight). `git status -sb` shows which branch you are on. Open follow-ups: #5, #6, #10, #13, #14, #16, #22. Drafts not yet opened: the fixed-pace scroll when listening is off (PRD §4.6, P1); optionally a more visible Lost in Screen mode; the voice never giving the last phrase again after a fluff in it; voice commands for a fluff ("Earwig, back"); the diagnostics line hidden unless Settings turns it on (stage 7).
+**Plan:** 010, record a take with sound or video and play it back (`plans/010-take-recording.md`)
+**Issue:** #16
+**Branch:** `take-recording` (from `main` at `efd0e86`)
+**Mode:** autopilot (/plan_autopilot). On "resume", carry on through the checklist to the PR; stop only for the manual tests or a real decision. Merging is Andy's.
+**Manual test:** device, iPhone 14 Pro on the mount with the SK18. Step 1's check comes before the rest is built.
+
+## Checklist
+
+- [ ] 1. Device check first: the camera, the writer and the mic's second consumer behind `-EarwigRecordVideo YES`; Andy checks route, recogniser, sync, heat at 4K30
+- [ ] 2. The writer and the store (`TakeRecording`, `RecordingStore`, tests)
+- [ ] 3. Settings and the take (settings, start card, `TakeHost`, tests)
+- [ ] 4. The screens (framing, dot, Play Back, Share, tests, screenshots)
+- [ ] Tests + lint
+- [ ] Review + fixes
+- [ ] Manual test: device (Verification 2–6)
+- [ ] Complete (commit + PR)
+
+## Notes
+

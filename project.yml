@@ -28,6 +28,10 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
+        NSCameraUsageDescription: Earwig films your take with the front camera when you choose Video, so you can watch it back.
+        # Recordings are kept in Documents/Recordings, shown in the Files app (plan 010).
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
         NSMicrophoneUsageDescription: Earwig listens to you so the prompt keeps pace with what you say.
         NSSpeechRecognitionUsageDescription: Earwig recognises your speech on this iPhone to follow your place in the script. Nothing leaves the phone.
         # Personal Voice has no documented usage-description key; its authorisation is

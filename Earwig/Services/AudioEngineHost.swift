@@ -38,6 +38,9 @@ final class AudioEngineHost: PlayerOutput {
     private let timePitch = AVAudioUnitTimePitch()
     private var micTapInstalled = false
     private var micBlock: (@Sendable (AVAudioPCMBuffer, TimeInterval) -> Void)?
+    /// A second consumer of the mic's buffers, the take's recording (plan 010, decision 2),
+    /// called by the tap after the listener's block. Set and cleared at any time, tap or not.
+    private let micRecorder = MicRecorderSlot()
     /// Removed in `deinit`, which is not on the main actor.
     nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
     /// Whether the engine should be running: started and not stopped. A configuration change
@@ -187,13 +190,22 @@ final class AudioEngineHost: PlayerOutput {
         engine.stop()
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
+        let recorder = micRecorder
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, when in
             let host = when.isHostTimeValid ? AVAudioTime.seconds(forHostTime: when.hostTime) : HostClock.now
             block(buffer, host)
+            recorder.call(buffer, host)
         }
         micTapInstalled = true
         micBlock = block
         try start()
+    }
+
+    /// Gives the mic's buffers to `block` as well as to the listener, until set to `nil`. The block
+    /// runs on the audio thread after the listener's, must copy what it keeps before it returns,
+    /// and must never wait.
+    func setMicRecorder(_ block: (@Sendable (AVAudioPCMBuffer, TimeInterval) -> Void)?) {
+        micRecorder.set(block)
     }
 
     func removeMicTap() {
@@ -201,6 +213,21 @@ final class AudioEngineHost: PlayerOutput {
         engine.inputNode.removeTap(onBus: 0)
         micTapInstalled = false
         micBlock = nil
+    }
+}
+
+/// The mic tap's second consumer, read on the audio thread and set on the main actor.
+private final class MicRecorderSlot: @unchecked Sendable {
+    private let lock = NSLock()
+    private var block: (@Sendable (AVAudioPCMBuffer, TimeInterval) -> Void)?
+
+    func set(_ block: (@Sendable (AVAudioPCMBuffer, TimeInterval) -> Void)?) {
+        lock.withLock { self.block = block }
+    }
+
+    func call(_ buffer: AVAudioPCMBuffer, _ host: TimeInterval) {
+        let block = lock.withLock { self.block }
+        block?(buffer, host)
     }
 }
 

@@ -76,23 +76,30 @@ final class ScriptDetailViewModel {
 
     /// Opens the Prompt screen on a take of the start step, numbered after the step's last take
     /// (plan 005, decisions 3 and 8). The take is recorded once its slate plays.
-    func startTake(with renderer: ScriptRenderer, in context: ModelContext) {
+    /// `mode` is the take's, from the setting unless given (Next Take keeps the last take's).
+    /// With Ear off nothing needs rendering: the engine follows the presenter alone (plan 008,
+    /// decision 7).
+    func startTake(with renderer: ScriptRenderer, in context: ModelContext, mode given: TakeMode? = nil) {
         // One take at a time: a second Start (the card's and the row's) does not orphan one.
         guard take == nil, let step = startStep else { return }
+        let mode = given ?? AppSettings.take.mode
         let stepIndex = script.lastStep
         // With cues off, inline directions are not played (PRD §4.2): the take has no cue phrases.
         let all = step.phraseList
-        guard let allRendered = renderer.rendered(all) else {
-            error = "The step is not rendered yet."
-            return
-        }
         let keep = all.phrases.indices.filter { script.cuesOn || all.phrases[$0].kind == .spoken }
         let phraseList = PhraseList(parserVersion: all.parserVersion, phrases: keep.map { all.phrases[$0] })
-        let rendered = keep.map { allRendered[$0] }
         let number = script.nextTakeNumber(forStep: stepIndex)
         let built: (script: FollowScript, audio: TakeAudio)
         do {
-            built = try TakeAudio.build(phraseList: phraseList, rendered: rendered, inline: AppSettings.inlineDirections)
+            if mode.ear {
+                guard let allRendered = renderer.rendered(all) else {
+                    error = "The step is not rendered yet."
+                    return
+                }
+                built = try TakeAudio.build(phraseList: phraseList, rendered: keep.map { allRendered[$0] }, inline: AppSettings.inlineDirections)
+            } else {
+                built = try TakeAudio.voiceless(phraseList: phraseList)
+            }
         } catch {
             self.error = error.localizedDescription
             return
@@ -107,9 +114,10 @@ final class ScriptDetailViewModel {
             audio: built.audio,
             slateText: slateText,
             slateWords: Slate.replyWords(for: step, take: number),
-            settings: AppSettings.take.followSettings,
+            settings: AppSettings.take.followSettings(for: mode),
             contextWords: TakeSetup.contextWords(phraseList: phraseList, slateText: slateText),
-            voiceSpeed: AppSettings.take.voiceSpeed
+            voiceSpeed: AppSettings.take.voiceSpeed,
+            mode: mode
         )
         let session = AudioSessionManager()
         session.onEvent = { Log.event($0) }
@@ -147,9 +155,10 @@ final class ScriptDetailViewModel {
 
     /// The same step again, as the next take.
     func nextTake(with renderer: ScriptRenderer, in context: ModelContext) {
+        let mode = take?.setup.mode
         take?.end()
         take = nil
-        startTake(with: renderer, in: context)
+        startTake(with: renderer, in: context, mode: mode)
     }
 
     /// The presenter voices to pick from, and whether Personal Voice may still be asked for.

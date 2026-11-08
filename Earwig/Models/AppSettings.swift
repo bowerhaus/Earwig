@@ -16,6 +16,37 @@ enum InlineDirections: String, CaseIterable, Sendable {
     }
 }
 
+/// How a take reaches the presenter (PRD §4.6; plan 008, decision 6): the voice in the earpiece,
+/// the text on the screen, or both. Chosen before the take and fixed for it.
+enum TakeMode: String, CaseIterable, Sendable {
+    case ear
+    case screen
+    case both
+
+    /// Whether the voice reads the script.
+    var ear: Bool { self != .screen }
+    /// Whether the text scrolls on the Prompt screen.
+    var screen: Bool { self != .ear }
+
+    /// The short name, for the segmented control beside Start.
+    var label: String {
+        switch self {
+        case .ear: "Ear"
+        case .screen: "Screen"
+        case .both: "Both"
+        }
+    }
+
+    /// The full name, for Settings and the Prompt screen.
+    var title: String {
+        switch self {
+        case .ear: "Ear"
+        case .screen: "Screen"
+        case .both: "Ear and Screen"
+        }
+    }
+}
+
 /// What a take is followed by, judged by ear in stage 5 (plan 005, decision 11): the lead, the
 /// pacing and the start mode, kept in `UserDefaults` and read into `FollowSettings` for a take.
 struct TakeSettings {
@@ -35,6 +66,13 @@ struct TakeSettings {
     /// its reply, which its tests are written for.
     static let defaultStartMode = StartMode.tonesOnly
     static let startModeKey = "startMode"
+    static let modeKey = "takeMode"
+    /// Ear, as before Screen mode, for the beach (plan 008, decision 6).
+    static let defaultMode = TakeMode.ear
+    static let textSizeKey = "textSize"
+    /// The Prompt screen's text size in points (plan 008, decision 8).
+    static let textSizeRange = 24.0...72.0
+    static let defaultTextSize = 40.0
 
     let defaults: UserDefaults
 
@@ -57,6 +95,24 @@ struct TakeSettings {
         nonmutating set { defaults.set(newValue.rawValue, forKey: Self.startModeKey) }
     }
 
+    var mode: TakeMode {
+        get { defaults.string(forKey: Self.modeKey).flatMap(TakeMode.init) ?? Self.defaultMode }
+        nonmutating set { defaults.set(newValue.rawValue, forKey: Self.modeKey) }
+    }
+
+    /// The Prompt screen's text size, kept within `textSizeRange`.
+    var textSize: Double {
+        get {
+            guard defaults.object(forKey: Self.textSizeKey) != nil else { return Self.defaultTextSize }
+            return Self.clampTextSize(defaults.double(forKey: Self.textSizeKey))
+        }
+        nonmutating set { defaults.set(Self.clampTextSize(newValue), forKey: Self.textSizeKey) }
+    }
+
+    static func clampTextSize(_ size: Double) -> Double {
+        min(max(size, textSizeRange.lowerBound), textSizeRange.upperBound)
+    }
+
     /// The voice's base speed: the player plays the engine's speeds times this (#14). One of
     /// `voiceSpeeds`, `defaultVoiceSpeed` unless set.
     var voiceSpeed: Double {
@@ -68,12 +124,14 @@ struct TakeSettings {
         nonmutating set { defaults.set(newValue, forKey: Self.voiceSpeedKey) }
     }
 
-    /// The engine's settings for a take: the defaults with these three.
-    var followSettings: FollowSettings {
+    /// The engine's settings for a take: the defaults with these, voiced unless the take is
+    /// on the screen alone.
+    func followSettings(for mode: TakeMode) -> FollowSettings {
         var settings = FollowSettings()
         settings.lead = lead
         settings.pacing = pacing
         settings.start = startMode
+        settings.voiced = mode.ear
         return settings
     }
 

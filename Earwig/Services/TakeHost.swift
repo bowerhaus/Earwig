@@ -83,6 +83,8 @@ struct TakeSetup {
     var contextWords: [String]
     /// The voice's base speed (#14).
     var voiceSpeed = 1.0
+    /// Ear, Screen or both, fixed for the take (plan 008, decision 6).
+    var mode = TakeMode.ear
 
     /// The step's words and the slate's, each once, as written, for the analyser's context.
     static func contextWords(phraseList: PhraseList, slateText: String) -> [String] {
@@ -297,10 +299,11 @@ final class TakeHost: Identifiable {
     }
 
     /// The earpiece went: hold, so the voice is not heard by the room or the mic (decision 9).
+    /// With no voice there is nothing to keep from the room, so the take goes on (plan 008).
     private func deviceLost() {
         guard phase == .running else { return }
         log("take: output device lost; route \(session.route.summary)")
-        guard [.speaking, .waiting, .lost].contains(snapshot.status) else { return }
+        guard setup.mode.ear, [.speaking, .waiting, .lost].contains(snapshot.status) else { return }
         send(.hold)
     }
 
@@ -329,7 +332,7 @@ final class TakeHost: Identifiable {
         snapshot = engine.snapshot
         phase = .finished(outcome)
         recorder.finished(duration: duration, outcome: TakeOutcome(rawValue: outcome.rawValue) ?? .stopped)
-        log(summary.line(duration: duration, outcome: outcome, note: stopReason == nil ? nil : "not listening"))
+        log(summary.line(duration: duration, outcome: outcome, mode: setup.mode, note: stopReason == nil ? nil : "not listening"))
         Task { await tearDown() }
     }
 

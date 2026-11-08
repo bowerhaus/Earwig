@@ -54,8 +54,10 @@ struct PromptViewModel: Equatable {
 
     var takeText: String { "Take \(setup.take)" }
 
+    /// Not judged with no voice: nothing plays but the slate and the tones, so the speaker or no
+    /// earpiece is fine (plan 008, decision 10).
     var earpiece: RouteState {
-        guard phase == .running else { return .unknown }
+        guard phase == .running, setup.mode.ear else { return .unknown }
         if route.isHandsFree { return .wrong }
         return route.isSpeaker ? .caution : .good
     }
@@ -68,7 +70,7 @@ struct PromptViewModel: Equatable {
     /// Said under the route icons when one is not good.
     var routeNote: String? {
         guard phase == .running else { return nil }
-        if route.isHandsFree { return "The earpiece is in hands-free mode: reconnect it." }
+        if route.isHandsFree, setup.mode.ear { return "The earpiece is in hands-free mode: reconnect it." }
         if mic == .wrong { return "Not listening on the iPhone's mic." }
         if earpiece == .caution { return "Speaker: the mic will hear the voice." }
         return nil
@@ -190,9 +192,10 @@ extension TakeSetup {
         var start: StartMode
         var phraseList: PhraseList
         var firstWord: [Int]
+        var mode = TakeMode.ear
     }
 
     var summary: Summary {
-        Summary(number: stepNumber, title: stepTitle, take: take, start: settings.start, phraseList: phraseList, firstWord: script.firstWord)
+        Summary(number: stepNumber, title: stepTitle, take: take, start: settings.start, phraseList: phraseList, firstWord: script.firstWord, mode: mode)
     }
 }

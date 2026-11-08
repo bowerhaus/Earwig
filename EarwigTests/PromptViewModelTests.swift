@@ -19,13 +19,15 @@ struct PromptViewModelTests {
     }
 
     private func model(_ phase: TakeHost.Phase = .running, _ status: FollowStatus = .speaking, voicePhrase: Int? = 0, voiceWord: Int? = nil,
-                       route: AudioRoute? = nil, start: StartMode = .slateWithReply, download: Double? = nil) -> PromptViewModel {
+                       route: AudioRoute? = nil, start: StartMode = .slateWithReply, download: Double? = nil,
+                       mode: TakeMode = .ear) -> PromptViewModel {
         var snapshot = FollowSnapshot()
         snapshot.status = status
         snapshot.voicePhrase = voicePhrase
         snapshot.voiceWord = voiceWord
         var setup = setup
         setup.start = start
+        setup.mode = mode
         return PromptViewModel(phase: phase, snapshot: snapshot, route: route ?? self.route(out: .bluetoothA2DP), setup: setup, downloadProgress: download)
     }
 
@@ -103,6 +105,19 @@ struct PromptViewModelTests {
         #expect(headsetMic.earpiece == .good)
         #expect(headsetMic.mic == .wrong)
         #expect(headsetMic.routeNote == "Not listening on the iPhone's mic.")
+    }
+
+    @Test func withNoVoiceTheEarpieceIsNotJudged() {
+        let speaker = model(.running, .reading, route: route(out: .builtInSpeaker), mode: .screen)
+        #expect(speaker.earpiece == .unknown)
+        #expect(speaker.mic == .good)
+        #expect(speaker.routeNote == nil)
+        let handsFree = model(.running, .reading, route: route(out: .bluetoothHFP, in: .bluetoothHFP), mode: .screen)
+        #expect(handsFree.earpiece == .unknown)
+        #expect(handsFree.mic == .wrong)
+        #expect(handsFree.routeNote == "Not listening on the iPhone's mic.")
+        // With the voice on the screen too, the earpiece is judged as in Ear mode.
+        #expect(model(route: route(out: .builtInSpeaker), mode: .both).earpiece == .caution)
     }
 
     @Test func waitingMidSentenceShowsTheWholeSentence() {

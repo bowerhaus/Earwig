@@ -40,4 +40,11 @@ extension TakeAudio {
         )
         return (script, audio)
     }
+
+    /// A take with no voice (plan 008, decision 7): the step's script with even timings, which
+    /// nothing plays, and only the tones; the slate is rendered while getting ready, as ever.
+    static func voiceless(phraseList: PhraseList) throws -> (script: FollowScript, audio: TakeAudio) {
+        guard let tones = Tones.buffer() else { throw VoiceRenderer.RenderError.conversion }
+        return (FollowScript(phraseList: phraseList), TakeAudio(phrases: [], slate: nil, tones: tones))
+    }
 }

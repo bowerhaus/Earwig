@@ -72,7 +72,7 @@
 
 6. **Choosing Ear, Screen or both, before the take begins (Andy, 2026-11-08).** Andy chose a setting plus a choice made before the take. The take starts the moment the Prompt screen opens, so the choice is on the Script screen, beside Start.
    - **Settings** gets a Screen group (PRD §8.4): **Mode**, one of Ear (the default, as today), Screen and Ear and Screen, and **Text size** (decision 8). The mode is saved in `UserDefaults` as `TakeSettings.mode`.
-   - **The Script screen**, on the start step's card above Start, has a three-way segmented control: Ear, Screen, Both. It shows the saved mode, and changing it saves the mode. So it is one value, chosen where the take is started and kept for the next shoot, and Settings shows the same value. The two cannot get out of step.
+   - **The Script screen** has a three-way segmented control, Ear, Screen and Both, in the rendering row at the top, above Listen and Start Take. The start step's card keeps its small Start, which uses the same mode. Built there, not on the card, so it sits by the main Start, which Screen mode shows before anything is rendered. It shows the saved mode, and changing it saves the mode. So it is one value, chosen where the take is started and kept for the next shoot, and Settings shows the same value. The two cannot get out of step.
    - **During a take the mode is fixed.** There are no Ear or Screen toggles on the Prompt screen. **Next Take** keeps the take's mode. A new mode is chosen on the Script screen after Done.
    - The Prompt screen's top bar shows the take's mode as a small label (Ear, Screen, Ear and Screen), so a glance at the mount confirms it.
 

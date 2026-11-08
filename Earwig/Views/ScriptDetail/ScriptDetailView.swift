@@ -9,6 +9,7 @@ struct ScriptDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(ScriptRenderer.self) private var renderer
     @AppStorage(AppSettings.inlineDirectionsKey) private var inlineDirections: InlineDirections = .chime
+    @AppStorage(TakeSettings.modeKey) private var mode: TakeMode = TakeSettings.defaultMode
     @State private var model: ScriptDetailViewModel
     @State private var confirmingDelete = false
 
@@ -27,11 +28,15 @@ struct ScriptDetailView: View {
         }
     }
 
-    /// Whether the start step is rendered, so a take can start.
+    /// Whether the start step is rendered.
     private var isReady: Bool {
         if case .ready = model.renderState(renderer) { return true }
         return false
     }
+
+    /// Whether a take can start: rendered, or on the screen alone, which needs no rendering
+    /// (plan 008, decision 7).
+    private var canStart: Bool { model.startStep != nil && (isReady || !mode.ear) }
 
     private var content: some View {
         List {
@@ -51,7 +56,7 @@ struct ScriptDetailView: View {
                         // The start step: its Start button starts a take; the card itself is not
                         // a button, so the two never nest.
                         StepView(step: step, isStart: true, takes: script.takes(forStep: index), nextTake: script.nextTakeNumber(forStep: index),
-                                 start: isReady ? { model.startTake(with: renderer, in: context) } : nil)
+                                 start: canStart ? { model.startTake(with: renderer, in: context) } : nil)
                     } else {
                         Button {
                             model.select(step: index, in: context, renderer: renderer)
@@ -166,18 +171,29 @@ struct ScriptDetailView: View {
                 ProgressView(value: Double(done), total: Double(max(total, 1)))
                     .tint(EarwigTheme.accent)
             }
-            if case .ready = state {
+            if model.startStep != nil {
+                // Ear, Screen or both, chosen before the take (plan 008, decision 6): the same
+                // value as Settings.
+                Picker("Mode", selection: $mode) {
+                    ForEach(TakeMode.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityLabel("Take mode")
+            }
+            if canStart {
                 // Start, not a tap on a step: a take started by accident while scrolling is
                 // worse than one more tap (plan 005, decision 8).
                 HStack(spacing: 12) {
-                    Button { model.listen(with: renderer) } label: {
-                        Label("Listen", systemImage: "headphones")
-                            .font(.subheadline.bold())
-                            .frame(minHeight: 34)
+                    if isReady {
+                        Button { model.listen(with: renderer) } label: {
+                            Label("Listen", systemImage: "headphones")
+                                .font(.subheadline.bold())
+                                .frame(minHeight: 34)
+                        }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
+                        .tint(EarwigTheme.accent)
                     }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.capsule)
-                    .tint(EarwigTheme.accent)
                     Button { model.startTake(with: renderer, in: context) } label: {
                         AccentPill(title: "Start Take \(model.nextTakeNumber)", systemImage: "play.fill", expands: true)
                     }

@@ -34,6 +34,12 @@ final class ScreenFollower {
         screenPlace.place >= 0 ? Int(screenPlace.place.rounded(.down)) : nil
     }
 
+    /// Whether nothing would move in the next frame: the place at the estimate and at rest, and
+    /// no drag being made or fading. The frame-by-frame redraw pauses then.
+    func isStill(toward place: Double, confident: Int) -> Bool {
+        dragStart == nil && dragged == 0 && screenPlace.isAtRest(toward: place, confident: confident)
+    }
+
     func drag(by translation: CGFloat) {
         if dragStart == nil { dragStart = dragged }
         dragged = (dragStart ?? 0) + translation

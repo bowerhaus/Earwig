@@ -197,7 +197,8 @@ struct PromptView: View {
     }
 
     private func screenText(_ model: PromptViewModel) -> some View {
-        ScreenTextView(tokens: model.screenTokens, place: model.place, confident: model.confident, textSize: $textSize, resume: moves)
+        ScreenTextView(tokens: model.screenTokens, place: model.place, confident: model.confident, textSize: $textSize,
+                       blocksMark: !model.setup.mode.voiced, resume: moves)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onTapGesture {
                 if model.tapStarts { host.control(.tap) }

@@ -11,6 +11,9 @@ struct ScreenTextView: View {
     let place: Double
     let confident: Int
     @Binding var textSize: Double
+    /// With no voice the presenter's place is a block on the word; with one, an underline, so
+    /// it does not compete with the voice's word on the accent (Andy, device check 1).
+    let blocksMark: Bool
     /// Changed by the Prompt screen on Back, Forward and Restart: the text follows again at once.
     let resume: Int
 
@@ -19,13 +22,17 @@ struct ScreenTextView: View {
     @State private var follower = ScreenFollower()
     @State private var layout = ScreenLayout(words: [], frames: [:])
     @State private var pinchBase: Double?
+    /// A state change as a drag starts and ends, so a paused redraw starts again for it.
+    @State private var dragging = false
 
     var body: some View {
         GeometryReader { geometry in
             let readingY = geometry.size.height * Self.readingLine
-            TimelineView(.animation) { context in
+            // Redrawn every frame only while the text is moving, so a take in a pocket costs
+            // little more than a still screen.
+            TimelineView(.animation(minimumInterval: nil, paused: follower.isStill(toward: place, confident: confident) && !dragging)) { context in
                 let y = follower.y(at: context.date.timeIntervalSinceReferenceDate, place: place, confident: confident, layout: layout)
-                WordColumn(tokens: tokens, mark: follower.mark, size: textSize, width: geometry.size.width)
+                WordColumn(tokens: tokens, mark: follower.mark, blocksMark: blocksMark, size: textSize, width: geometry.size.width)
                     .equatable()
                     .offset(y: readingY - y)
             }
@@ -47,8 +54,14 @@ struct ScreenTextView: View {
 
     private var drag: some Gesture {
         DragGesture(minimumDistance: 12)
-            .onChanged { follower.drag(by: $0.translation.height) }
-            .onEnded { _ in follower.endDrag(at: Date.timeIntervalSinceReferenceDate) }
+            .onChanged {
+                if !dragging { dragging = true }
+                follower.drag(by: $0.translation.height)
+            }
+            .onEnded { _ in
+                follower.endDrag(at: Date.timeIntervalSinceReferenceDate)
+                dragging = false
+            }
     }
 
     private var pinch: some Gesture {
@@ -73,13 +86,14 @@ private struct WordColumn: View, Equatable {
     let tokens: [PromptViewModel.ScreenToken]
     /// The presenter's place, as the screen shows it.
     let mark: Int?
+    let blocksMark: Bool
     let size: Double
     let width: CGFloat
 
     var body: some View {
         WordFlow(paragraphSpacing: size * 0.6) {
             ForEach(tokens, id: \.word.id) { token in
-                WordView(token: token, isMark: token.isMark(mark), isPassed: token.isPassed(mark: mark), size: size)
+                WordView(token: token, isMark: token.isMark(mark), isPassed: token.isPassed(mark: mark), blocksMark: blocksMark, size: size)
                     .layoutValue(key: StartsParagraph.self, value: token.word.startsParagraph)
                     .background {
                         GeometryReader { proxy in
@@ -103,6 +117,7 @@ private struct WordView: View {
     let token: PromptViewModel.ScreenToken
     let isMark: Bool
     let isPassed: Bool
+    let blocksMark: Bool
     let size: Double
 
     var body: some View {
@@ -115,10 +130,10 @@ private struct WordView: View {
             .padding(.vertical, size * 0.1)
             .background(background)
             .overlay(alignment: .bottom) {
-                if isMark {
+                if isMark, !blocksMark {
                     Capsule()
                         .fill(EarwigTheme.accent)
-                        .frame(height: max(3, size * 0.08))
+                        .frame(height: max(4, size * 0.12))
                         .padding(.horizontal, size * 0.12)
                 }
             }
@@ -126,13 +141,13 @@ private struct WordView: View {
 
     private var foreground: Color {
         if token.word.isCue { return EarwigTheme.cue }
-        if token.isVoiceWord { return EarwigTheme.onAccent }
+        if token.isVoiceWord || (isMark && blocksMark) { return EarwigTheme.onAccent }
         if token.isWaiting || isPassed { return EarwigTheme.secondaryText }
         return EarwigTheme.text
     }
 
     private var background: Color {
-        if token.isVoiceWord { return EarwigTheme.accent }
+        if token.isVoiceWord || (isMark && blocksMark) { return EarwigTheme.accent }
         if token.inVoicePhrase { return EarwigTheme.voiceHighlight }
         return .clear
     }

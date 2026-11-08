@@ -43,6 +43,13 @@ struct ScreenPlace: Equatable, Sendable {
         self.place = place
     }
 
+    /// Whether a step toward this estimate would leave the place where it is: no glide, at rest,
+    /// and not behind the estimate, nor the confident word fallen back far enough to glide.
+    func isAtRest(toward estimate: Double, confident: Int) -> Bool {
+        guard glide == .none, speed == 0, estimate <= place + 0.01 else { return false }
+        return lastConfident.map { confident >= $0 - Int(Self.backJump) } ?? false
+    }
+
     /// Back, Forward or Restart was pressed: glide to wherever the estimate goes, however near,
     /// either way (review C2: a Back of two words or fewer was not followed).
     mutating func move() {

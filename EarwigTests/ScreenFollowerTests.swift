@@ -46,6 +46,24 @@ struct ScreenFollowerTests {
         #expect(follower.mark == 2)
     }
 
+    @Test func itIsStillOnlyWhenNothingWouldMove() {
+        let follower = ScreenFollower()
+        _ = frames(follower, from: 0, to: 3)
+        #expect(follower.isStill(toward: 1, confident: 1))
+        // The estimate moves on, or Back takes the confident word back: not still.
+        #expect(!follower.isStill(toward: 3, confident: 3))
+        #expect(!follower.isStill(toward: 0.5, confident: -2))
+        // A drag fading away: not still until it has gone.
+        follower.drag(by: 40)
+        follower.endDrag(at: 3)
+        #expect(!follower.isStill(toward: 1, confident: 1))
+        _ = frames(follower, from: 3, to: 8)
+        #expect(follower.isStill(toward: 1, confident: 1))
+        // A move asked for glides first.
+        follower.moved()
+        #expect(!follower.isStill(toward: 1, confident: 1))
+    }
+
     @Test func aMoveFollowsAtOnce() {
         let follower = ScreenFollower()
         let resting = frames(follower, from: 0, to: 1)

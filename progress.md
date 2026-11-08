@@ -17,7 +17,7 @@ Andy's choices (2026-11-08): Ear off follows the presenter directly; reading lin
 - [x] Step 4: the pinch (in `ScreenTextView`; checked on the device only)
 - [x] Tests + lint (322 tests pass, SwiftLint clean, at ea4512e)
 - [x] Review + fixes (Review pass and Outcome in the plan; #25 comment; 325 tests pass, lint clean)
-- [ ] Manual test: device (Verification 1–6). Installed e5c462a on the iPhone 14 Pro (00008120-000471EE14E0201E), console logged to the scratchpad's console.log. Waiting on check 1 (Screen only, on the mount); then 2–6 one at a time.
+- [ ] Manual test: device (Verification 1–6). Check 1 passed (recorded in the plan); the underline now follows the smoothed place and the tick is gone (installed). Open question: Andy asked why an underline, not a block (decision 4). Next: his answer, then check 2. Console: scratchpad console.log (check 1's in console-check1.log).
 - [ ] Complete (commit + PR)
 
 ## Notes

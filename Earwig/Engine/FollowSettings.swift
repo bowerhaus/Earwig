@@ -47,6 +47,15 @@ struct FollowSettings: Equatable, Sendable {
     /// A confident position this many words or more behind the last is a step back.
     var stepBackWords = 3
 
+    /// The voice stops when the presenter has been heard, nothing new of the script has been
+    /// heard for `stopSilence` seconds (`stopSilenceOffScript` once a word off the script has
+    /// been heard since), and what the voice has given is more than `lead + stopMargin` words past
+    /// the last word heard (plan 009: after a fluff it read two phrases on). Less than 2 s stopped
+    /// the voice in simulated slow reads.
+    var stopSilence: TimeInterval = 2
+    var stopSilenceOffScript: TimeInterval = 1.2
+    var stopMargin = 3
+
     /// How long the presenter estimate goes on advancing with no new result.
     var maxCoast: TimeInterval = 0.5
     var defaultDelay: TimeInterval = 0.9

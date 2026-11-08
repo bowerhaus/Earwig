@@ -284,6 +284,35 @@ struct FollowEngineTests {
         #expect(engine.snapshot.status == .held)
     }
 
+    /// Quiet for two seconds with the voice more than the lead and its margin past the last
+    /// word heard: the voice stops, and gives the phrase again only once the presenter is heard
+    /// (plan 009).
+    @Test func aStoppedPresenterStopsTheVoiceUntilHeardAgain() {
+        var engine = following()
+        _ = engine.handle(.voiceProgress(phrase: 0, offset: 1.6), at: 2.9)
+        _ = engine.handle(.interim("morning all here"), at: 3)
+        #expect(engine.handle(.phraseEnded(0), at: 3.8) == [.play(phrase: 1, speed: 1)])
+        // The voice is at word 9, seven past "here".
+        _ = engine.handle(.voiceProgress(phrase: 1, offset: 1.7), at: 4.9)
+        #expect(!engine.tick(at: 4.9).contains(.stopVoice))
+        #expect(engine.tick(at: 5.1).contains(.stopVoice))
+        #expect(engine.snapshot.status == .waiting)
+        // Nothing is given again by itself, however long it waits.
+        #expect(engine.tick(at: 9) == [])
+        #expect(engine.handle(.interim("morning all here we"), at: 9.5) == [.play(phrase: 1, speed: 1)])
+    }
+
+    /// One word off the script and the voice stops sooner.
+    @Test func aWrongWordStopsTheVoiceSooner() {
+        var engine = following()
+        _ = engine.handle(.voiceProgress(phrase: 0, offset: 1.6), at: 2.9)
+        _ = engine.handle(.interim("morning all here"), at: 3)
+        #expect(engine.handle(.phraseEnded(0), at: 3.8) == [.play(phrase: 1, speed: 1)])
+        _ = engine.handle(.voiceProgress(phrase: 1, offset: 1.7), at: 4.1)
+        _ = engine.handle(.interim("morning all here gravy"), at: 4.1)
+        #expect(engine.tick(at: 4.25).contains(.stopVoice))
+    }
+
     @Test func holdWhileWaitingStopsNothing() {
         var engine = following()
         _ = engine.handle(.phraseEnded(0), at: 3.8)

@@ -50,6 +50,9 @@ struct FollowEngine: Sendable {
     private var voicePhrase: Int?
     private var voiceStartedAt: TimeInterval?
     private var voiceWord: Int?
+    /// When the voice was stopped for a presenter who had stopped (plan 009): no gate opens
+    /// until a script word is heard after it, so nothing is given again by itself.
+    private var stoppedForPresenterAt: TimeInterval?
 
     /// The matcher's state at the last final, and with the current interim block on top.
     private var settled = MatchState()
@@ -151,6 +154,7 @@ struct FollowEngine: Sendable {
         } else {
             lastError = nil
         }
+        commands += stopForAStoppedPresenter()
         commands += advance()
         return commands
     }
@@ -243,6 +247,7 @@ struct FollowEngine: Sendable {
 
     /// Steps back, jumps ahead or picks up again when the presenter's confident position says so.
     private mutating func afterHearing(_ previous: MatchState) -> [FollowCommand] {
+        if let stopped = stoppedForPresenterAt, (current.confidentAt ?? -.infinity) > stopped { stoppedForPresenterAt = nil }
         guard !held else { return [] }
         if previous.lost && !current.lost { return reanchor(.found) }
         guard current.confident >= 0 else { return [] }
@@ -387,32 +392,10 @@ struct FollowEngine: Sendable {
     /// one ahead, and the simulated clean read ran 1.5 words over the lead). A spoken phrase
     /// straight after a cue follows the cue.
     private func gateIsOpen(_ phrase: Int) -> Bool {
+        if let stopped = stoppedForPresenterAt, (current.confidentAt ?? -.infinity) <= stopped { return false }
         if script.phrases[phrase].kind == .spoken, phrase > 0, script.phrases[phrase - 1].kind == .cue { return true }
         guard let gating = script.gatingPhrase(before: phrase), let last = script.lastWord(of: gating) else { return true }
         return presenterNow(atGate: true) >= Double(last + 1 - settings.lead)
-    }
-
-    /// The take completes when the last word is heard, or, with the presenter in the last spoken
-    /// phrase, a while after both the voice finished (if there is one) and they were last heard
-    /// there: the recogniser may miss the last words, but a presenter who comes back to the last
-    /// phrase long after the voice is not cut off at its first word (device check 6 of plan 005).
-    /// With no voice, `voiceDoneAt` is nil and the while runs from when they were last heard
-    /// (plan 008, decision 1).
-    private func isComplete(voiceDoneAt: TimeInterval?) -> Bool {
-        guard let last = script.lastSpokenWord, let lastPhrase = script.phrase(containing: last) else { return true }
-        if current.confident >= last { return true }
-        guard current.confident >= script.firstWord[lastPhrase],
-              let since = [voiceDoneAt, current.confidentAt].compactMap({ $0 }).max() else { return false }
-        return now - since >= settings.endGrace
-    }
-
-    private mutating func finish(_ outcome: FollowOutcome) -> [FollowCommand] {
-        phase = .finished
-        voice = .idle
-        held = false
-        heldPlace = nil
-        self.outcome = outcome
-        return [.finished(outcome)]
     }
 }
 
@@ -447,6 +430,7 @@ extension FollowEngine {
         voice = .idle
         held = false
         heldPlace = nil
+        stoppedForPresenterAt = nil
         voicePhrase = nil
         voiceStartedAt = nil
         voiceWord = nil
@@ -478,6 +462,7 @@ extension FollowEngine {
         if held {
             held = false
             heldPlace = nil
+            stoppedForPresenterAt = nil
             return reanchor(.release)
         }
         // The place shown is kept while held, so the text stays still, and released to
@@ -535,6 +520,7 @@ extension FollowEngine {
     private mutating func takePresenter(toStartOf phrase: Int) {
         held = false
         heldPlace = nil
+        stoppedForPresenterAt = nil
         settled = MatchState(last: script.firstWord[phrase] - 1, confident: script.firstWord[phrase] - 1)
         current = settled
         // What was said before the press reaches the recogniser up to a delay later; taken as
@@ -551,5 +537,69 @@ extension FollowEngine {
     private var screenPlace: Double {
         guard let last = script.lastSpokenWord else { return 0 }
         return Double(min(max(current.confident + 1, 0), last))
+    }
+}
+
+// MARK: - Stopping for the presenter
+
+extension FollowEngine {
+    /// A presenter who has stopped, or gone off script, well behind what the voice has given:
+    /// the voice stops (or, between phrases, takes back what it gave) and queues the first phrase
+    /// they have not begun, and waits for them to be heard again (plan 009). A phrase used to play
+    /// to its end whatever happened, and the gate after it could open on the estimate's coast in
+    /// the recogniser's delay: after a fluff on the phone the voice read two phrases on. The
+    /// silence and the margin keep it out of a read with pauses at phrase ends.
+    private mutating func stopForAStoppedPresenter() -> [FollowCommand] {
+        guard phase == .following, settings.voiced, !held, stoppedForPresenterAt == nil,
+              let heardAt = current.confidentAt,
+              now - heardAt >= (current.sinceMatch > 0 ? settings.stopSilenceOffScript : settings.stopSilence),
+              let target = script.firstPhrase(after: current.confident) else { return [] }
+        let given: Int
+        let playing: Bool
+        switch voice {
+        case .playing(let phrase):
+            guard script.phrases[phrase].kind == .spoken, let word = voiceWord, target <= phrase else { return [] }
+            given = word
+            playing = true
+        case .waiting(let next):
+            guard target < next else { return [] }
+            given = script.firstWord[next] - 1
+            playing = false
+        case .done, .idle:
+            return []
+        }
+        guard given - current.confident > settings.lead + settings.stopMargin else { return [] }
+        voice = .waiting(target)
+        voiceStartedAt = nil
+        pacer.pause()
+        stoppedForPresenterAt = now
+        return playing ? [.stopVoice] : []
+    }
+}
+
+// MARK: - The end
+
+extension FollowEngine {
+    /// The take completes when the last word is heard, or, with the presenter in the last spoken
+    /// phrase, a while after both the voice finished (if there is one) and they were last heard
+    /// there: the recogniser may miss the last words, but a presenter who comes back to the last
+    /// phrase long after the voice is not cut off at its first word (device check 6 of plan 005).
+    /// With no voice, `voiceDoneAt` is nil and the while runs from when they were last heard
+    /// (plan 008, decision 1).
+    private func isComplete(voiceDoneAt: TimeInterval?) -> Bool {
+        guard let last = script.lastSpokenWord, let lastPhrase = script.phrase(containing: last) else { return true }
+        if current.confident >= last { return true }
+        guard current.confident >= script.firstWord[lastPhrase],
+              let since = [voiceDoneAt, current.confidentAt].compactMap({ $0 }).max() else { return false }
+        return now - since >= settings.endGrace
+    }
+
+    private mutating func finish(_ outcome: FollowOutcome) -> [FollowCommand] {
+        phase = .finished
+        voice = .idle
+        held = false
+        heldPlace = nil
+        self.outcome = outcome
+        return [.finished(outcome)]
     }
 }

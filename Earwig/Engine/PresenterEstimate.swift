@@ -78,7 +78,10 @@ struct PresenterEstimate: Equatable, Sendable {
     /// the voice started it, they are taken to have begun it too, and no further (plan 001: the
     /// first interim result after a pause can come 1.5 s late, which stalled the gate of a short
     /// phrase). Going no further than its first word means silence lets at most a phrase of
-    /// `lead + 1` words through a gate. Off script, or lost, it stays at the last confident word.
+    /// `lead + 1` words through a gate. That is only for a presenter heard within
+    /// `lateStartReach` words of the voice's phrase: stopped further back, inside the phrase
+    /// before, they have not reached it (plan 009). Off script, or lost, it stays at the last
+    /// confident word.
     ///
     /// Given a boundary (the engine gives one for a gate), coasting does not cross it: it goes
     /// no further than the first word of the next phrase until a word of that phrase is
@@ -94,7 +97,8 @@ struct PresenterEstimate: Equatable, Sendable {
             let coast = min(max(now - at, 0), settings.maxCoast)
             estimate = base + rate * (delay + coast)
             if let boundary = basis.boundary { estimate = min(estimate, Double(boundary)) }
-        } else if let start = basis.voicePhraseStart, let startedAt = basis.voiceStartedAt, start > basis.confident {
+        } else if let start = basis.voicePhraseStart, let startedAt = basis.voiceStartedAt, start > basis.confident,
+                  start - basis.confident <= settings.lateStartReach {
             let following = now - startedAt - Double(lead) / rate
             estimate = min(base + rate * max(following, 0), Double(start))
         }

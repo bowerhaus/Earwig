@@ -86,6 +86,14 @@ struct PresenterEstimateTests {
         #expect(estimate.position(started, lead: 3, at: 10) == 11)
     }
 
+    /// Stopped inside the phrase before, more than `lateStartReach` words short of the voice's
+    /// phrase: not taken to have begun it (plan 009, where silence let two phrases through).
+    @Test func afterAFinalStoppedWellShortItStaysPut() {
+        let estimate = PresenterEstimate(settings: settings)
+        let stopped = basis(confident: 14, afterFinal: true, voiceStart: 22, voiceStartedAt: 1, cap: 30)
+        #expect(estimate.position(stopped, lead: 5, at: 10) == 14)
+    }
+
     @Test func offScriptItStaysAtTheLastConfidentWord() {
         let estimate = PresenterEstimate(settings: settings)
         #expect(estimate.position(basis(offScript: true), lead: 3, at: 0.5) == 10)
@@ -113,8 +121,9 @@ struct PresenterEstimateTests {
 
     @Test func theBoundaryLeavesThePauseRuleAlone() {
         let estimate = PresenterEstimate(settings: settings)
-        // After a final, with the voice four words on: taken to have begun the voice's phrase.
-        let paused = basis(afterFinal: true, voiceStart: 15, voiceStartedAt: 0, boundary: 11)
-        #expect(estimate.position(paused, lead: 3, at: 5) == 15)
+        // After a final, with the voice's phrase two words on: taken to have begun it, past the
+        // boundary.
+        let paused = basis(afterFinal: true, voiceStart: 13, voiceStartedAt: 0, boundary: 11)
+        #expect(estimate.position(paused, lead: 3, at: 5) == 13)
     }
 }

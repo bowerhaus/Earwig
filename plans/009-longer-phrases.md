@@ -22,12 +22,15 @@
 
 1. **A clause up to 20 words is one phrase** (Andy, 2026-11-08: "Allow longer phrases"). `maxWords` stays 12 and is still the limit for packing clauses together into one phrase. A new `maxClauseWords` of 20 is the limit for a single clause. A clause past it is cut into near-equal pieces of at most 12, as before.
 2. **Stored scripts are split again.** `PhraseList.currentVersion` goes from 1 to 2, so `ScriptImporter.refreshIfStale` rebuilds every step from its source text. Takes are kept: they belong to the script, not the step.
+4. **Silence does not move a presenter on from inside a phrase** (Andy, 2026-11-08: "ok try it"). Since plan 001, after a final the presenter is taken to have begun the phrase the voice has started, a lead's worth of time after it started, because the first result after a pause can come 1.5 s late. That is only true of a presenter who finished the phrase before. On the phone Andy stopped seven words short of the end of the long clause and the rule moved him on nine words to the next phrase's start; that phrase was five words, so its gate opened too, and the voice gave two phrases after he had stopped. Now it applies only when the presenter was heard within `lateStartReach` (3) words of the voice's phrase: at the end of the phrase before, or short of it by a misheard word or two. It does not try to tell a fluff from anything else.
 3. **The cost:** a long clause plays in one go, so the voice can get further ahead within it, and the pacer has a longer phrase to slow down in. There is no gate inside it.
 
 ## Verification
 
 - `PhraseSplitterTests`: a 14-word clause after a comma stays whole; a 20-word sentence with no break is one phrase; a 24-word one is cut 12 and 12.
 - The sample script has 26 phrases, not 27: "The path climbs about three hundred feet in less than half a mile." is no longer cut after "feet".
+- `PresenterEstimateTests`: stopped eight words short of the voice's phrase, the estimate stays at the last word heard; three short, it still moves on to the phrase's start, past the gate's boundary.
+- Simulated takes: stopped inside phrase 2 for 10 s, at lead 6 (phrase 3 is six words) and the three paces, the voice gives nothing past phrase 3 in the pause. Without decision 4 it reached words 41–43, into phrase 4. The late-first-result scenario and every other scenario are unchanged.
 - The full suite and SwiftLint.
 - **Device:** a take of the script that showed the problem. The voice reads the long clause without a break, and the take follows through it. Recorded only as Andy reports it.
 

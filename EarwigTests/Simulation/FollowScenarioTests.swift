@@ -240,6 +240,29 @@ struct FollowScenarioTests {
         #expect(take.presenter.waits.isEmpty)
     }
 
+    /// Plan 009, on the phone: stopped inside a long phrase, before one no longer than the lead
+    /// (phrase 3 is six words, 28–33, at lead 6; on the phone five at lead 5). The voice may
+    /// finish the long phrase and give the short one on the coast through the recogniser's delay,
+    /// but silence must not then take the presenter to have begun the short one, which let
+    /// phrase 4 through too.
+    @Test(arguments: Self.paces.indices)
+    func stoppedInsideAPhraseSilenceGivesNoMore(pace: Int) {
+        let (rate, interval) = Self.paces[pace]
+        var settings = FollowSettings()
+        settings.lead = 6
+        var recogniser = SimulatedRecogniser()
+        recogniser.interimInterval = interval
+        let script = SimulationScripts.harbour(step: 1, secondsPerWord: 1 / rate)
+        var take = TakeSimulation(script: script, settings: settings, acts: [.read(0...20), .pause(10), .read(17...75)], rate: rate, recogniser: recogniser)
+        take.run()
+        #expect(take.outcome == .completed)
+        let stop = take.presenter.spoken.first { $0.word.script == 20 }?.end ?? 0
+        let resume = take.presenter.spoken.first { $0.word.script == 17 && $0.start > stop }?.start ?? 0
+        let given = take.player.said.filter { $0.value.contains { (stop..<resume).contains($0) } }.keys.max() ?? -1
+        #expect(given <= 33, "the voice reached word \(given) in the pause")
+        #expect(take.presenter.waits.isEmpty, "waits \(take.presenter.waits.map(\.length))")
+    }
+
     /// The scenarios above at the app's lead and every pace: each completes with the presenter
     /// never waiting for the voice.
     static let scenarios: [(name: String, acts: [PresenterAct], writes: [Int: String])] = [

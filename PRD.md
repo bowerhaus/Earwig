@@ -1,6 +1,6 @@
 # Earwig - Product Requirements Document (PRD)
 
-**Status:** Draft v0.7, 2026-11-08. Changes by version are in the Document History at the end.
+**Status:** Draft v0.8, 2026-11-08. Changes by version are in the Document History at the end.
 **Name:** Earwig (decided 2026-11-05: UK slang for listening in). Bundle identifier `com.bowerhaus.Earwig`.
 
 ## Executive Summary
@@ -149,7 +149,7 @@ synthesis latency.
 
 | Feature | Priority | Notes |
 |---|---|---|
-| On-device continuous recognition of the presenter | P0 | `SpeechAnalyzer` with a `SpeechTranscriber` in the script's locale (en-GB), volatile and fast results on, with audio time ranges, the script's words as contextual strings. The mic audio is fed untimed (stamping it made the analyser stop with "audio input timestamp overlaps or precedes prior audio input"). Interim results come as one untimed block of text per stretch of speech, rewritten as it grows, about 0.9 s behind the presenter; finals time every word but arrive only at a pause. So the engine follows the interim text by word order and takes exact times from finals. Listening restarts itself if its results fail, and the audio engine restarts on a configuration change. Locale assets are downloaded once through `AssetInventory` with a prompt. |
+| On-device continuous recognition of the presenter | P0 | `SpeechAnalyzer` with a `SpeechTranscriber` in the script's locale (en-GB), volatile and fast results on, with audio time ranges, the script's words as contextual strings. The mic audio is fed untimed (stamping it made the analyser stop with "audio input timestamp overlaps or precedes prior audio input"). Interim results come as one untimed block of text per stretch of speech, rewritten as it grows, about 0.9 s behind the presenter; finals time every word but arrive only at a pause. So the engine follows the interim text by word order and takes exact times from finals. Listening restarts itself if its results fail, at most once in ten seconds; if it fails again, or the restart cannot start, it gives up and the take stops, saying so (plan 006). The audio engine restarts on a configuration change. Locale assets are downloaded once through `AssetInventory` with a prompt. |
 | The iPhone's own microphone, always | P0 | The audio session is `.playAndRecord` with Bluetooth allowed for A2DP output only (never the hands-free profile), and the preferred input set to the built-in mic. The earpiece is never the microphone: the hands-free profile would drop its audio to telephone quality and use its poor mic. |
 | Route check during a take | P0 | The Prompt screen shows the output route and input in use while a take runs, red if the earpiece has fallen into the hands-free profile or the input is not the built-in mic, amber on the phone's speaker ("Speaker: the mic will hear the voice"; the take still runs, for trying the screen at a desk). An earpiece that goes mid-take holds the voice; on the SK18, put away in its case, it came as an interruption instead, which ends the take (plan 005; the author: "stopping is fine"). |
 | Runs locked and in a pocket | P0 | Background audio mode; recognition continues with the screen off (verified for over eight minutes locked in plan 001). The pocket is a supported position, the mount beside the lens is the designed one (section 11). |
@@ -336,7 +336,11 @@ estimated position, the speed, the lead error, and the measured delay and rate.
   presenter has not begun: a lead's worth of time later they are taken to have begun it,
   and no further, which bridges a first interim result that is late after a pause while
   letting silence through a gate only for a phrase of `lead + 1` words or fewer. It never
-  passes what the voice has given. Telling a late result from silence needs a speech signal
+  passes what the voice has given. For a gate, the coast does not cross a phrase end: it
+  goes no further than the first word of the next phrase until a word of that phrase is
+  confidently heard, so speech that leaves the script straight after a phrase end holds the
+  voice rather than releasing the next phrase (plan 006, #19). Pacing keeps the free coast,
+  so the voice is not slowed at every phrase crossing. Telling a late result from silence needs a speech signal
   (the input level), a possible later refinement (#9).
 - Error `e` = (voice position − presenter position) − lead, in words: positive when the
   voice is too far ahead.
@@ -507,7 +511,8 @@ The take screen, usable at arm's length and glanceable from a mount:
   diagnostics line (lead error, speed, delay, rate) under it, kept for now.
 - Bottom: Hold, Back, Forward, Restart step, Stop. Big targets; the screen stays awake
   while the take runs, and a take runs on with the phone locked.
-- A take ends at the end of the step, on Stop, or on an interruption; Finished then offers
+- A take ends at the end of the step, on Stop, on an interruption, or when listening gives
+  up ("Stopped: listening stopped …", with why); Finished then offers
   Next Take (the same step again) and Done, and the Script screen shows the next take
   number. Getting ready that fails (no microphone, listening or slate) says why, with Done.
 
@@ -697,6 +702,7 @@ shared between recording and listening.
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.8 | 2026-11-08 | Plan 006 results (#18, #19): a take whose listening gives up stops and says why (4.3, 8.3); for a gate, the presenter estimate does not coast across a phrase end until a word of the next phrase is heard, so off-script speech after a phrase end holds the voice (5.4). Checked on the iPhone 14 Pro: off script at a phrase end, a misheard phrase end, a clean read, a filler, and listening giving up. |
 | 0.7 | 2026-11-08 | Plan 005 results: the default lead 5, hybrid pacing and tones only, chosen on the phone (3, 4.4, 4.5, 4.8, 5.5, question 1); a voice speed, default 0.95x, as the base the player plays the voice at (4.2, 4.8); the route check during a take, amber on the speaker, an earpiece put away ending the take (4.3, 7.2, 11); the whole sentence shown while the voice waits, and no automatic re-giving after a fluff (4.4, 8.3); Forward from the last phrase does nothing, Start on the start step's card (4.4, 8.2); a take recorded at its slate (4.7); a 24-word window behind, a misread word not a jump, and completion timed from the presenter's last word (5.3, 5.4); the take host and the Slate service (7.2); the Prompt screen and the first Settings screen as built (8.3, 8.4); the measured lead and delays, outdoors and the Osmo still to do (4.4, 11); stage 5 done (12). |
 | 0.6 | 2026-11-07 | Plan 004 results: rendered audio held in memory, the start step rendered when chosen, nothing saved (2, 3, 4.2, 6.1, 9); Personal Voice tried and dropped, Stephanie the default and any good English voice pickable (Executive Summary, 4.2, 4.8, 11, questions 5 and 6); the cue voice the other gender first, the slate's text, a shot ID spelled out (4.2); directions inside a line a setting, a low chime by default or spoken (4.2, 4.8, question 4); the tones (4.5); the player's position where the presenter hears it and phrase ends on render (5.1); services and folders (7); the rendering row and Listen (8.2); our own Paste button in place of `PasteButton` (4.1, 8.2); stage 4 done (12). |
 | 0.5 | 2026-11-06 | Plan 003 results: the lead is the felt head start, default 3 (3, 4.4); the gate counted to the phrase boundary (4.4, 5.4); re-anchoring in place of the three targets for stepping back, picking up and jumping, and a lost search over the take's step only (4.4, 5.3, 5.4); the manual controls as built (4.4); three start modes in Settings (4.5, 4.8, 5.5, question 1); the engine's inputs and outputs as built, with time passed in (5.1, 5.2); matching with its folds, confidence and a 12-word window behind (5.3); the presenter estimate as built and the hybrid speed's sign fixed to 1 − k·e (5.4); completion (5.4); folders (7.3); the numbers risk (11); stage 3 done (12). |

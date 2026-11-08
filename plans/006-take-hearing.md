@@ -2,7 +2,7 @@
 
 **GitHub Issues:** [#18](https://github.com/bowerhaus/Earwig/issues/18) and [#19](https://github.com/bowerhaus/Earwig/issues/19) (PR must include "Closes #18" and "Closes #19"; no issue of its own, as these are plan 005 follow-ups, not a PRD §12 stage)
 **Branch:** `take-hearing` (from `main` at `253d080`, after plan 005 merged)
-**Status:** In progress (2026-11-08), autopilot: built and tested; device check next.
+**Status:** Complete (2026-11-08). Results below; PRD v0.8.
 **Manual test:** device, on Andy's iPhone 14 Pro with the SK18: going off script at a phrase end, a misheard phrase end, and listening giving up (Verification).
 **Goal:** A take should know when it can't follow, and say so. Today it carries on as if it can hear in two cases. When listening gives up mid-take (#18), the take is never told: it goes on showing Waiting or Lost, with no reason. When the presenter goes off script straight after a phrase end (#19), the estimate runs on as if they were still reading, and the next phrase is released before Lost is shown, about two seconds later. After this plan, a take that can no longer hear says so and ends. Off-script speech at a phrase end holds the voice at the gate, as off-script speech mid-phrase already does. Neither change may add waits to a clean read or to a misheard phrase end.
 

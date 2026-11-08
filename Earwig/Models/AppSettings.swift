@@ -16,44 +16,43 @@ enum InlineDirections: String, CaseIterable, Sendable {
     }
 }
 
-/// How a take reaches the presenter (PRD §4.6; plan 008, decision 6): the voice in the earpiece,
-/// the text on the screen, or both. Chosen before the take and fixed for it.
+/// How a take reaches the presenter (PRD §4.6; plan 008, decision 6): the script always scrolls
+/// on the Prompt screen, with the voice reading it into the earpiece or without. Chosen before
+/// the take and fixed for it. Andy, after trying them on the phone: Ear alone showed less than
+/// the voice with the text, at no gain, so the two left are these.
 enum TakeMode: String, CaseIterable, Sendable {
-    case ear
+    case voice
     case screen
-    case both
+
+    /// A mode as saved, including the three of the first build: Ear and Both are the voice.
+    init?(stored: String) {
+        switch stored {
+        case "voice", "ear", "both": self = .voice
+        case "screen": self = .screen
+        default: return nil
+        }
+    }
 
     /// Whether the voice reads the script.
-    var ear: Bool { self != .screen }
-    /// Whether the text scrolls on the Prompt screen.
-    var screen: Bool { self != .ear }
+    var voiced: Bool { self == .voice }
 
-    /// The short name, for the segmented control beside Start.
+    /// The short name, beside its icon on the Script screen.
     var label: String {
         switch self {
-        case .ear: "Ear"
-        case .screen: "Screen"
-        case .both: "Both"
+        case .voice: "With Voice"
+        case .screen: "Screen Only"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .voice: "ear"
+        case .screen: "text.alignleft"
         }
     }
 
     /// The name in the take summary's line.
-    var logName: String {
-        switch self {
-        case .ear: "ear"
-        case .screen: "screen"
-        case .both: "ear+screen"
-        }
-    }
-
-    /// The full name, for Settings and the Prompt screen.
-    var title: String {
-        switch self {
-        case .ear: "Ear"
-        case .screen: "Screen"
-        case .both: "Ear and Screen"
-        }
-    }
+    var logName: String { rawValue }
 }
 
 /// What a take is followed by, judged by ear in stage 5 (plan 005, decision 11): the lead, the
@@ -76,8 +75,8 @@ struct TakeSettings {
     static let defaultStartMode = StartMode.tonesOnly
     static let startModeKey = "startMode"
     static let modeKey = "takeMode"
-    /// Ear, as before Screen mode, for the beach (plan 008, decision 6).
-    static let defaultMode = TakeMode.ear
+    /// The voice, as before Screen mode, for the beach (plan 008, decision 6).
+    static let defaultMode = TakeMode.voice
     static let textSizeKey = "textSize"
     /// The Prompt screen's text size in points (plan 008, decision 8).
     static let textSizeRange = 24.0...72.0
@@ -105,7 +104,7 @@ struct TakeSettings {
     }
 
     var mode: TakeMode {
-        get { defaults.string(forKey: Self.modeKey).flatMap(TakeMode.init) ?? Self.defaultMode }
+        get { defaults.string(forKey: Self.modeKey).flatMap(TakeMode.init(stored:)) ?? Self.defaultMode }
         nonmutating set { defaults.set(newValue.rawValue, forKey: Self.modeKey) }
     }
 

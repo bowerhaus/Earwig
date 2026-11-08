@@ -17,7 +17,7 @@ struct AppSettingsTests {
         #expect(settings.voiceSpeed == 0.95)
         #expect(settings.pacing == .hybrid)
         #expect(settings.startMode == .tonesOnly)
-        #expect(settings.mode == .ear)
+        #expect(settings.mode == .voice)
         #expect(settings.textSize == 40)
     }
 
@@ -36,10 +36,13 @@ struct AppSettingsTests {
         settings.mode = .screen
         #expect(settings.mode == .screen)
         settings.defaults.set("nonsense", forKey: TakeSettings.modeKey)
-        #expect(settings.mode == .ear)
-        #expect(TakeMode.ear.ear && !TakeMode.ear.screen)
-        #expect(!TakeMode.screen.ear && TakeMode.screen.screen)
-        #expect(TakeMode.both.ear && TakeMode.both.screen)
+        #expect(settings.mode == .voice)
+        // The modes of the first build: Ear and Both are the voice.
+        settings.defaults.set("both", forKey: TakeSettings.modeKey)
+        #expect(settings.mode == .voice)
+        settings.defaults.set("ear", forKey: TakeSettings.modeKey)
+        #expect(settings.mode == .voice)
+        #expect(TakeMode.voice.voiced && !TakeMode.screen.voiced)
     }
 
     @Test func theTextSizeIsKeptInItsRange() {

@@ -81,7 +81,7 @@ struct TakeHostTests {
         output.calls = { [calls] in calls.list.append($0) }
     }
 
-    private func host(start: StartMode = .slateWithReply, slateFails: Bool = false, mode: TakeMode = .ear) -> TakeHost {
+    private func host(start: StartMode = .slateWithReply, slateFails: Bool = false, mode: TakeMode = .voice) -> TakeHost {
         let phrases = Self.lines.map { line in
             let words = ScriptWords.words(in: line)
             return FollowPhrase(kind: .spoken, words: words, wordStarts: words.indices.map { Double($0) * 0.4 }, duration: Double(words.count) * 0.4)
@@ -97,7 +97,7 @@ struct TakeHostTests {
             settings: settings, contextWords: ["We", "follow"]
         )
         setup.mode = mode
-        if !mode.ear { setup.audio.phrases = [] }
+        if !mode.voiced { setup.audio.phrases = [] }
         let calls = calls
         return TakeHost(
             setup: setup, session: session, output: output, heard: heard, recorder: recorder,

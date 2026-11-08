@@ -51,7 +51,7 @@ struct SettingsView: View {
 
                 Section {
                     Picker("Mode", selection: $mode) {
-                        ForEach(TakeMode.allCases, id: \.self) { Text($0.title).tag($0) }
+                        ForEach(TakeMode.allCases, id: \.self) { Label($0.label, systemImage: $0.systemImage).tag($0) }
                     }
                     VStack(alignment: .leading, spacing: 8) {
                         LabeledContent("Text size") {
@@ -99,9 +99,8 @@ struct SettingsView: View {
 
     private var modeFooter: String {
         switch mode {
-        case .ear: "The voice reads the script into your ear. Also beside Start on the Script screen."
+        case .voice: "The voice reads the script into your ear while it scrolls on the screen with you. Also beside Start on the Script screen. Pinch the text during a take to size it."
         case .screen: "The script scrolls on the screen with you, and no voice reads it. Also beside Start on the Script screen. Pinch the text during a take to size it."
-        case .both: "The voice reads into your ear and the script scrolls on the screen with you. Also beside Start on the Script screen. Pinch the text during a take to size it."
         }
     }
 

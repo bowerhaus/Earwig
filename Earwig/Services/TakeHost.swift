@@ -84,13 +84,13 @@ struct TakeSetup {
     /// The voice's base speed (#14).
     var voiceSpeed = 1.0
     /// Ear, Screen or both, fixed for the take (plan 008, decision 6).
-    var mode = TakeMode.ear
+    var mode = TakeMode.voice
 
     /// The engine's settings: voiced exactly when the take has the ear, so the engine and the
     /// host cannot disagree about it (review C3).
     var engineSettings: FollowSettings {
         var engine = settings
-        engine.voiced = mode.ear
+        engine.voiced = mode.voiced
         return engine
     }
 
@@ -313,7 +313,7 @@ final class TakeHost: Identifiable {
     private func deviceLost() {
         guard phase == .running else { return }
         log("take: output device lost; route \(session.route.summary)")
-        guard setup.mode.ear, [.speaking, .waiting, .lost].contains(snapshot.status) else { return }
+        guard setup.mode.voiced, [.speaking, .waiting, .lost].contains(snapshot.status) else { return }
         send(.hold)
     }
 

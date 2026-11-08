@@ -91,7 +91,7 @@ final class ScriptDetailViewModel {
         let number = script.nextTakeNumber(forStep: stepIndex)
         let built: (script: FollowScript, audio: TakeAudio)
         do {
-            if mode.ear {
+            if mode.voiced {
                 guard let allRendered = renderer.rendered(all) else {
                     error = "The step is not rendered yet."
                     return

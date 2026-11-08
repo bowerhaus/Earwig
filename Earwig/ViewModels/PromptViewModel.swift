@@ -15,15 +15,6 @@ struct PromptViewModel: Equatable {
         case wrong
     }
 
-    /// One token of the text shown: a word or a bracketed cue, whether the voice is saying it,
-    /// and whether the voice has yet to give it.
-    struct Token: Equatable {
-        var text: String
-        var isVoiceWord = false
-        var isAhead = false
-        var isCue = false
-    }
-
     /// A word of the scrolling text with how it is shown (plan 008, decision 4).
     struct ScreenToken: Equatable {
         var word: ScreenWord
@@ -81,7 +72,7 @@ struct PromptViewModel: Equatable {
     /// Not judged with no voice: nothing plays but the slate and the tones, so the speaker or no
     /// earpiece is fine (plan 008, decision 10).
     var earpiece: RouteState {
-        guard phase == .running, setup.mode.ear else { return .unknown }
+        guard phase == .running, setup.mode.voiced else { return .unknown }
         if route.isHandsFree { return .wrong }
         return route.isSpeaker ? .caution : .good
     }
@@ -94,7 +85,7 @@ struct PromptViewModel: Equatable {
     /// Said under the route icons when one is not good.
     var routeNote: String? {
         guard phase == .running else { return nil }
-        if route.isHandsFree, setup.mode.ear { return "The earpiece is in hands-free mode: reconnect it." }
+        if route.isHandsFree, setup.mode.voiced { return "The earpiece is in hands-free mode: reconnect it." }
         if mic == .wrong { return "Not listening on the iPhone's mic." }
         if earpiece == .caution { return "Speaker: the mic will hear the voice." }
         return nil
@@ -151,31 +142,7 @@ struct PromptViewModel: Equatable {
     /// Whether a tap in the middle starts the take from the slate.
     var tapStarts: Bool { phase == .running && snapshot.status == .slate }
 
-    /// While the voice speaks, its phrase with the word it is saying marked. While it waits, is
-    /// lost or held, the whole sentence it stopped in, so the presenter can see where to start
-    /// again (device check 3); the part the voice has not given yet is marked ahead.
-    var phrase: [Token] {
-        guard phase == .running, let index = snapshot.voicePhrase, setup.phraseList.phrases.indices.contains(index),
-              [.speaking, .waiting, .lost, .held].contains(snapshot.status) else { return [] }
-        let shown = snapshot.status == .speaking ? index...index : setup.phraseList.sentence(containing: index)
-        return shown.flatMap { tokens(of: $0, ahead: $0 > index) }
-    }
-
-    private func tokens(of index: Int, ahead: Bool) -> [Token] {
-        let stepPhrase = setup.phraseList.phrases[index]
-        if stepPhrase.kind == .cue { return [Token(text: "[\(stepPhrase.phrase.text)]", isAhead: ahead, isCue: true)] }
-        var word = setup.firstWord.indices.contains(index) ? setup.firstWord[index] : 0
-        return stepPhrase.phrase.tokens.map { token in
-            guard token.word != nil else { return Token(text: token.text, isAhead: ahead) }
-            defer { word += 1 }
-            return Token(text: token.text, isVoiceWord: word == snapshot.voiceWord && snapshot.status == .speaking, isAhead: ahead)
-        }
-    }
-
-    // MARK: - Screen mode
-
-    /// Whether the middle is the scrolling text: in a take with the screen on, until it is over.
-    var showsScreen: Bool { setup.mode.screen && !isOver }
+    // MARK: - The scrolling text
 
     /// Where the presenter is, for the scroll: the engine's place for the screen, and its
     /// confident word.
@@ -184,7 +151,7 @@ struct PromptViewModel: Equatable {
 
     /// The step's words as the screen shows them now.
     var screenTokens: [ScreenToken] {
-        let voicing = following && setup.mode.ear
+        let voicing = following && setup.mode.voiced
         return setup.screenWords.map { word in
             var token = ScreenToken(word: word, isWaiting: !following)
             guard following, !word.isCue else { return token }
@@ -240,13 +207,13 @@ extension TakeSetup {
         var start: StartMode
         var phraseList: PhraseList
         var firstWord: [Int]
-        var mode = TakeMode.ear
+        var mode = TakeMode.voice
         /// The step's words for the screen, built once per take.
         var screenWords: [ScreenWord] = []
     }
 
     var summary: Summary {
         Summary(number: stepNumber, title: stepTitle, take: take, start: settings.start, phraseList: phraseList, firstWord: script.firstWord, mode: mode,
-                screenWords: mode.screen ? ScreenText.words(phraseList: phraseList, firstWord: script.firstWord) : [])
+                screenWords: ScreenText.words(phraseList: phraseList, firstWord: script.firstWord))
     }
 }

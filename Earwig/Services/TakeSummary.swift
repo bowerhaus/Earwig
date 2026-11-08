@@ -82,8 +82,8 @@ struct TakeSummary: Sendable {
 
     /// One line for the console at the end of a take.
     /// `note` says why a take stopped, when it was not the presenter: "not listening".
-    /// `mode` is the take's: `ear`, `screen` or `ear+screen` (plan 008, decision 10).
-    func line(duration: TimeInterval, outcome: FollowOutcome, mode: TakeMode = .ear, note: String? = nil) -> String {
+    /// `mode` is the take's: `voice` or `screen` (plan 008, decision 10).
+    func line(duration: TimeInterval, outcome: FollowOutcome, mode: TakeMode = .voice, note: String? = nil) -> String {
         let used = controls.isEmpty ? "none" : controls.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", ")
         let lead = withinTwoShare.map { String(format: "%.0f%% of %.1f s speaking", $0 * 100, speakingTime) } ?? "no speaking"
         let waitText = waits.isEmpty ? "none" : String(format: "%d, longest %.1f s", waits.count, longestWait ?? 0)

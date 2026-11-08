@@ -36,7 +36,7 @@ struct ScriptDetailView: View {
 
     /// Whether a take can start: rendered, or on the screen alone, which needs no rendering
     /// (plan 008, decision 7).
-    private var canStart: Bool { model.startStep != nil && (isReady || !mode.ear) }
+    private var canStart: Bool { model.startStep != nil && (isReady || !mode.voiced) }
 
     private var content: some View {
         List {
@@ -182,7 +182,7 @@ struct ScriptDetailView: View {
                 // Ear, Screen or both, chosen before the take (plan 008, decision 6): the same
                 // value as Settings.
                 Picker("Mode", selection: $mode) {
-                    ForEach(TakeMode.allCases, id: \.self) { Text($0.label).tag($0) }
+                    ForEach(TakeMode.allCases, id: \.self) { Label($0.label, systemImage: $0.systemImage).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .accessibilityLabel("Take mode")

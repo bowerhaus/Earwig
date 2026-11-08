@@ -60,7 +60,7 @@ struct TakeSummaryTests {
 
     @Test func theLine() {
         let line = run().line(duration: 6, outcome: .completed)
-        #expect(line.hasPrefix("take summary: 6.0 s, ear, completed; controls none; heard to word 10 of 20"))
+        #expect(line.hasPrefix("take summary: 6.0 s, voice, completed; controls none; heard to word 10 of 20"))
         #expect(line.contains("lead within 2 words 71% of 3.5 s speaking"))
         #expect(line.contains("waits 1, longest 1.5 s"))
         #expect(line.contains("speed 0.95–1.10"))
@@ -68,12 +68,12 @@ struct TakeSummaryTests {
 
     @Test func theLineSaysWhyATakeStopped() {
         let line = run().line(duration: 6, outcome: .stopped, note: "not listening")
-        #expect(line.hasPrefix("take summary: 6.0 s, ear, stopped (not listening); controls none"))
+        #expect(line.hasPrefix("take summary: 6.0 s, voice, stopped (not listening); controls none"))
     }
 
     @Test func theLineSaysTheMode() {
         #expect(run().line(duration: 6, outcome: .completed, mode: .screen).hasPrefix("take summary: 6.0 s, screen, completed"))
-        #expect(run().line(duration: 6, outcome: .completed, mode: .both).hasPrefix("take summary: 6.0 s, ear+screen, completed"))
+        #expect(run().line(duration: 6, outcome: .completed, mode: .voice).hasPrefix("take summary: 6.0 s, voice, completed"))
     }
 
     @Test func aTakeWithNoSpeaking() {

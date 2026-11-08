@@ -49,7 +49,7 @@ struct ScriptDetailViewModelTests {
         context.insert(earlier)
         earlier.script = script
 
-        model.startTake(with: renderer, in: context, mode: .ear)
+        model.startTake(with: renderer, in: context, mode: .voice)
         let setup = try #require(model.take?.setup)
         #expect(setup.take == 5)
         #expect(setup.slateText.hasSuffix("take 5."))
@@ -79,7 +79,7 @@ struct ScriptDetailViewModelTests {
 
         // Next Take keeps the take's mode, whatever the setting.
         let stored = AppSettings.take.mode
-        AppSettings.take.mode = .ear
+        AppSettings.take.mode = .voice
         defer { AppSettings.take.mode = stored }
         model.nextTake(with: renderer, in: context)
         #expect(model.take?.setup.mode == .screen)
@@ -91,7 +91,7 @@ struct ScriptDetailViewModelTests {
         let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
         let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
         let model = ScriptDetailViewModel(script: script)
-        model.startTake(with: renderer, in: context, mode: .both)
+        model.startTake(with: renderer, in: context, mode: .voice)
         #expect(model.take == nil)
         #expect(model.error == "The step is not rendered yet.")
     }
@@ -106,7 +106,7 @@ struct ScriptDetailViewModelTests {
         await renderer.finished()
         #expect(model.startStep?.phraseList.phrases.contains { $0.kind == .cue } == true)
 
-        model.startTake(with: renderer, in: context, mode: .ear)
+        model.startTake(with: renderer, in: context, mode: .voice)
         let setup = try #require(model.take?.setup)
         #expect(setup.phraseList.phrases.allSatisfy { $0.kind == .spoken })
         #expect(setup.audio.phrases.count == setup.phraseList.phrases.count)

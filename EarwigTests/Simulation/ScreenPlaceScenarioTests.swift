@@ -104,31 +104,9 @@ struct ScreenPlaceScenarioTests {
         #expect(take.outcome == .completed)
     }
 
-    /// Words off the script, then back two words. Once the wrong words have run on a while, the
-    /// text goes back to the start of the phrase (17–27), so the presenter can see where to take
-    /// it again from (plan 009), and moves back no other time.
     @Test(arguments: paces)
     func aFluffAndStepBack(_ pace: Pace) {
-        let take = run([.read(0...21), .say(["blah", "blah", "blah"]), .read(19...75)], pace)
-        #expect(take.outcome == .completed)
-        let fluff = take.presenter.spoken.first { $0.word.script == nil }?.start ?? 0
-        let back = take.presenter.spoken.first { $0.word.script == 19 && $0.start > fluff }?.start ?? 0
-        #expect(take.screenBackSteps.allSatisfy { $0.time > fluff && $0.time < back + 2 })
-        #expect(take.screenPlaces.allSatisfy { $0.time < fluff || $0.place >= 16.9 })
-    }
-
-    /// A word off the script and a stop, then on: the text goes back to the start of the phrase
-    /// while the presenter is stopped, then follows them from where they take it up.
-    @Test(arguments: paces)
-    func aFluffAndAStopShowTheStartOfThePhrase(_ pace: Pace) {
-        // Phrase 2 is words 17–27.
-        let take = run([.read(0...22), .say(["gravy"]), .pause(4), .read(17...75)], pace)
-        #expect(take.outcome == .completed)
-        let fluff = take.presenter.spoken.first { $0.word.script == nil }?.start ?? 0
-        let back = take.presenter.spoken.first { $0.word.script == 17 && $0.start > fluff }?.start ?? 0
-        let resting = take.screenPlaces.filter { $0.time > back - 0.5 && $0.time < back }.map(\.place)
-        #expect(!resting.isEmpty)
-        #expect(resting.allSatisfy { abs($0 - 17) < 0.1 }, "rested at \(resting.first ?? -1)")
-        #expect(take.screenBackSteps.allSatisfy { $0.time > fluff && $0.time < back })
+        // A step back of two words, which the text waits out rather than moving back for.
+        expectFollowed(run([.read(0...21), .say(["blah", "blah", "blah"]), .read(19...75)], pace), pace)
     }
 }

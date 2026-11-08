@@ -84,14 +84,11 @@ struct FollowScenarioTests {
     }
 
     @Test func afterATenSecondStopTheVoiceIsBackInStepWithinAPhrase() {
-        // Stopped in "if you know where to look", then back to its start. Phrase 4 had begun; the
-        // voice stops it once the presenter has been quiet a while, and gives it again when
-        // they are back (plan 009).
+        // Stopped in "if you know where to look", then back to its start.
         let take = run([.read(0...31), .pause(10), .read(28...75)])
         #expect(take.outcome == .completed)
-        #expect(take.played == [0, 1, 2, 3, 4, 4, 5, 6, 7])
-        #expect(take.player.stops == 1)
-        #expect(take.player.silences.contains { $0 >= 8 })
+        #expect(take.played == everyPhraseOnce)
+        #expect(take.player.silences.contains { $0 >= 10 })
         #expect(take.presenter.waits.isEmpty)
         // PRD §14: back in step within one phrase of the restart.
         let restart = take.presenter.spoken.first { $0.word.script == 28 && $0.start > 15 }?.start ?? 0
@@ -241,58 +238,6 @@ struct FollowScenarioTests {
         #expect(take.played == everyPhraseOnce)
         #expect(!take.statuses.contains(.lost))
         #expect(take.presenter.waits.isEmpty)
-    }
-
-    /// The furthest word the voice began between two times.
-    private func furthestSaid(_ take: TakeSimulation, from start: TimeInterval, to end: TimeInterval) -> Int {
-        take.player.said.filter { $0.value.contains { (start..<end).contains($0) } }.keys.max() ?? -1
-    }
-
-    /// Plan 009, the first fluff of a take on the phone: a wrong word in a phrase while the voice
-    /// gives the next one, a long pause, then back a word and on. Before, the voice read the next
-    /// phrase to its end and waited for the presenter to say it from memory; now it stops, and
-    /// gives that phrase again as they come to it.
-    @Test(arguments: Self.paces.indices)
-    func aFluffAndALongPauseStopTheVoiceAndItGivesThePhraseAgain(pace: Int) {
-        let (rate, interval) = Self.paces[pace]
-        // Phrase 3 is words 28–33, phrase 4 34–43.
-        let take = atLeadFive([.read(0...30), .say(["around"]), .pause(14), .read(29...75)], rate: rate, interval: interval)
-        #expect(take.outcome == .completed)
-        #expect(take.player.plays.filter { $0.phrase == 4 }.count == 2, "plays \(take.played)")
-        #expect(take.presenter.waits.isEmpty, "waits \(take.presenter.waits.map(\.length))")
-        let fluff = take.presenter.spoken.first { $0.word.script == nil }?.start ?? 0
-        let back = take.presenter.spoken.first { $0.word.script == 29 && $0.start > fluff }?.start ?? 0
-        #expect(furthestSaid(take, from: fluff + 4, to: back) == -1, "the voice went on in the pause")
-    }
-
-    /// Plan 009, the second fluff: a wrong word, a stop, then straight on. Before, the gate had
-    /// opened on the coast in the recogniser's delay and the voice read the next phrase to its
-    /// end, eleven words past the stop. Now it stops within the lead and its margin, and a little
-    /// for the recogniser's delay.
-    @Test(arguments: Self.paces.indices)
-    func aFluffAndAStopStopTheVoiceNearTheLead(pace: Int) {
-        let (rate, interval) = Self.paces[pace]
-        // Phrase 5 is words 44–53, phrase 6 54–64.
-        let take = atLeadFive([.read(0...46), .say(["about"]), .pause(5), .read(47...75)], rate: rate, interval: interval)
-        #expect(take.outcome == .completed)
-        #expect(take.presenter.waits.isEmpty, "waits \(take.presenter.waits.map(\.length))")
-        let fluff = take.presenter.spoken.first { $0.word.script == nil }?.start ?? 0
-        let resume = take.presenter.spoken.first { $0.word.script == 47 && $0.start > fluff }?.start ?? 0
-        let furthest = furthestSaid(take, from: fluff, to: resume)
-        #expect(furthest <= 46 + 5 + 3 + Int((rate * 1.5).rounded(.up)), "the voice reached word \(furthest)")
-    }
-
-    /// Plan 009, on the phone: a pause at the end of a phrase, for a direction or a full stop,
-    /// with the voice well into the next. Taken as a fluff, it took back a phrase while Andy
-    /// pointed, and cut the last phrase short. A clean phrase end is a pause, not a fluff.
-    @Test(arguments: Self.paces.indices)
-    func aPauseAtAPhraseEndStopsNothing(pace: Int) {
-        let (rate, interval) = Self.paces[pace]
-        // Phrase 3 ends at word 33; phrase 4 is ten words.
-        let take = atLeadFive([.read(0...33), .pause(2.5), .read(34...75)], rate: rate, interval: interval)
-        #expect(take.outcome == .completed)
-        #expect(take.player.stops == 0)
-        #expect(take.played == everyPhraseOnce)
     }
 
     /// The scenarios above at the app's lead and every pace: each completes with the presenter

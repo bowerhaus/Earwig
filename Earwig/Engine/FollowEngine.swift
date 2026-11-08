@@ -50,15 +50,6 @@ struct FollowEngine: Sendable {
     private var voicePhrase: Int?
     private var voiceStartedAt: TimeInterval?
     private var voiceWord: Int?
-    /// When the voice was stopped for a presenter who had stopped (plan 009): no gate opens
-    /// until a script word is heard after it, so nothing is given again by itself.
-    private var stoppedForPresenterAt: TimeInterval?
-    /// After a fluff, the place the screen shows: the start of the phrase the presenter stopped
-    /// in, until a script word is heard (plan 009). `fluffMoves` counts the moves back, so the
-    /// screen glides.
-    private var fluffPlace: Double?
-    private var fluffAt: TimeInterval?
-    private var fluffMoves = 0
 
     /// The matcher's state at the last final, and with the current interim block on top.
     private var settled = MatchState()
@@ -160,7 +151,6 @@ struct FollowEngine: Sendable {
         } else {
             lastError = nil
         }
-        commands += noticeAStoppedPresenter()
         commands += advance()
         return commands
     }
@@ -179,8 +169,7 @@ struct FollowEngine: Sendable {
         snapshot.voiceWord = voiceWord
         snapshot.presenterWord = current.confident
         snapshot.presenterEstimate = presenterNow()
-        snapshot.presenterPlace = heldPlace ?? fluffPlace ?? screenPlace
-        snapshot.placeMoves = fluffMoves
+        snapshot.presenterPlace = heldPlace ?? screenPlace
         snapshot.confident = current.run >= (current.lost ? settings.lostRun : settings.run) && current.sinceMatch == 0
         snapshot.speed = pacer.speed
         snapshot.error = lastError
@@ -254,8 +243,6 @@ struct FollowEngine: Sendable {
 
     /// Steps back, jumps ahead or picks up again when the presenter's confident position says so.
     private mutating func afterHearing(_ previous: MatchState) -> [FollowCommand] {
-        if let stopped = stoppedForPresenterAt, (current.confidentAt ?? -.infinity) > stopped { stoppedForPresenterAt = nil }
-        if let at = fluffAt, (current.confidentAt ?? -.infinity) > at { clearFluff() }
         guard !held else { return [] }
         if previous.lost && !current.lost { return reanchor(.found) }
         guard current.confident >= 0 else { return [] }
@@ -400,10 +387,32 @@ struct FollowEngine: Sendable {
     /// one ahead, and the simulated clean read ran 1.5 words over the lead). A spoken phrase
     /// straight after a cue follows the cue.
     private func gateIsOpen(_ phrase: Int) -> Bool {
-        if let stopped = stoppedForPresenterAt, (current.confidentAt ?? -.infinity) <= stopped { return false }
         if script.phrases[phrase].kind == .spoken, phrase > 0, script.phrases[phrase - 1].kind == .cue { return true }
         guard let gating = script.gatingPhrase(before: phrase), let last = script.lastWord(of: gating) else { return true }
         return presenterNow(atGate: true) >= Double(last + 1 - settings.lead)
+    }
+
+    /// The take completes when the last word is heard, or, with the presenter in the last spoken
+    /// phrase, a while after both the voice finished (if there is one) and they were last heard
+    /// there: the recogniser may miss the last words, but a presenter who comes back to the last
+    /// phrase long after the voice is not cut off at its first word (device check 6 of plan 005).
+    /// With no voice, `voiceDoneAt` is nil and the while runs from when they were last heard
+    /// (plan 008, decision 1).
+    private func isComplete(voiceDoneAt: TimeInterval?) -> Bool {
+        guard let last = script.lastSpokenWord, let lastPhrase = script.phrase(containing: last) else { return true }
+        if current.confident >= last { return true }
+        guard current.confident >= script.firstWord[lastPhrase],
+              let since = [voiceDoneAt, current.confidentAt].compactMap({ $0 }).max() else { return false }
+        return now - since >= settings.endGrace
+    }
+
+    private mutating func finish(_ outcome: FollowOutcome) -> [FollowCommand] {
+        phase = .finished
+        voice = .idle
+        held = false
+        heldPlace = nil
+        self.outcome = outcome
+        return [.finished(outcome)]
     }
 }
 
@@ -438,8 +447,6 @@ extension FollowEngine {
         voice = .idle
         held = false
         heldPlace = nil
-        stoppedForPresenterAt = nil
-        clearFluff()
         voicePhrase = nil
         voiceStartedAt = nil
         voiceWord = nil
@@ -471,8 +478,6 @@ extension FollowEngine {
         if held {
             held = false
             heldPlace = nil
-            stoppedForPresenterAt = nil
-            clearFluff()
             return reanchor(.release)
         }
         // The place shown is kept while held, so the text stays still, and released to
@@ -530,8 +535,6 @@ extension FollowEngine {
     private mutating func takePresenter(toStartOf phrase: Int) {
         held = false
         heldPlace = nil
-        stoppedForPresenterAt = nil
-        clearFluff()
         settled = MatchState(last: script.firstWord[phrase] - 1, confident: script.firstWord[phrase] - 1)
         current = settled
         // What was said before the press reaches the recogniser up to a delay later; taken as
@@ -548,101 +551,5 @@ extension FollowEngine {
     private var screenPlace: Double {
         guard let last = script.lastSpokenWord else { return 0 }
         return Double(min(max(current.confident + 1, 0), last))
-    }
-}
-
-// MARK: - Stopping for the presenter
-
-extension FollowEngine {
-    /// A presenter who has stopped after a fluff (plan 009): heard since the start or the last
-    /// move, then either a word off the script and nothing of it for `stopSilenceOffScript`, or
-    /// stopped inside a phrase and nothing heard for `inPhrase` seconds. Stopped at the end of a
-    /// phrase, with nothing wrong heard, is a pause, at a full stop or for a direction: on the
-    /// phone, taken as a fluff there, it took back a phrase while Andy pointed, and cut the last
-    /// phrase short at a full stop.
-    private func presenterHasStopped(inPhrase silence: TimeInterval) -> Bool {
-        guard let heardAt = current.confidentAt else { return false }
-        let offScript = current.sinceMatch > 0
-        let inPhrase = script.phrase(containing: current.confident).map { script.lastWord(of: $0) != current.confident } ?? false
-        guard offScript || inPhrase else { return false }
-        return now - heardAt >= (offScript ? settings.stopSilenceOffScript : silence)
-    }
-
-    /// The screen goes back to the start of the phrase the presenter stopped in, so they can
-    /// see where to take it again from (`screenBackSilence` inside a phrase, as a pause there
-    /// can be meant: device check 1 of plan 008); and the voice, if it is well ahead, stops.
-    private mutating func noticeAStoppedPresenter() -> [FollowCommand] {
-        guard phase == .following, !held else { return [] }
-        if fluffAt == nil, presenterHasStopped(inPhrase: settings.screenBackSilence),
-           let phrase = script.phrase(containing: Int(screenPlace)) {
-            let start = Double(script.firstWord[phrase])
-            fluffAt = now
-            if start < screenPlace {
-                fluffPlace = start
-                fluffMoves += 1
-            }
-        }
-        return settings.voiced && presenterHasStopped(inPhrase: settings.stopSilence) ? stopForAStoppedPresenter() : []
-    }
-
-    /// With the voice more than `lead + stopMargin` words past the last word heard, it stops (or,
-    /// between phrases, takes back what it gave) and queues the first phrase the presenter has
-    /// not begun, and no gate opens until they are heard again. A phrase used to play to its end
-    /// whatever happened, and the gate after it could open on the estimate's coast in the
-    /// recogniser's delay: after a fluff on the phone the voice read two phrases on.
-    private mutating func stopForAStoppedPresenter() -> [FollowCommand] {
-        guard stoppedForPresenterAt == nil, let target = script.firstPhrase(after: current.confident) else { return [] }
-        let given: Int
-        let playing: Bool
-        switch voice {
-        case .playing(let phrase):
-            guard script.phrases[phrase].kind == .spoken, let word = voiceWord, target <= phrase else { return [] }
-            given = word
-            playing = true
-        case .waiting(let next):
-            guard target < next else { return [] }
-            given = script.firstWord[next] - 1
-            playing = false
-        case .done, .idle:
-            return []
-        }
-        guard given - current.confident > settings.lead + settings.stopMargin else { return [] }
-        voice = .waiting(target)
-        voiceStartedAt = nil
-        pacer.pause()
-        stoppedForPresenterAt = now
-        return playing ? [.stopVoice] : []
-    }
-
-    private mutating func clearFluff() {
-        fluffPlace = nil
-        fluffAt = nil
-    }
-}
-
-// MARK: - The end
-
-extension FollowEngine {
-    /// The take completes when the last word is heard, or, with the presenter in the last spoken
-    /// phrase, a while after both the voice finished (if there is one) and they were last heard
-    /// there: the recogniser may miss the last words, but a presenter who comes back to the last
-    /// phrase long after the voice is not cut off at its first word (device check 6 of plan 005).
-    /// With no voice, `voiceDoneAt` is nil and the while runs from when they were last heard
-    /// (plan 008, decision 1).
-    private func isComplete(voiceDoneAt: TimeInterval?) -> Bool {
-        guard let last = script.lastSpokenWord, let lastPhrase = script.phrase(containing: last) else { return true }
-        if current.confident >= last { return true }
-        guard current.confident >= script.firstWord[lastPhrase],
-              let since = [voiceDoneAt, current.confidentAt].compactMap({ $0 }).max() else { return false }
-        return now - since >= settings.endGrace
-    }
-
-    private mutating func finish(_ outcome: FollowOutcome) -> [FollowCommand] {
-        phase = .finished
-        voice = .idle
-        held = false
-        heldPlace = nil
-        self.outcome = outcome
-        return [.finished(outcome)]
     }
 }

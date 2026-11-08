@@ -1,7 +1,7 @@
 import Foundation
 
 /// How the voice keeps the lead (PRD §4.4, §5.4).
-enum PacingMode: String, Codable, Sendable {
+enum PacingMode: String, Codable, CaseIterable, Sendable {
     /// Speed nudged within bounds, and a gate at every phrase end.
     case hybrid
     /// Speed fixed at 1.0x; gates only.
@@ -9,7 +9,7 @@ enum PacingMode: String, Codable, Sendable {
 }
 
 /// How a take starts (PRD §4.5, plan 003 decision 12).
-enum StartMode: String, Codable, Sendable {
+enum StartMode: String, Codable, CaseIterable, Sendable {
     /// The slate is read in the cue voice and the presenter repeats it to start the take.
     case slateWithReply
     /// The slate is read, then a pause to say it to the camera; nothing is listened for.
@@ -33,9 +33,10 @@ struct FollowSettings: Equatable, Sendable {
     /// A speed change smaller than this is not sent.
     var speedThreshold = 0.02
 
-    /// The matching window around the expected position, in words. Twelve behind, a whole
-    /// phrase, so a restart from the start of the phrase the presenter is in is seen at once.
-    var windowBehind = 12
+    /// The matching window around the expected position, in words. Twenty-four behind, two
+    /// whole phrases, so a restart from the start of the sentence before is seen at once (device
+    /// check 4 of plan 005: twelve missed "The plan is simple" seventeen words back).
+    var windowBehind = 24
     var windowAhead = 12
     /// Consecutive matches that make the position confident, normally and when lost.
     var run = 2
@@ -59,8 +60,8 @@ struct FollowSettings: Equatable, Sendable {
     var rateWindow: TimeInterval = 10
     var rateMaxGap: TimeInterval = 1.0
 
-    /// Seconds after the voice finishes the last phrase, with the presenter in it, that the take
-    /// completes.
+    /// Seconds after the voice finishes the last phrase, and after the presenter was last heard
+    /// in it, that the take completes.
     var endGrace: TimeInterval = 3
 
     var start: StartMode = .slateWithReply

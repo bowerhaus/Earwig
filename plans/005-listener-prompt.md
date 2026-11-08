@@ -2,7 +2,7 @@
 
 **GitHub Issue:** [#15](https://github.com/bowerhaus/Earwig/issues/15) (PR must include "Closes #15")
 **Branch:** `listener-prompt` (from `main` at `48844f2`, after plan 004 merged)
-**Status:** Issue created; waiting for approval.
+**Status:** Complete (2026-11-08). Results below; PRD v0.7.
 **Manual test:** yes, on Andy's iPhone 14 Pro with the SK18: the first real takes, one check at a time (Verification).
 **Goal:** Make Earwig follow. The recogniser feeds the follow engine, the engine drives the player, and a take runs from the Script screen's Start to its end on the Prompt screen in Ear mode: the slate, the reply, the tones, the voice a lead ahead, waiting when the presenter stops and picking them up where they are, with the manual controls and the route check. Each take is recorded and numbered. The Listening check comes back as a diagnostic. The open judgements left for this stage are made by ear: lead 3 against 5, the start mode, hybrid against phrase-gated pacing.
 
@@ -96,4 +96,196 @@
 
 ## Results
 
-*(Filled at the end of the stage.)*
+Built as planned, with these changes from the device checks:
+
+- **While the voice waits, the Prompt screen shows the whole sentence** it stopped in, not only its phrase (check 3, Andy: on a restart "I may have forgotten what I have just said"). The part the voice has not given yet is dimmed; a cue never ends a sentence. While the voice speaks, the phrase as before.
+- **The route is judged only while a take runs.** The session is let go at the end, after which the phone reports no input, so Finished said "Not listening on the iPhone's mic".
+- **The matcher looks 24 words behind**, not 12 (check 4): a restart of the sentence before, "The plan is simple", was 17 words back, outside the window, and went Lost.
+- **After a fluff the voice waits; nothing is given again automatically.** Three ways of re-giving were tried in check 4 and dropped: the rest of the phrase from the next word ("the fluff did not work"), then the sentence from its start after 1.5 s of silence, which repeated itself on the recogniser's gaps and natural pauses ("multiple repeats of the re-entry phrase"). Andy: "after a fluff, I would want to be able to recompose myself… I shouldn't be expected to start straight away", and "I'm wondering if we're making this resetting too complex." So the voice waits at its gate as at any phrase end; the presenter goes back in their own time, is followed back, and the next phrase comes a lead ahead; Back re-gives a phrase on request. Found on the way by a simulated take: after a re-anchor the estimate still followed the phrase the voice had last started, opening the next gate at once; fixed.
+- **Forward from the last phrase does nothing** (check 5: it clamped to the last phrase and played it again).
+- **The end grace runs from the later of the voice finishing and the presenter's last confident word** (check 6: coming back to the last phrase 8.8 s after a fluff, the take completed at its first word and cut him off).
+- **A misread word is not a jump** (check 7: "salt on the side" for "on one side" took "the side" for "the other side" in the next line, seven words on, and the voice stuttered on the step back that followed). A word that would leave the run, with the next word carrying the run on, is taken as misheard.
+- **A voice speed setting** (#14): at 1.0x the voice was "still too quick", phrase-gated as well as hybrid. The player plays the engine's speeds times a base, 0.8x to 1.0x, on the voice only (cues, slate and tones at 1.0x), so hybrid's 0.85x to 1.2x runs around it. Rendering more slowly was measured first, but the simulator's only voice moves its rate in coarse steps, so a render rate could not be chosen reliably. Listen still plays at its own 0.85x, 1.0x or 1.2x.
+- **Start on the start step's card starts a take**, as well as Start Take N in the rendering row (Andy: the badge "not working", it was a label). The card itself is no longer a button, so a tap while scrolling cannot start one.
+- **An earpiece put away mid-take came as an interruption**, not as the device going, so the take stopped rather than holding. Andy: "stopping is fine".
+- **The console stamps each line** with seconds since launch, to time pickups.
+- **Kept:** the diagnostics line on the Prompt screen and Listen (decisions 7 and 14), for the next stages. The direction chime stays where it is: it is released with the phrase after it, so it reaches the presenter about a lead before the end of the sentence before the direction, which at lead 5 is the earlier chime Andy asked for at lead 3.
+- **Known, not changed:** off script, one stray word at a phrase end still looks like reading on (the estimate runs on about four words past the last match, for the recogniser's delay), so the next phrase can be released; treating one unmatched word as off script would stall the gate whenever a phrase's last word is misheard. An opening phrase longer than the lead waits about 1.5 s for the presenter to be heard.
+
+### Device check (iPhone 14 Pro, SK18), 2026-11-07 and 08
+
+The sample script, and a second made-up one, *The Weekend Loaf*, from check 6.
+
+| Check | Result |
+|-------|--------|
+| 1. Listening check | Pass (Andy: "all as expected"). SK18 in A2DP, the built-in mic, output latency 356 ms; Say Test not heard by the mic. |
+| 2. First take | Pass (completed, "felt right"). Slate with a reply, lead 3, no control used; 41.2 s; lead within two words 58% of the speaking time; six waits, longest 2.4 s; speed 0.85x to 1.14x; delay 0.93 s; rate 4.0 words/s. Finals came only at sentence ends, 1.3 to 5.7 s after the words. |
+| 3. Stop and pick up | Pass on the rerun ("it picked up fine"). After 9.5 s stopped and the sentence said again, the next phrase was released with him about three words from its end: on the lead. The first run "picked up a little late"; it led to the sentence view. |
+| 4. Fluff and wander | Pass on the fourth run ("worked"), with the changes above: completed, no control used, heard to word 66 of 70, Lost three times briefly and found each time; delay 0.95 s, rate 3.6 words/s. |
+| 5. Controls | Pass after the Forward fix ("all worked"): Hold and release, Back, Forward, Restart (the tones, same take), Stop. |
+| 6. Choices | **Lead 5** ("I prefer 5"; at lead 3 a short opening phrase waited 1.5 s), **hybrid**, **voice speed 0.95x** (after 0.85x and 0.9x), **tones only**. These are the defaults. Under hybrid at 1.0x the pacer mostly sped the voice up (to 1.19x), which led to the voice speed. |
+| 7. Pocket and locked | Pass ("it worked"): *The Weekend Loaf* step 2 to the end with the phone locked in a pocket, completed, heard 60 of 60; the misread jump above was found here. |
+| 8. Route | Pass ("worked"): the earpiece put away mid-take stopped the take (an interruption); on the speaker the route check showed amber. |
+
+Outdoors and the Osmo (PRD §11, §14) were not done in this stage; they wait for Andy's next shoot and are carried to stage 6 or 7.
+
+**Outcome: PASS** (2026-11-08). Earwig follows on the iPhone 14 Pro with the SK18: takes run from Start to the end of the step in the hand and locked in a pocket, the voice waits when the presenter stops and picks them up where they are, fluffs and wanders are followed, and the controls and the route check work. Follow-ups: #16 (record a take and play it back), and #14 for a base rate per voice in stage 7's Settings.
+
+## Review pass — 2026-11-08
+
+Findings from `/review-branch` on branch `listener-prompt`, **unresolved as written**. Each is a claim
+from a review on that date, not an established fact, and each verdict under *Assessment* is a
+recommendation, not a decision. Work through them and annotate each with what was done — fixed,
+or rejected and why. A finding that turns out to be wrong should say so here rather than be
+deleted.
+
+### Code
+
+Review of branch `listener-prompt` against `main`. I read the plan (Goal, Scope, Decisions, Verification, Results), CLAUDE.md, the committed diff, the unstaged diff and all 15 untracked files. Nothing is staged.
+
+**Requirements:** The branch delivers the plan and the changes recorded in Results:
+- `HeardEvents` and the listener feeding the engine.
+- A listener restart sends an empty `.final([])`.
+- `TakeHost` gets ready in order: microphone, session, engine, listening, slate.
+- The take is recorded at the slate; a failed get-ready records nothing.
+- Route check: amber on the speaker, judged only while a take runs.
+- A call or interruption ends the take; a lost device holds; an engine restart re-anchors.
+- Prompt screen: the whole sentence shown while the voice waits; Next Take and Done.
+- Start on the card and on the rendering row; Settings with the gear and voice speed; the Listening check.
+- Defaults: lead 5, hybrid, 0.95x, tones only.
+- Matcher: 24-word window; a misread word is not taken as a jump.
+- Forward from the last phrase does nothing; the end grace runs from the last heard word.
+- PRD is at v0.7 with a History row, and the CLAUDE.md status is updated.
+
+Colours all come from `EarwigTheme`, `Engine/` gains no forbidden imports, and the test fakes conform to the new protocols. I found no build-breaking issues.
+
+**C1 — WARNING — The old take's teardown can turn off the shared audio session under the next take.**
+- `TakeHost.finish` starts `Task { await tearDown() }`. That teardown waits on `heard.stopListening()`, which runs `finalizeAndFinishThroughEndOfInput` and can take a while, then calls `session.deactivate()`.
+- `deactivate()` is `AVAudioSession.sharedInstance().setActive(false)`, and that session is shared by every `AudioSessionManager`.
+- Next Take (`nextTake`), or Done followed quickly by Start, builds a new `TakeHost` whose `start()` calls `session.configure()` at once. If the old teardown finishes after that, it deactivates the session under the new take's running engine, which stops its I/O.
+- Fix: await the old host's teardown before starting the next take, for example an `async` close on `TakeHost`.
+- Files: `Earwig/Services/TakeHost.swift` 316, 328–341; `Earwig/ViewModels/ScriptDetailViewModel.swift` 711–721 (`endTake`, `nextTake`).
+
+**C2 — WARNING — `startTake` replaces a take that is still running without ending it.**
+- There are now two Start buttons (the card and the rendering row), plus the `-EarwigTake` debug path. A second call before the cover is up replaces `model.take` without calling `end()`.
+- `.task(id:)` cancels the old `start()` task, but `TakeHost.start()` never checks for cancellation, only `ended`, which stays false. So the orphaned host carries on: it records a take with the same number, plays slate, tones and voice, and keeps ticking, with no screen to stop it.
+- Fix: guard `take == nil` in `startTake` (or end the old take first), and/or check `Task.isCancelled` in `start()`.
+- Files: `Earwig/ViewModels/ScriptDetailViewModel.swift` ~652–706; `Earwig/Services/TakeHost.swift` 157–182.
+
+**C3 — SUGGESTION — The slate is rendered even in tones-only mode, which is now the default.**
+- Every take waits for a slate render it never plays.
+- If that render fails, the take fails with "The slate could not be rendered" even though no slate was wanted.
+- File: `Earwig/Services/TakeHost.swift` 174–179.
+
+**C4 — SUGGESTION — The Listening check can start listening after its screen has gone.**
+- `.onDisappear { Task { await check.stop() } }` can run while `.task { await check.start() }` is still waiting on the microphone prompt, the asset check or analyser start-up.
+- `stop()` then runs first, `start()` goes on to configure the session and start listening, and nothing stops it. (`TakeHost` avoids this with its `ended` flag.)
+- Files: `Earwig/ViewModels/ListeningCheck.swift` 30–55; `Earwig/Views/Settings/ListeningCheckView.swift` 56–57.
+
+**C5 — SUGGESTION — A listener that gives up mid-take is not reported to the take.**
+- When `Listener.recover()` stops because it "restarted too recently", it sets `.failed` and stops listening.
+- `HeardSource` only reports restarts, so `TakeHost` never learns this. The take carries on unable to hear, showing Waiting or Lost with no explanation.
+- Files: `Earwig/Services/Listener.swift` (`recover`); `Earwig/Services/TakeHost.swift` 4–17, 191–195.
+
+**C6 — SUGGESTION — An engine restart while waiting for the slate reply skips the reply.**
+- `engineRestarted` sends `.tap` for any `.slate` status. That covers both the slate playing (where it is cut off) and the wait for the presenter's reply (where nothing was cut).
+- In the second case the reply wait is skipped and the tones start over the presenter.
+- File: `Earwig/Services/TakeHost.swift` 295–296.
+
+**C7 — SUGGESTION — Two small repeats (DRY).**
+- `HeardEvents.event(for:…)` works out `words(in:)` again for the same result that `Listener.handle` has just worked out. The final event could be built from the `timed` words already in hand.
+- `ListeningCheckView.routeRow` repeats the earpiece and mic good/amber/red judgement inline instead of reusing `PromptViewModel`'s route-state logic or `AudioRoute.isGoodForTake`.
+- Files: `Earwig/Services/Listener.swift` 383–393; `Earwig/Services/HeardEvents.swift` 61–70; `Earwig/Views/Settings/ListeningCheckView.swift` 12–14.
+
+### Tests
+
+Review of the test changes on `listener-prompt`, all uncommitted. I read the 7 modified test files and the 5 untracked suites in full (AppSettings, HeardEvents, PromptViewModel, TakeHost, TakeSummary), plus the source each one covers. Overall the tests are proportionate (about 860 test lines for about 1,700 source lines) and well aimed. The pure parts (HeardEvents, TakeSummary, PromptViewModel, PhraseList.sentence, Slate.replyWords) and the take loop against fakes are covered well. The findings below are mostly gaps and weak assertions, not over-testing.
+
+T1. WARNING: `TakeHost.end()` while a take is running is never tested.
+- `end()` is what `ScriptDetailViewModel.endTake()` and `nextTake()` call, and closing the Prompt screen mid-take must stop the take and record it as stopped.
+- Only the getting-ready branch is tested (`closingWhileGettingReadyStartsNothing`).
+- No test checks that a finished, stopped or interrupted take tears down: `session.deactivated`, `heard.stopped` and `output.stop` after `finish`'s `Task { await tearDown() }`. Only the listen-failure path checks teardown.
+- Files: /Users/andybower/Projects/Earwig/EarwigTests/TakeHostTests.swift:191-199, 252-258, 324-330; source /Users/andybower/Projects/Earwig/Earwig/Services/TakeHost.swift:307-341
+
+T2. WARNING: Weak or either-way assertions in TakeHostTests hide what the behaviour should be.
+- `aLostEarpieceHolds` passes if either of two things is true: `output.stopped.last == .cue || output.stopped.contains(.voice)`. At that point the voice is speaking, so the hold should stop `.voice` and nothing else. Assert that one outcome.
+- `anEngineRestartReanchorsTheVoice` only checks that the stop count went up and that the status is `!= .held`. It never checks the re-anchor itself: the voice playing again, or waiting at the right phrase, after the double Hold.
+- `aListenerRestartSettlesTheBlock` uses `presenterWord >= 1`. A fixed value would be clearer.
+- Files: /Users/andybower/Projects/Earwig/EarwigTests/TakeHostTests.swift:246, 266, 276-280
+
+T3. WARNING: `TakeSetup.contextWords(phraseList:slateText:)` has no test. It is new pure logic that feeds the analyser's context: it strips punctuation and symbols, de-duplicates case-insensitively and drops empty tokens. Neither the TakeHost tests (which pass a hand-made `contextWords`) nor the ScriptDetailViewModel tests assert on it. One small table test would cover it.
+- Source: /Users/andybower/Projects/Earwig/Earwig/Services/TakeHost.swift:86-92
+
+T4. SUGGESTION: `TakeAudio.build` has no direct test. It was moved out of StepPreview and is now shared by Listen and takes. `withCuesOffATakeHasNoCuePhrases` only compares counts. One test would cover the chime branch: a chimed cue gets `ring` set and a script timing of `Tones.Chime.hold`, while a spoken cue keeps its rendered buffer.
+- Source: /Users/andybower/Projects/Earwig/Earwig/Services/TakeAudio.swift:19-42; test /Users/andybower/Projects/Earwig/EarwigTests/ScriptDetailViewModelTests.swift:66-80
+
+T5. SUGGESTION: `#expect(setup.settings == AppSettings.take.followSettings)` proves nothing. It repeats the source's own expression and reads the test host's `UserDefaults.standard`. Drop it, or assert one known field.
+- File: /Users/andybower/Projects/Earwig/EarwigTests/ScriptDetailViewModelTests.swift:59
+
+T6. SUGGESTION: Two overlapping tests in HeardEventsTests could be merged.
+- `numbersAndCompoundsAreKeptAsWritten` goes down the same path as `aFinalsWordsCarryTheirHostClockStarts`: a final, one timed run per word, mapped to host time. Nothing in `HeardEvents` treats numbers or compounds differently.
+- Merging them (add "20" and "twenty-one" to the first) keeps the coverage.
+- File: /Users/andybower/Projects/Earwig/EarwigTests/HeardEventsTests.swift:15-36
+
+T7. SUGGESTION: Two Slate tests could be folded in.
+- `theReplyForAStoredStep` tests a pass-through wrapper.
+- The `"--"` fallback case in `aShotIDsReplyHasItsLettersAndDigitsApart` repeats `theReplyIsTheNumberTakeAndTakeNumber`'s expectation.
+- These could become two tests: number, and shot ID with its fallback.
+- File: /Users/andybower/Projects/Earwig/EarwigTests/SlateTests.swift:34-47
+
+T8. SUGGESTION: The three failure tests use two different assertion styles.
+- `noMicrophoneRecordsNoTake` and `aSlateThatFailsRecordsNoTake` use a `guard case .failed` with `Issue.record` block.
+- `listeningThatFailsRecordsNoTakeAndTearsDown` uses a direct `#expect(host.phase == .failed(...))`. The messages are fixed strings, so the direct form works everywhere and is shorter.
+- The slate-failure test could also check teardown, as the listen-failure one does.
+- Separately, the doc comment on `finals(_:spokenFrom:)` mentions a `delay` parameter that does not exist.
+- File: /Users/andybower/Projects/Earwig/EarwigTests/TakeHostTests.swift:126-129, 291-322
+
+T9. SUGGESTION: `PromptViewModel.routeNote` sets an order of priority (hands-free, then mic, then speaker), but `theRouteStates` only asserts the speaker note. Adding `routeNote` checks to the hands-free and headset-mic cases would cover the two other messages and their order, at no extra test cost.
+- File: /Users/andybower/Projects/Earwig/EarwigTests/PromptViewModelTests.swift:84-101
+
+T10. SUGGESTION: Some small AppSettingsTests tidying.
+- Each test makes a new `UserDefaults` suite and never removes it, so every run leaves one plist per test in the simulator. Remove the domain afterwards, or reuse one fixed suite name and clear it.
+- `theLeadsSecondsAtTheDefaultRate` checks a one-line division and could go.
+- File: /Users/andybower/Projects/Earwig/EarwigTests/AppSettingsTests.swift:8-13, 42-44
+
+### Assessment
+
+- **C1 — FIX.** Real: `deactivate()` acts on the one shared `AVAudioSession`, and a finished take's teardown runs in a detached task (`TakeHost.swift:314`), so a quick Next Take or Start could be deactivated under it. On the phone the teardown took about 0.25 s, so it is rare, but it would kill a take. Fix in `AudioSessionManager`: a deactivate only acts if no session has been configured since this one was, so a late teardown leaves a newer take's session alone.
+- **C2 — FIX.** Real: two Start buttons now, and `startTake` overwrites `take` with no `end()`. Guard `take == nil` in `startTake`; `nextTake` clears `take` after ending it.
+- **C3 — FIX.** Real, and tones only is now the default: skip the slate's render when the start mode is tones only (the player already handles a missing slate).
+- **C4 — FIX.** Real (`ListeningCheck.swift:30-55`): give `ListeningCheck` a stopped flag that `start()` checks after each wait, as `TakeHost` does with `ended`.
+- **C5 — FOLLOW-UP.** Real, but it needs a choice of what the presenter sees and whether the take ends: "Tell the take when listening gives up mid-take".
+- **C6 — SKIP.** Real but rare (an engine configuration change during the reply wait), and the default start is now tones only, which has no reply wait.
+- **C7 — SKIP.** Both repeats are small; the Listening check's route row has no take phase to share `PromptViewModel`'s logic with, and recomputing a final's words is cheap.
+- **T1 — FIX.** Add one test: `end()` on a running take records it stopped and tears down (listening stopped, the session let go).
+- **T2 — FIX (part).** Tighten `aLostEarpieceHolds` to `output.stopped.contains(.voice)` (a stop of the voice stops both channels). Leave the other two: the re-anchor's exact phrase is the engine's, tested there.
+- **T3 — FIX.** One table test for `TakeSetup.contextWords`.
+- **T4 — SKIP.** Moved code, played in every take and Listen on the phone; the chime branch is unchanged from plan 004.
+- **T5 — FIX.** Drop the tautological assertion.
+- **T6 — SKIP.** Cosmetic merge.
+- **T7 — SKIP.** Cosmetic merge.
+- **T8 — FIX (part).** Correct the `finals(_:spokenFrom:)` doc comment only; the two assertion styles both work.
+- **T9 — FIX.** Add the hands-free and headset-mic `routeNote` expectations.
+- **T10 — SKIP.** Simulator-only leftovers; the lead's seconds are shown on the Settings screen, so the test is cheap insurance.
+
+### Outcome — 2026-11-08
+
+- C1 — fixed: each `AudioSessionManager.configure` takes the next number of the shared session, and `deactivate` leaves the session alone if it has been configured since, logging "session left active"; test `AudioSessionManagerTests`.
+- C2 — fixed: `startTake` starts nothing while a take is up; `nextTake` clears the take after ending it.
+- C3 — fixed: with tones only no slate is rendered; `tonesOnlyPlaysNoSlate` now uses a slate that would fail to render.
+- C4 — fixed: `ListeningCheck` has a stopped flag, checked after each wait in `start()`, which then tears down.
+- C5 — follow-up, not opened (autopilot): "Tell the take when listening gives up mid-take", listed in the PR.
+- C6 — not done: rare, and tones only, the default, has no reply wait.
+- C7 — not done: small repeats with nothing clean to share.
+- T1 — fixed: `closingARunningTakeStopsItAndLetsEverythingGo`.
+- T2 — fixed (part): `aLostEarpieceHolds` expects the voice stopped; the other two left, as assessed.
+- T3 — fixed: `theContextWordsAreTheStepsAndTheSlatesOnceEach`.
+- T4 — not done: moved code, played in every take and Listen.
+- T5 — fixed: the tautological assertion dropped.
+- T6, T7 — not done: cosmetic merges.
+- T8 — fixed (part): the `finals(_:spokenFrom:)` doc comment corrected.
+- T9 — fixed: the hands-free and headset-mic route notes asserted.
+- T10 — not done: simulator-only leftovers.
+
+253 tests pass, SwiftLint clean, no warnings. C1 and C3 touch the audio path, so a short device recheck follows.
+- Device recheck of the review fixes, 2026-11-08: Andy: "All passed". *The Weekend Loaf* step 1, tones only: take 8 started with no slate and completed (heard 51 of 51); Next Take straight after Finished started take 9 2.9 s later, which completed; Done then Start opened take 10 normally (stopped by Andy). Each take configured the session and each teardown deactivated it.

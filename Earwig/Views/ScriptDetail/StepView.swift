@@ -1,11 +1,15 @@
 import SwiftUI
 
 /// A step on the Script screen: its title, directions in the cue colour, its lines with any
-/// inline direction in the cue colour, and its takes.
+/// inline direction in the cue colour, and its takes. On the start step, Start starts a take
+/// once the step is rendered (Andy, device check 6: the badge looked like a button, so it is one).
 struct StepView: View {
     let step: Step
     let isStart: Bool
     let takes: [Take]
+    let nextTake: Int
+    /// Starts a take of this step; `nil` until it can (not the start step, or not rendered).
+    var start: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -20,14 +24,21 @@ struct StepView: View {
                     .foregroundStyle(EarwigTheme.text)
                 Spacer(minLength: 8)
                 if isStart {
-                    Label("Start", systemImage: "play.fill")
-                        .font(.caption.weight(.bold))
-                        .textCase(.uppercase)
-                        .tracking(1)
-                        .foregroundStyle(EarwigTheme.onAccent)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(EarwigTheme.accent, in: Capsule())
+                    Button { start?() } label: {
+                        Label("Start", systemImage: "play.fill")
+                            .font(.caption.weight(.bold))
+                            .textCase(.uppercase)
+                            .tracking(1)
+                            .foregroundStyle(EarwigTheme.onAccent)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(EarwigTheme.accent, in: Capsule())
+                            .opacity(start == nil ? 0.4 : 1)
+                    }
+                    // Borderless: in a list row a plain button's tap goes to the row.
+                    .buttonStyle(.borderless)
+                    .disabled(start == nil)
+                    .accessibilityHint("Starts take \(nextTake)")
                 }
             }
 
@@ -81,6 +92,6 @@ struct StepView: View {
     private var takesText: String {
         guard let latest = takes.first else { return "No takes yet" }
         let count = takes.count == 1 ? "1 take" : "\(takes.count) takes"
-        return "\(count) · last \(latest.startedAt.formatted(.relative(presentation: .named)))"
+        return "\(count) · last \(latest.startedAt.formatted(.relative(presentation: .named))) · next take \(nextTake)"
     }
 }

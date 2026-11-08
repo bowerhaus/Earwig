@@ -62,6 +62,10 @@ final class Listener {
     @ObservationIgnored private var segmentFirstSeen: [TimeInterval] = []
 
     @ObservationIgnored var onWordsChanged: (([HeardWord]) -> Void)?
+    /// Each result as the follow engine hears it, with the host time it arrived.
+    @ObservationIgnored var onHeard: ((FollowEvent, TimeInterval) -> Void)?
+    /// Listening restarted after the results stream failed: the interim block was lost.
+    @ObservationIgnored var onRestart: (() -> Void)?
     @ObservationIgnored var onEvent: ((String) -> Void)?
 
     @ObservationIgnored private let audio: AudioEngineHost
@@ -196,6 +200,7 @@ final class Listener {
         await tearDown()
         state = .idle
         onEvent?("restarting listening")
+        onRestart?()
         await start(contextWords: lastContextWords, fastResults: lastFastResults)
         words = kept + words
         onWordsChanged?(words)
@@ -251,7 +256,17 @@ final class Listener {
         lastResultAt = receivedAt
         if isFinal { finalCount += 1 } else { volatileCount += 1 }
 
-        let incoming = incomingWords(in: result, offset: offset, isFinal: isFinal)
+        let runs = Self.runs(of: result)
+        let analyserStart = result.range.start.seconds
+        let analyserEnd = CMTimeRangeGetEnd(result.range).seconds
+        let (timed, untimed) = HeardEvents.words(in: runs, resultStart: analyserStart, resultEnd: analyserEnd)
+        if untimed, !isFinal, !volatileWithoutTimes {
+            volatileWithoutTimes = true
+            onEvent?("volatile results arrive without word times; spreading them over the result's range")
+        }
+        let incoming = timed.map { TimedWord(text: $0.text, start: $0.start + offset, confidence: $0.confidence) }
+        onHeard?(HeardEvents.event(for: runs, isFinal: isFinal, resultStart: analyserStart, resultEnd: analyserEnd,
+                                   hostTime: feeder.hostTime(forAnalyzerTime:)), receivedAt)
 
         // Interim results are one block from the end of the last final to now, rewritten
         // each time; finals time every word but come only at pauses (plan 001 Results).
@@ -289,48 +304,16 @@ final class Listener {
         onWordsChanged?(words)
     }
 
-    private struct Incoming {
-        let text: String
-        let start: TimeInterval
-        let confidence: Double?
-    }
-
-    /// A result's words in order with their estimated or exact start times, offset onto
-    /// this listening's timeline.
-    private func incomingWords(in result: SpeechTranscriber.Result, offset: TimeInterval, isFinal: Bool) -> [Incoming] {
-        let rangeStart = result.range.start.seconds + offset
-        let rangeEnd = CMTimeRangeGetEnd(result.range).seconds + offset
-        var incoming: [Incoming] = []
-        var untimed: [String] = []
-        for run in result.text.runs {
-            let text = String(result.text[run.range].characters)
-            let pieces = text.split(whereSeparator: \.isWhitespace).map(String.init)
-            guard !pieces.isEmpty else { continue }
-            guard let timeRange = run.audioTimeRange else {
-                untimed += pieces
-                continue
-            }
-            // An interim run covers several words with one time range. Spread its words
-            // across the range by letter count; finals have one run per word.
-            let total = Double(pieces.reduce(0) { $0 + $1.count })
-            var before = 0.0
-            for piece in pieces {
-                let start = timeRange.start.seconds + timeRange.duration.seconds * (total > 0 ? before / total : 0)
-                incoming.append(Incoming(text: piece, start: start + offset, confidence: run.transcriptionConfidence))
-                before += Double(piece.count)
-            }
+    /// A result's text as runs on the analyser's timeline (offset not applied).
+    private static func runs(of result: SpeechTranscriber.Result) -> [HeardRun] {
+        result.text.runs.map { run in
+            HeardRun(
+                String(result.text[run.range].characters),
+                start: run.audioTimeRange?.start.seconds,
+                duration: run.audioTimeRange?.duration.seconds,
+                confidence: run.transcriptionConfidence
+            )
         }
-        if !untimed.isEmpty {
-            if !isFinal, !volatileWithoutTimes {
-                volatileWithoutTimes = true
-                onEvent?("volatile results arrive without word times; spreading them over the result's range")
-            }
-            let step = max(rangeEnd - rangeStart, 0) / Double(untimed.count)
-            for (index, piece) in untimed.enumerated() {
-                incoming.append(Incoming(text: piece, start: rangeStart + step * Double(index), confidence: nil))
-            }
-        }
-        return incoming
     }
 
     private static func describe(_ status: AssetInventory.Status) -> String {

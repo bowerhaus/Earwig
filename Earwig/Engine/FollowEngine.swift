@@ -284,16 +284,26 @@ struct FollowEngine: Sendable {
     private mutating func reanchor(_ reason: Reason) -> [FollowCommand] {
         guard phase == .following else { return [] }
         guard let target = script.firstPhrase(after: current.confident) else { return finishVoice(reason) }
+        // Once re-anchored, the phrase the voice last started says nothing of where the presenter
+        // is: without this, a step back into an earlier phrase was taken as following the
+        // stopped one, and the gate after it opened at once (plan 005, device check 4).
         switch voice {
         case .playing(let phrase):
             guard Self.stops(playing: phrase, for: target, reason) else { return [] }
             voice = .waiting(target)
+            voiceStartedAt = nil
             pacer.pause()
             return [.stopVoice]
         case .waiting(let next):
-            if Self.moves(waiting: next, to: target, reason) { voice = .waiting(target) }
+            if Self.moves(waiting: next, to: target, reason) {
+                voice = .waiting(target)
+                voiceStartedAt = nil
+            }
         case .done:
-            if reason == .stepBack || reason == .found { voice = .waiting(target) }
+            if reason == .stepBack || reason == .found {
+                voice = .waiting(target)
+                voiceStartedAt = nil
+            }
         case .idle:
             break
         }
@@ -372,12 +382,15 @@ struct FollowEngine: Sendable {
         return presenterNow() >= Double(last + 1 - settings.lead)
     }
 
-    /// The take completes when the last word is heard, or a while after the voice finished with
-    /// the presenter in the last spoken phrase.
+    /// The take completes when the last word is heard, or, with the presenter in the last spoken
+    /// phrase, a while after both the voice finished and they were last heard there: the
+    /// recogniser may miss the last words, but a presenter who comes back to the last phrase
+    /// long after the voice is not cut off at its first word (device check 6 of plan 005).
     private func isComplete(voiceDoneAt: TimeInterval) -> Bool {
         guard let last = script.lastSpokenWord, let lastPhrase = script.phrase(containing: last) else { return true }
         if current.confident >= last { return true }
-        return now - voiceDoneAt >= settings.endGrace && current.confident >= script.firstWord[lastPhrase]
+        let since = max(voiceDoneAt, current.confidentAt ?? voiceDoneAt)
+        return now - since >= settings.endGrace && current.confident >= script.firstWord[lastPhrase]
     }
 
     private mutating func finish(_ outcome: FollowOutcome) -> [FollowCommand] {
@@ -462,20 +475,22 @@ extension FollowEngine {
 
     /// Back or Forward a phrase: the voice plays it now, and the presenter is taken to be at its
     /// start until they are heard again. With nothing heard the voice then waits at the next
-    /// gate, as it would for a presenter who has stopped.
+    /// gate, as it would for a presenter who has stopped. Forward from the last phrase does
+    /// nothing: there is no next phrase (device check 5 of plan 005, where it played the last
+    /// one again).
     private mutating func move(by offset: Int) -> [FollowCommand] {
         guard phase == .following, !script.phrases.isEmpty else { return [] }
         var commands: [FollowCommand] = []
         let at: Int
         switch voice {
-        case .playing(let phrase):
-            at = phrase
-            commands.append(.stopVoice)
+        case .playing(let phrase): at = phrase
         case .waiting(let next): at = max(next - 1, 0)
         case .done: at = script.phrases.count - 1
         case .idle: at = 0
         }
-        let target = min(max(at + offset, 0), script.phrases.count - 1)
+        guard at + offset < script.phrases.count else { return [] }
+        if case .playing = voice { commands.append(.stopVoice) }
+        let target = max(at + offset, 0)
         held = false
         settled = MatchState(last: script.firstWord[target] - 1, confident: script.firstWord[target] - 1)
         current = settled

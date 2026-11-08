@@ -23,6 +23,19 @@ enum Slate {
         return text(number: step.number, shotID: step.shotID, take: take, directions: cuesOn ? [step.title, shows] : nil)
     }
 
+    /// What the presenter says back in `.slateWithReply` (plan 005, decision 5), as the engine
+    /// hears it: the step's number or shot ID, "take", the take number. "3 take 2"; a shot ID's
+    /// letters and digits apart, "W 3 1 take 2".
+    static func replyWords(number: Int, shotID: String?, take: Int) -> [ScriptWord] {
+        let name = shotID.flatMap(spelled) ?? String(number)
+        return ScriptWords.words(in: "\(name) take \(take)")
+    }
+
+    /// The reply words for a step of a script.
+    static func replyWords(for step: Step, take: Int) -> [ScriptWord] {
+        replyWords(number: step.number, shotID: step.shotID, take: take)
+    }
+
     /// Each letter and digit apart, anything else dropped; `nil` when nothing is left.
     static func spelled(_ shotID: String) -> String? {
         let characters = shotID.filter { $0.isLetter || $0.isNumber }.map(String.init)

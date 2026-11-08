@@ -22,6 +22,11 @@ struct AudioRoute: Equatable, Sendable {
         outputs.contains { $0.type == AVAudioSession.Port.bluetoothA2DP.rawValue }
     }
 
+    /// The prompt is coming out of the phone's own speaker, where the mic will hear it.
+    var isSpeaker: Bool {
+        outputs.contains { $0.type == AVAudioSession.Port.builtInSpeaker.rawValue }
+    }
+
     var inputIsBuiltInMic: Bool {
         inputs.contains { $0.type == AVAudioSession.Port.builtInMic.rawValue }
     }
@@ -72,8 +77,15 @@ final class AudioSessionManager {
     @ObservationIgnored var onEvent: ((String) -> Void)?
     /// Called when an interruption begins (`true`) or ends (`false`).
     @ObservationIgnored var onInterruption: ((Bool) -> Void)?
+    /// Called when the output device has gone (the earpiece taken out or switched off).
+    @ObservationIgnored var onDeviceLost: (() -> Void)?
 
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
+    /// Every manager configures the one shared session. Each configure takes the next number,
+    /// so a take's teardown that finishes after the next take has configured the session leaves
+    /// it alone instead of turning it off under that take (review C1, plan 005).
+    private static var configurations = 0
+    @ObservationIgnored private var configuration: Int?
 
     init() {
         let centre = NotificationCenter.default
@@ -108,6 +120,8 @@ final class AudioSessionManager {
         do {
             try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetoothA2DP, .defaultToSpeaker])
             try session.setActive(true)
+            Self.configurations += 1
+            configuration = Self.configurations
             try preferBuiltInMic()
             isConfigured = true
             lastError = nil
@@ -120,9 +134,17 @@ final class AudioSessionManager {
         }
     }
 
+    /// Lets the session go, unless another manager has configured it since this one did.
     func deactivate() {
+        defer {
+            isConfigured = false
+            configuration = nil
+        }
+        guard configuration == Self.configurations else {
+            onEvent?("session left active: configured since for another take")
+            return
+        }
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        isConfigured = false
         onEvent?("session deactivated")
     }
 
@@ -145,6 +167,7 @@ final class AudioSessionManager {
         if isConfigured, !route.inputIsBuiltInMic, previous.inputIsBuiltInMic {
             try? preferBuiltInMic()
         }
+        if reason == .oldDeviceUnavailable { onDeviceLost?() }
     }
 
     private func interrupted(type: AVAudioSession.InterruptionType?) {

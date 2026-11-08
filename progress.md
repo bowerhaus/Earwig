@@ -2,10 +2,4 @@
 
 Scratch state for the plan in flight. Overwritten at the start of a plan, emptied to a stub when it completes.
 
-**Plan:** `plans/005-listener-prompt.md` (stage 5: listener and the Prompt screen, Ear mode), branch `listener-prompt` from `main` at `48844f2`.
-
-**State:** the plan is drafted and committed, waiting for Andy's review. Issue #15 created; no code yet. Device-heavy stage, so `/plan_approved` rather than autopilot.
-
-**Next:** Andy reviews the plan's 14 decisions. Points most worth his eye: Start as a button on the rendering row rather than a tap on the step (decision 8, changes PRD §8.2); a take recorded when its slate plays (6); a first Settings screen now with only lead, pacing, start mode and the Listening check (11); the speaker shown amber, and Hold on a lost earpiece (9); a call ending the take (10); the diagnostics line on the Prompt screen (7).
-
-**Open follow-ups:** #5, #6, #9, #10, #13, #14.
+No plan in flight. Plan 005 (listener and the Prompt screen, Ear mode) is complete and the PR from branch `listener-prompt` for issue #15 carries it (check `gh pr list --head listener-prompt --state all --json number,state`: `MERGED` means `main` has it); see `plans/005-listener-prompt.md`, its Results and its review pass. Next is stage 6 of PRD §12, Screen mode, starting with writing `plans/006-…md` on a new branch from `main` (check `git status -sb` first). Open follow-ups: #5, #6, #9, #10, #13, #14, #16, and those named in the plan 005 PR; outdoors and the Osmo on the next shoot; seen in passing, the Scripts toolbar's Paste pill shows only its icon (check whether that predates plan 005).

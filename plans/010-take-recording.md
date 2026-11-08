@@ -1,6 +1,6 @@
 # Plan 010: Record a Take, with Sound or Video, and Play It Back
 
-**GitHub Issue:** [#16](https://github.com/bowerhaus/Earwig/issues/16) (PR must include "Closes #16"). Its acceptance criteria are to be updated to this plan, with Andy's yes: video added, the earpiece's audio not recorded.
+**GitHub Issue:** [#16](https://github.com/bowerhaus/Earwig/issues/16) (PR must include "Closes #16"). Its title and acceptance criteria were updated to this plan on 2026-11-08: video added, the earpiece's audio not recorded.
 **Branch:** `take-recording` (from `main` at `efd0e86`, after plan 009 merged)
 **Status:** Planned (2026-11-08).
 **Manual test:** device, on Andy's iPhone 14 Pro on the mount with the SK18 (Verification). Step 1 is a device check that decides whether video stays in the plan.

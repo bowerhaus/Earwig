@@ -43,6 +43,13 @@ struct ScreenPlace: Equatable, Sendable {
     /// `either` is a move the presenter asked for, which may go either way.
     private enum Glide { case none, forward, back, either, settle }
     private var glide = Glide.none
+    /// Where a glide is going, while one is under way.
+    private var glideTarget: Double?
+
+    /// The place the mark shows: while gliding, the glide's target, so the mark jumps straight
+    /// to the word it is going to and does not hop through each word on the way (Andy, device
+    /// check 1); otherwise the place.
+    var markPlace: Double { glide == .none ? place : glideTarget ?? place }
 
     init(place: Double = -1) {
         self.place = place
@@ -91,6 +98,7 @@ struct ScreenPlace: Equatable, Sendable {
             glide = .none
             return false
         }
+        glideTarget = settled
         place += (settled - place) * (1 - exp(-interval / Self.jumpGlide))
         speed = 0
         if abs(settled - place) <= 0.05 { glide = .none }
@@ -102,6 +110,7 @@ struct ScreenPlace: Equatable, Sendable {
         let error = estimate - place
         if glide == .none, error > Self.forwardJump { glide = .forward }
         guard glide != .none else { return false }
+        glideTarget = estimate
         var change = error * (1 - exp(-interval / Self.jumpGlide))
         if glide == .forward { change = max(change, 0) }
         place += change

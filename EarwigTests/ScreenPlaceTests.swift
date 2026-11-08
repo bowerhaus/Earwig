@@ -90,6 +90,25 @@ struct ScreenPlaceTests {
         #expect(waited.place > 11)
     }
 
+    @Test func whileGlidingTheMarkIsAtTheTarget() {
+        var place = ScreenPlace()
+        run(&place, from: 0, to: 2, confident: 7) { _ in 12 }
+        // The first frame of the slide back: the place is still near 12, the mark already at 8.
+        place.step(toward: 7, confident: 7, paused: true, at: 2 + 1.0 / 60)
+        #expect(place.place > 11)
+        #expect(Int(place.markPlace.rounded(.down)) == 8)
+        // Back: the mark at the start of the earlier phrase at once.
+        var back = ScreenPlace()
+        run(&back, from: 0, to: 2, confident: 11) { _ in 12 }
+        back.step(toward: 3, confident: 3, at: 2 + 1.0 / 60)
+        #expect(back.place > 11)
+        #expect(Int(back.markPlace.rounded(.down)) == 3)
+        // Reading on, the mark is the place.
+        var reading = ScreenPlace()
+        run(&reading, from: 0, to: 2) { 3 * $0 }
+        #expect(reading.markPlace == reading.place)
+    }
+
     @Test func pausedJustPastTheNextWordItStays() {
         // At a punctuation pause the place waits half a word into the next word: no slide.
         var place = ScreenPlace()

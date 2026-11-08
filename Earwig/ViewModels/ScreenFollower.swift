@@ -29,9 +29,11 @@ final class ScreenFollower {
     }
 
     /// The word the presenter is at, as the screen shows it: the smoothed place's word, which
-    /// only goes back when the scroll does. `nil` before the first word.
+    /// only goes back when the scroll does, and while it glides the word it is going to. `nil`
+    /// before the first word.
     var mark: Int? {
-        screenPlace.place >= 0 ? Int(screenPlace.place.rounded(.down)) : nil
+        let place = screenPlace.markPlace
+        return place >= 0 ? Int(place.rounded(.down)) : nil
     }
 
     /// Whether nothing would move in the next frame: the place at the estimate and at rest, and

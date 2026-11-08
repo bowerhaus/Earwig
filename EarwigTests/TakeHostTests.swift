@@ -59,10 +59,43 @@ struct TakeHostTests {
     final class FakeRecorder: TakeRecorder {
         var started: [Date] = []
         var finished: [(duration: TimeInterval, outcome: TakeOutcome)] = []
+        var recordings: [RecordingResult?] = []
 
         func started(at date: Date) { started.append(date) }
 
         func finished(duration: TimeInterval, outcome: TakeOutcome) { finished.append((duration, outcome)) }
+
+        func recordingFinished(_ result: RecordingResult?) { recordings.append(result) }
+    }
+
+    /// A take's recording (plan 010).
+    final class FakeCapture: TakeCapture {
+        let video: Bool
+        var onVideoStopped: ((String) -> Void)?
+        var onFailed: ((String) -> Void)?
+        var problem: String?
+        var prepared = 0
+        var startedAt: [TimeInterval] = []
+        var finishes = 0
+        var result: RecordingResult?
+        var camera: CameraCapture? { nil }
+
+        init(video: Bool) {
+            self.video = video
+            result = RecordingResult(url: URL(filePath: "/tmp/Step 1 Take 2.\(video ? "mov" : "m4a")"), video: video, duration: 3)
+        }
+
+        func prepare() async -> String? {
+            prepared += 1
+            return problem
+        }
+
+        func start(at hostTime: TimeInterval) { startedAt.append(hostTime) }
+
+        func finish() async -> RecordingResult? {
+            finishes += 1
+            return startedAt.isEmpty ? nil : result
+        }
     }
 
     private let calls = Calls()
@@ -81,7 +114,8 @@ struct TakeHostTests {
         output.calls = { [calls] in calls.list.append($0) }
     }
 
-    private func host(start: StartMode = .slateWithReply, slateFails: Bool = false, mode: TakeMode = .voice) -> TakeHost {
+    private func host(start: StartMode = .slateWithReply, slateFails: Bool = false, mode: TakeMode = .voice,
+                      capture: FakeCapture? = nil) -> TakeHost {
         let phrases = Self.lines.map { line in
             let words = ScriptWords.words(in: line)
             return FollowPhrase(kind: .spoken, words: words, wordStarts: words.indices.map { Double($0) * 0.4 }, duration: Double(words.count) * 0.4)
@@ -98,9 +132,10 @@ struct TakeHostTests {
         )
         setup.mode = mode
         if !mode.voiced { setup.audio.phrases = [] }
+        if let capture { setup.recording = capture.video ? .video : .sound }
         let calls = calls
         return TakeHost(
-            setup: setup, session: session, output: output, heard: heard, recorder: recorder,
+            setup: setup, session: session, output: output, heard: heard, recorder: recorder, capture: capture,
             renderSlate: { _ in
                 calls.list.append("slate")
                 if slateFails { throw VoiceRenderer.RenderError.conversion }
@@ -152,6 +187,97 @@ struct TakeHostTests {
         #expect(output.played.map(\.channel) == [.cue])
         #expect(heard.context == ["We", "follow"])
         #expect(recorder.started.count == 1)
+    }
+
+    /// Waits for the take to let everything go, which runs in a task of its own.
+    private func tornDown(_ host: TakeHost) async {
+        for _ in 0..<50 where !host.isTornDown { await Task.yield() }
+    }
+
+    // MARK: - Recording (plan 010)
+
+    @Test func aSoundTakeIsRecordedFromTheSlateToTheEnd() async {
+        let capture = FakeCapture(video: false)
+        let host = host(capture: capture)
+        await host.start()
+        #expect(capture.prepared == 1)
+        #expect(capture.startedAt == [100])
+        #expect(host.recordingSince == 100)
+        #expect(recorder.started.count == 1)
+        pass(0.5, host)
+        host.control(.stop)
+        await tornDown(host)
+        #expect(capture.finishes == 1)
+        #expect(host.recording == capture.result)
+        #expect(recorder.recordings == [capture.result])
+        #expect(session.deactivated == 1)
+    }
+
+    @Test func aVideoTakeWaitsOnThePreviewForStart() async {
+        let capture = FakeCapture(video: true)
+        let host = host(capture: capture)
+        await host.start()
+        #expect(host.phase == .gettingReady)
+        #expect(host.readyToGo)
+        #expect(output.played.isEmpty)
+        #expect(recorder.started.isEmpty)
+        #expect(capture.startedAt.isEmpty)
+        clock.now = 104
+        host.go()
+        #expect(!host.readyToGo)
+        #expect(host.phase == .running)
+        #expect(output.played.map(\.channel) == [.cue])
+        #expect(recorder.started.count == 1)
+        #expect(capture.startedAt == [104])
+    }
+
+    @Test func cancellingOnThePreviewRecordsNothingAndLetsEverythingGo() async {
+        let capture = FakeCapture(video: true)
+        let host = host(capture: capture)
+        await host.start()
+        host.end()
+        await tornDown(host)
+        #expect(recorder.started.isEmpty)
+        #expect(capture.finishes == 1)
+        #expect(host.recording == nil)
+        #expect(recorder.recordings.isEmpty)
+        #expect(session.deactivated == 1)
+        host.go()
+        #expect(host.phase == .gettingReady)
+    }
+
+    @Test func aCameraThatCannotStartRecordsNoTake() async {
+        let capture = FakeCapture(video: true)
+        capture.problem = "Earwig needs the camera."
+        let host = host(capture: capture)
+        await host.start()
+        #expect(host.phase == .failed("Earwig needs the camera."))
+        #expect(recorder.started.isEmpty)
+        #expect(!calls.list.contains("slate"))
+    }
+
+    @Test func theVideoStoppingOrTheRecordingFailingLeavesTheTakeRunning() async {
+        let capture = FakeCapture(video: true)
+        let host = host(capture: capture)
+        await host.start()
+        host.go()
+        pass(83, host)
+        capture.onVideoStopped?("the phone was locked")
+        #expect(host.recordingNote == "Video stopped at 1:23: the phone was locked.")
+        #expect(host.phase == .running)
+        capture.onFailed?("the disk is full")
+        #expect(host.recordingNote == "Recording stopped: the disk is full.")
+        #expect(host.phase == .running)
+    }
+
+    @Test func aTakeWithNoRecordingIsTornDownAsBefore() async {
+        let host = host()
+        await host.start()
+        host.control(.stop)
+        await tornDown(host)
+        #expect(host.isTornDown)
+        #expect(host.recording == nil)
+        #expect(recorder.recordings.isEmpty)
     }
 
     @Test func aCleanReadWithTheSlateReplyCompletesAndIsRecorded() async {

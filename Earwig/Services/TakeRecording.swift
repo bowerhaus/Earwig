@@ -187,6 +187,7 @@ final class RecordingWriter: @unchecked Sendable {
     private let queue: DispatchQueue
     private let clock: CMClock?
     private let sampleRate: Double
+    private let endWait: TimeInterval
     /// Mono, 32-bit float, at the mic's rate: what the mic's buffers are copied into.
     let audioFormat: AVAudioFormat
 
@@ -215,8 +216,10 @@ final class RecordingWriter: @unchecked Sendable {
 
     /// `video` is the writer's video settings, or `nil` for sound alone (`.m4a`). `rotation` is in
     /// degrees, written as the file's transform. `clock` is the frames' clock, if not the host's.
-    init(url: URL, queue: DispatchQueue, video: [String: Any]?, rotation: CGFloat, clock: CMClock?, sampleRate: Double) throws {
+    init(url: URL, queue: DispatchQueue, video: [String: Any]?, rotation: CGFloat, clock: CMClock?, sampleRate: Double,
+         endWait: TimeInterval = RecordingWriter.endWait) throws {
         self.queue = queue
+        self.endWait = endWait
         self.clock = clock
         self.sampleRate = sampleRate
         guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else {
@@ -287,7 +290,7 @@ final class RecordingWriter: @unchecked Sendable {
                 stopHost = hostTime
                 ending = continuation
                 endIfReached()
-                queue.asyncAfter(deadline: .now() + max(0, hostTime - HostClock.now) + Self.endWait) { [self] in end() }
+                queue.asyncAfter(deadline: .now() + max(0, hostTime - HostClock.now) + endWait) { [self] in end() }
             }
         }
     }
@@ -332,9 +335,9 @@ final class RecordingWriter: @unchecked Sendable {
         guard host + length > startHost, stopHost.map({ host < $0 }) ?? true else { return }
         if sessionStart == nil {
             if videoInput != nil, !videoEnded {
-                // Held until the first frame starts the file; a couple of seconds at most.
+                // Held until the first frame starts the file: a few seconds at most.
                 pending.append((buffer, host))
-                if pending.count > 100 { pending.removeFirst() }
+                if pending.count > 300 { pending.removeFirst() }
                 return
             }
             start(at: CMTime(seconds: max(host, startHost), preferredTimescale: 1_000_000_000))

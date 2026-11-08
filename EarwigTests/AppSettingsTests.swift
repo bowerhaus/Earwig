@@ -20,6 +20,18 @@ struct AppSettingsTests {
         #expect(settings.mode == .voice)
         #expect(settings.textSize == 40)
         #expect(!settings.lightsVoice)
+        #expect(settings.recording == .off)
+        #expect(settings.videoQuality == .hd1080)
+        #expect(!settings.keepsRecordings)
+    }
+
+    @Test func theRecordingSettingsAreKept() {
+        settings.recording = .video
+        settings.videoQuality = .uhd4K
+        settings.keepsRecordings = true
+        #expect(settings.recording == .video)
+        #expect(settings.videoQuality == .uhd4K)
+        #expect(settings.keepsRecordings)
     }
 
     @Test func theFollowSettingsCarryThem() {

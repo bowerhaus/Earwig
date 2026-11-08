@@ -74,6 +74,8 @@ struct TakeSummaryTests {
     @Test func theLineSaysTheMode() {
         #expect(run().line(duration: 6, outcome: .completed, mode: .screen).hasPrefix("take summary: 6.0 s, screen, completed"))
         #expect(run().line(duration: 6, outcome: .completed, mode: .voice).hasPrefix("take summary: 6.0 s, voice, completed"))
+        #expect(run().line(duration: 6, outcome: .completed).hasSuffix("; recording off"))
+        #expect(run().line(duration: 6, outcome: .completed, recording: "video 4K").hasSuffix("; recording video 4K"))
     }
 
     @Test func aTakeWithNoSpeaking() {

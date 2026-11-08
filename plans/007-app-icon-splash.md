@@ -2,7 +2,7 @@
 
 **GitHub Issue:** [#21](https://github.com/bowerhaus/Earwig/issues/21) (PR must include "Closes #21")
 **Branch:** `app-icon-splash` (from `main` at `5b1849e`, after plan 006 merged)
-**Status:** Approved (2026-11-08, `/plan_autopilot`). A cosmetic plan outside PRD §12's stages, like PhysiMate's plans 010 (app icon) and 012 (launch splash). Screen mode (stage 6) moves to plan 008.
+**Status:** Complete (2026-11-08; built and checked on the phone the same day under `/plan_autopilot`). A cosmetic plan outside PRD §12's stages, like PhysiMate's plans 010 (app icon) and 012 (launch splash). Screen mode (stage 6) moves to plan 008.
 **Manual test:** device, on Andy's iPhone 14 Pro: the icon in light, dark and tinted, the splash on a cold launch, and no splash on a return from the background or an unlock mid-take (Verification).
 **Goal:** Give Earwig its identity. The Home Screen tile and TestFlight show a blank slot, and the app opens on a plain screen and snaps to sky blue. After this plan the tile is the chosen mark, a white earwig crawling at an angle on the theme's sky blue, in the three iOS appearances, drawn by a committed script so it can be regenerated; a cold launch opens on the same sky blue, the earwig and the name fade in and out in under a second, and nothing happens on a return from the background. The same mark is the logo wherever the app comes to show its name. A decision is recorded on the wider visual refresh the issue raises.
 
@@ -121,7 +121,14 @@ The sibling apps set the pattern: PhysiMate's icon is drawn as SVG by `scripts/a
 
 ## Results
 
-_To be filled in when the plan completes._
+Built and checked on 2026-11-08. **PASS**: Andy reported all five device checks passed, and approved the script's renders on the concepts page's Final section.
+
+- **What was built.** `scripts/app_icon/make_app_icon.py` draws the chosen mark from decision 2's geometry and writes the three icon SVGs and the mark's SVG beside itself, renders them with headless Chrome into `AppIcon.appiconset` (light opaque RGB; dark and tinted RGBA on a transparent ground) and `EarwigMark.imageset` (@2x and @3x for a 160 pt box, the cuts true gaps by an SVG mask), writes both `Contents.json` files and checks the PNGs with Pillow, including that the insect clears the Home Screen's rounded corners (158 pt of 1024 to spare). Two runs are byte-identical, and it runs from any directory. The launch screen is `LaunchBackground`, the theme's sky blue in both appearances, pinned to `EarwigTheme.background` by `LaunchSplashTests`. `SplashView` fades the mark and the name (SF Rounded, bold, 34 pt, white) in over 0.25 s, holds 0.4 s and fades the overlay out over 0.3 s, 0.95 s in all, swallowing taps and hidden from VoiceOver; `EarwigApp` shows it over `ScriptsView` while `showsSplash` is true, which its completion sets false and nothing resets.
+- **Review before the assets went in** (decision 9): the Final section was published on the concepts page (version 7) with the real renders at 1024, 60, 40 and 29, the three appearances, the splash playing its timing and the lockup. Andy's approval was taken together with the device check, where the tile is best judged, rather than as a separate pause.
+- **Simulator**: the tile on the Home Screen in light; `assetutil` lists the icon's light, dark and tinted entries and the launch colour in both appearances; the splash on a cold launch, none on a return from the background (the same process, by `simctl launch`); `-EarwigDemo YES` still opens the sample script. 267 tests pass, no asset-catalogue warnings, SwiftLint clean.
+- **Device (iPhone 14 Pro), Andy's verdicts, all passed**: (1) the icon in light, dark and tinted, at the Settings and Spotlight sizes, nothing clipped, an earwig at 60 pt; (2) the cold launch, sky blue to the mark and the name to the Scripts screen with no visible step, under a second, the timings kept as set; (3) no splash on a return from the background; (4) no splash on an unlock mid-take, the take still following; (5) the lockup's name beside the mark as on the concepts page.
+- **Decision 8, the visual refresh**: Andy asked for none of it with the icon and splash on the phone, so nothing was split out and no issue opened; the issue's third part can be raised later if wanted, by then against stage 6's redrawn Prompt screen.
+- **Review pass**: four minor findings (below), three fixed on the branch, one an accepted gap.
 
 ## Review pass — 2026-11-08
 

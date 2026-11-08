@@ -1,6 +1,6 @@
 # Plan 009: Longer Phrases
 
-**GitHub Issue:** none yet (to open on Andy's yes; the PR then says "Closes #N")
+**GitHub Issue:** [#27](https://github.com/bowerhaus/Earwig/issues/27) (PR must include "Closes #27")
 **Branch:** `longer-phrases` (from `screen-mode` at `04e37c3`, so the phone keeps Screen mode; PR #26 carries plan 008 and is not yet merged)
 **Status:** Complete (2026-11-08). Results below; PRD v0.11.
 **Manual test:** device, on Andy's iPhone 14 Pro with the SK18: a take of a script with a long clause that has no punctuation. (Fluff handling was tried on this branch and dropped; see "Tried and dropped".)

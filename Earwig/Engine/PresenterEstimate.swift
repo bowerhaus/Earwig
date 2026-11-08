@@ -64,6 +64,9 @@ struct PresenterEstimate: Equatable, Sendable {
         var voiceStartedAt: TimeInterval?
         /// The estimate never passes this word: the end of the phrase the voice is in.
         var cap: Int?
+        /// The first word after the phrase holding the confident word. Coasting stops there:
+        /// crossing into the next phrase needs a word of it heard (plan 006, decision 5).
+        var boundary: Int?
     }
 
     /// The presenter's position now, in words (fractional).
@@ -76,6 +79,12 @@ struct PresenterEstimate: Equatable, Sendable {
     /// first interim result after a pause can come 1.5 s late, which stalled the gate of a short
     /// phrase). Going no further than its first word means silence lets at most a phrase of
     /// `lead + 1` words through a gate. Off script, or lost, it stays at the last confident word.
+    ///
+    /// Coasting never crosses a phrase boundary: it goes no further than the first word of the
+    /// next phrase until a word of that phrase is confidently heard. A phrase end is where a
+    /// presenter pauses or leaves the script, and there the coast is a guess with nothing heard
+    /// to back it: off script straight after a phrase end, it released the next phrase before
+    /// the presenter was seen to be lost (#19, plan 006).
     func position(_ basis: Basis, lead: Int, at now: TimeInterval) -> Double {
         let base = Double(basis.confident)
         var estimate = base
@@ -84,6 +93,7 @@ struct PresenterEstimate: Equatable, Sendable {
         } else if !basis.afterFinal, let at = basis.confidentAt {
             let coast = min(max(now - at, 0), settings.maxCoast)
             estimate = base + rate * (delay + coast)
+            if let boundary = basis.boundary { estimate = min(estimate, Double(boundary)) }
         } else if let start = basis.voicePhraseStart, let startedAt = basis.voiceStartedAt, start > basis.confident {
             let following = now - startedAt - Double(lead) / rate
             estimate = min(base + rate * max(following, 0), Double(start))

@@ -2,8 +2,8 @@
 
 **GitHub Issues:** [#18](https://github.com/bowerhaus/Earwig/issues/18) and [#19](https://github.com/bowerhaus/Earwig/issues/19) (PR must include "Closes #18" and "Closes #19"; no issue of its own, as these are plan 005 follow-ups, not a PRD §12 stage)
 **Branch:** `take-hearing` (from `main` at `253d080`, after plan 005 merged)
-**Status:** Draft (2026-11-08).
-**Manual test:** yes, on Andy's iPhone 14 Pro with the SK18: going off script at a phrase end, a misheard phrase end, and listening giving up (Verification).
+**Status:** In progress (2026-11-08), autopilot: built and tested; device check next.
+**Manual test:** device, on Andy's iPhone 14 Pro with the SK18: going off script at a phrase end, a misheard phrase end, and listening giving up (Verification).
 **Goal:** A take should know when it can't follow, and say so. Today it carries on as if it can hear in two cases. When listening gives up mid-take (#18), the take is never told: it goes on showing Waiting or Lost, with no reason. When the presenter goes off script straight after a phrase end (#19), the estimate runs on as if they were still reading, and the next phrase is released before Lost is shown, about two seconds later. After this plan, a take that can no longer hear says so and ends. Off-script speech at a phrase end holds the voice at the gate, as off-script speech mid-phrase already does. Neither change may add waits to a clean read or to a misheard phrase end.
 
 **PRD references:** §4.3 Listening, §4.4 Following, §5.1 Inputs, §5.3 Matching (lost), §5.4 Pacing (the presenter position, gates), §8.3 Prompt, §11 Risks (recognition), §14 Success Criteria.
@@ -141,4 +141,19 @@
 
 ## Results
 
-*(To be filled in.)*
+Built as planned, with these findings and changes. The device check is still to come.
+
+- **#18.** As decisions 1 and 2: `onGaveUp` from both of the listener's give-up paths, and the take stops with a `stopReason`. Finished says "Stopped: listening stopped after two failures in ten seconds", or "Stopped: listening could not restart (…)". The summary line says `stopped (not listening)`. **Changed from decision 7:** the Debug flag wraps the take's `HeardSource` (`GivingUpHeardSource`, beside `SilentHeardSource` in `ScriptDetailViewModel.swift`) rather than adding a timer to `Listener`, so no Debug code sits in the listener. It works with `-EarwigNoListen YES` too.
+- **The simulated voice speaks as fast as the presenter.** The scenarios' voice said a word every 0.4 s (2.5 words a second), even at 1.2x slower than a presenter reading at 4. So at that pace the presenter waited on the voice at almost every word, which is not what the phone does: there, both ran at about 4 words a second. The new scenarios render the step at the presenter's pace (`SimulationScripts.harbour(step:secondsPerWord:)`).
+- **Where the release comes from (decision 4).** The reproduction is the harbour step at lead 5: phrase 2 read to "stood" (word 27), then straight on with off-script words. It released phrase 4 early at all three paces (2.5; 4; and 4 with 1 s bursts), and played it twice. In every case the release came **before any stray word was heard**:
+  - the estimate was coasting on the script, with the confident word at 25 or 26 and the presenter really at 27;
+  - it reached word 29, which opens the gate after phrase 3 (28–33), from phrase 2.
+
+  So it is the phrase-end words themselves that release the phrase, not a stray word. Candidate A, which acts on a stray word, could not have helped, and was not built. With a voice slower than the presenter (the old simulation), a second route showed: a stray "to" matched "where to look" five words on, which reset the off-script count and started the coast again. The same rule stops that too.
+- **The rule kept: B.** Coasting goes no further than the first word after the phrase the confident word is in, so crossing into the next phrase needs a word of it confidently heard. It is in `PresenterEstimate.position`, as `Basis.boundary`, set in `FollowEngine.presenterNow`. It applies only while coasting on interim results: the rule after a final (taken to have begun the voice's phrase) is unchanged. A variant that lifted the boundary on a tentative match of the next phrase's first two words was tried. It made no difference in any scenario, so it was dropped. C was not needed.
+- **What B costs and gains** (simulated, lead 5, the harbour step, every scenario at all three paces):
+  - **Off script at a phrase end:** phrase 4 is now held until the presenter is back. It is played once, and Lost is shown. The longest silence is 4.0 to 6.1 s. On return there is one presenter wait of 0.4 s at 4 words a second in bursts.
+  - **Clean read, and every other existing scenario:** completed, with no presenter waits at any pace. The lead is within two words more often: a clean read went from 94, 88 and 78% to 97, 91 and 88%; the others rose by between 0 and 14 points. The longest silence rose by up to 1 s in the break-off and restart scenarios, since the voice now waits for the presenter to be heard in the next phrase. Total silence stayed about the same.
+  - **A misheard phrase end** ("in all" heard as "an hour", phrase 2's last two words). At 2.5 and 4 words a second there are no presenter waits. In 1 s bursts, the gate after phrase 3 held 2.45 s against 1.15 s before, and the presenter waited 0.15 s once. So the guard "no longer than on main" (decision 6) holds for the presenter at two paces, but not quite at the phone's: the test pins presenter waits at 0.2 s or less and silences under 2.5 s. **Andy's check 2 decides whether that feels right.**
+  - **A filler at a phrase end:** no waits, and not lost, at any pace.
+- **Commits:** steps 2 and 3 went in as one commit, since the reproduction was written and the rule found in one pass. The plan's disabled-test commit was not needed.

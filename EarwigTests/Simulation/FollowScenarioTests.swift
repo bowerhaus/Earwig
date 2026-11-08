@@ -1,4 +1,5 @@
 @testable import Earwig
+import Foundation
 import Testing
 
 /// The scenarios of PRD §12 stage 3 and §14, as simulated takes of the harbour walk's second
@@ -173,5 +174,89 @@ struct FollowScenarioTests {
         #expect(take.outcome == .completed)
         #expect(take.player.speeds.allSatisfy { $0 == 1 })
         #expect(take.presenter.waits.isEmpty)
+    }
+
+    // MARK: - Off script at a phrase end (plan 006, #19)
+
+    /// The paces the scenarios run at, at the app's lead: the simulation's own, the phone's
+    /// (presenter and voice about 4 words a second, plan 005), and the phone's with interim
+    /// results in bursts a second apart.
+    static let paces: [(rate: Double, interval: TimeInterval)] = [(2.5, 0), (4, 0), (4, 1)]
+
+    private func atLeadFive(_ acts: [PresenterAct], rate: Double, interval: TimeInterval, writes: [Int: String] = [:]) -> TakeSimulation {
+        var settings = FollowSettings()
+        settings.lead = 5
+        var recogniser = SimulatedRecogniser()
+        recogniser.interimInterval = interval
+        recogniser.writes = writes
+        let script = SimulationScripts.harbour(step: 1, secondsPerWord: 1 / rate)
+        var take = TakeSimulation(script: script, settings: settings, acts: acts, rate: rate, recogniser: recogniser)
+        take.run()
+        return take
+    }
+
+    /// Take 12 of plan 005's device check 4: a phrase read to its end ("stood", word 27), then
+    /// straight on with words of the presenter's own, then back to the script at word 28. With the
+    /// voice waiting after phrase 3 (28–33), whose gate opens with the presenter estimated at word
+    /// 29, the coast from "stood" (and at 4 words a second a stray "to" matching "where to look")
+    /// released phrase 4 while the presenter was off script.
+    @Test(arguments: Self.paces.indices)
+    func offScriptAtAPhraseEndHoldsTheVoice(pace: Int) {
+        let (rate, interval) = Self.paces[pace]
+        let ownWords = ["we", "may", "be", "able", "to", "find", "a", "different", "way", "to", "do", "this"]
+        let take = atLeadFive([.read(0...27), .runOn, .say(ownWords), .read(28...75)], rate: rate, interval: interval)
+        #expect(take.outcome == .completed)
+        #expect(take.statuses.contains(.lost))
+        let release = take.releases.first { $0.phrase == 4 }
+        #expect((release?.presenterAt ?? -1) >= 28, "phrase 4 released with the presenter at word \(release?.presenterAt ?? -1)")
+        #expect(take.player.plays.filter { $0.phrase == 4 }.count == 1)
+        #expect(take.presenter.waits.allSatisfy { $0.length <= 0.5 })
+    }
+
+    /// "in all" heard as "an hour" (plan 005, take 12): phrase 2's last two words written as other
+    /// words. The voice waits at the gate after phrase 3 until a word of it is heard, which with
+    /// results in bursts a second apart can be a second later than before. Measured before plan
+    /// 006, the longest silences were 1.5, 1.1 and 1.15 s, with no presenter waits; after, 1.5,
+    /// 1.35 and 2.45 s, and one presenter wait of 0.15 s at the phone's pace in bursts.
+    @Test(arguments: Self.paces.indices)
+    func aMisheardPhraseEndHoldsThePresenterNoMoreThanAMoment(pace: Int) {
+        let (rate, interval) = Self.paces[pace]
+        let take = atLeadFive([.read(0...75)], rate: rate, interval: interval, writes: [26: "an", 27: "hour"])
+        #expect(take.outcome == .completed)
+        #expect(take.played == everyPhraseOnce)
+        #expect(take.presenter.waits.allSatisfy { $0.length <= 0.2 })
+        #expect(take.player.silences.allSatisfy { $0 < 2.5 })
+    }
+
+    /// An "um" after a phrase end, then the next phrase: nothing is held and the voice is not lost.
+    @Test(arguments: Self.paces.indices)
+    func aFillerAtAPhraseEndCostsNothing(pace: Int) {
+        let (rate, interval) = Self.paces[pace]
+        let take = atLeadFive([.read(0...27), .say(["um"]), .read(28...75)], rate: rate, interval: interval)
+        #expect(take.outcome == .completed)
+        #expect(take.played == everyPhraseOnce)
+        #expect(!take.statuses.contains(.lost))
+        #expect(take.presenter.waits.isEmpty)
+    }
+
+    /// The scenarios above at the app's lead and every pace: each completes with the presenter
+    /// never waiting for the voice.
+    static let scenarios: [(name: String, acts: [PresenterAct], writes: [Int: String])] = [
+        ("a clean read", [.read(0...75)], [:]),
+        ("a break off and resume", [.read(0...21), .say(["blah", "blah", "blah"]), .read(19...75)], [:]),
+        ("a restart from the start of a line", [.read(0...20), .pause(0.5), .read(17...75)], [:]),
+        ("a restart after the gate opened", [.read(0...63), .say(["timetape"]), .read(54...75)], [:]),
+        ("a ten-second stop", [.read(0...31), .pause(10), .read(28...75)], [:]),
+        ("a wander", [.read(0...21), .say(["rosie", "come", "back", "here", "girl", "leave", "that", "squirrel", "good", "dog"]), .read(22...75)], [:]),
+        ("a skipped phrase", [.read(0...16), .recite(28...75)], [:]),
+        ("a year and a compound", [.read(0...75)], [1: "seawall", 2: ""]),
+    ]
+
+    @Test(arguments: Self.scenarios.indices, Self.paces.indices)
+    func everyScenarioAtTheAppsLeadAndEveryPace(scenario: Int, pace: Int) {
+        let (rate, interval) = Self.paces[pace]
+        let take = atLeadFive(Self.scenarios[scenario].acts, rate: rate, interval: interval, writes: Self.scenarios[scenario].writes)
+        #expect(take.outcome == .completed, "\(Self.scenarios[scenario].name)")
+        #expect(take.presenter.waits.isEmpty, "\(Self.scenarios[scenario].name): waits \(take.presenter.waits.map(\.length))")
     }
 }

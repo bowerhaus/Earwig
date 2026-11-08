@@ -11,16 +11,16 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 ## Checklist
 
-- [ ] Step 1: #18, listening gives up (`onGaveUp`, the take stops with a reason, the Finished text, the Debug flag); commit
-- [ ] Step 2: #19 reproduction (`interimInterval`, 4 w/s scenario disabled as reproducing, release moment recorded in the plan, misheard-end wait pinned); commit
-- [ ] Step 3: #19 rule (candidates A, B, C; the kept one passes all scenarios at both rates; `PresenterEstimateTests`); commit
-- [ ] Tests + lint
+- [x] Step 1: #18, listening gives up (`onGaveUp`, the take stops with a reason, the Finished text, the Debug flag); commit
+- [x] Step 2: #19 reproduction (`interimInterval`, 4 w/s scenario disabled as reproducing, release moment recorded in the plan, misheard-end wait pinned); commit
+- [x] Step 3: #19 rule (candidates A, B, C; the kept one passes all scenarios at both rates; `PresenterEstimateTests`); commit
+- [x] Tests + lint (265 tests pass, no warnings, SwiftLint clean)
 - [ ] Review + fixes
 - [ ] Manual test: device (iPhone 14 Pro, SK18)
 - [ ] Complete (commit + PR)
 
 ## Notes
 
-- Reading `PresenterEstimate.position`, the release in #19 may come on the phrase-end word itself (coast of rate × delay, about four words at 4 w/s), not on the stray word. Step 2 settles which, and that picks candidate A or B.
+- #19: the release came on the phrase-end words themselves (on-script coast), so candidate B (coasting stops at a phrase boundary until a word beyond it is heard) is kept; see the plan's Results. Its cost (a misheard phrase end in 1 s bursts: gate 2.45 s, one 0.15 s presenter wait) is for Andy's device check 2.
 - Screen mode becomes plan 007.
 - Still open, not in this plan: #5, #6, #9, #10, #13, #14, #16, #20, #21, #22; outdoors and the Osmo on the next shoot; the Scripts toolbar's Paste pill showing only its icon.

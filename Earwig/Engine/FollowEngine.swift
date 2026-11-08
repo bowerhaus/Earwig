@@ -266,6 +266,8 @@ struct FollowEngine: Sendable {
         case .idle: cap = nil
         }
         let start = voicePhrase.map { script.firstWord[$0] }
+        // Coasting stops at the end of the phrase the presenter was last confidently heard in.
+        let boundary = script.phrase(containing: current.confident).map { script.range(of: $0).upperBound }
         let pausedSince = lastFinalAt.map { (current.confidentAt ?? -.infinity) <= $0 } ?? false
         let basis = PresenterEstimate.Basis(
             confident: current.confident,
@@ -274,7 +276,8 @@ struct FollowEngine: Sendable {
             offScript: current.lost || current.sinceMatch >= 2,
             voicePhraseStart: start,
             voiceStartedAt: voiceStartedAt,
-            cap: cap
+            cap: cap,
+            boundary: boundary
         )
         return estimate.position(basis, lead: settings.lead, at: now)
     }

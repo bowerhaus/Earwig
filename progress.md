@@ -10,7 +10,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 ## Checklist
 
-- [ ] 1. Device check first: the camera, the writer and the mic's second consumer behind `-EarwigRecordVideo YES`; Andy checks route, recogniser, sync, heat at 4K30
+- [ ] 1. (built, committed `Plan 010 step 1`; installed on the phone) Device check first: the camera, the writer and the mic's second consumer behind `-EarwigRecordVideo YES`; Andy checks route, recogniser, sync, heat at 4K30
 - [ ] 2. The writer and the store (`TakeRecording`, `RecordingStore`, tests)
 - [ ] 3. Settings and the take (settings, start card, `TakeHost`, tests)
 - [ ] 4. The screens (framing, dot, Play Back, Share, tests, screenshots)
@@ -20,4 +20,12 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - [ ] Complete (commit + PR)
 
 ## Notes
+
+- Step 1's build is on the phone. Next: Andy unlocks it; launch with `xcrun devicectl device process launch --console --terminate-existing --device 00008120-000471EE14E0201E com.bowerhaus.Earwig -- -EarwigDemo YES -EarwigRecordVideo YES` (in the background, console to the scratchpad), then check 1a: a filmed take, route and recogniser. Then 1b (the same take not filmed, to compare), 1c (sync, the file pulled to the Mac with `devicectl device copy from`), 1d (ten minutes of takes for heat).
+- 1a PASS (Andy): voice in the earpiece throughout, following as usual. Console: take 49 SK18 A2DP + built-in mic throughout, 27.8 s completed, lead within 2 words 24%, waits 3 (longest 1.9 s), delay 0.89 s, rate 3.95 w/s; recording 0 dropped; thermal nominal. Andy: the route icons never look green (the theme's pale mint `good` on sky blue) — a follow-up, not this plan.
+- Take 49's file (copied to the scratchpad `takes/`): HEVC 3840x2160 30 fps rotation -90, AAC; video 26.20 s against sound 27.68 s, so the video's last ~1.5 s is missing: frames are likely delivered late (stabilisation), and finish stops the sink before they arrive. To fix: finish waits for a frame past the stop time (or a timeout), and log the frames' delivery delay and the stabilisation mode.
+- 1b (take 50, not filmed): delay 0.95 s against 0.89 filmed; rate 3.62 against 3.95; lead within 2 words 36% against 24%; waits 6 (longest 4.2 s) against 3 (1.9 s). Andy gave no verdict on feel for 1b.
+- 1c PASS (Andy): sound in sync, picture upright; the last sentence missing from the video. Fixed: the recording runs on `RecordingWriter.tail` (1 s) past the take's end and waits (up to 3 s) for the camera's late frames; the log gives the frames' delay. To check in 1d.
+- Step 4 must hold Next Take until the take's recording is finished (teardown now runs 1–4 s longer while it records on).
+- No framing preview yet (step 4): frame the mount with the Camera app first.
 

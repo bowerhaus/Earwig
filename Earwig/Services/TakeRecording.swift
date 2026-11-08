@@ -12,6 +12,8 @@ struct RecordingResult: Equatable, Sendable {
     var duration: TimeInterval
     var droppedAudio = 0
     var droppedVideo = 0
+    /// How long after it was taken the camera delivered its last frame, in seconds.
+    var frameDelay: TimeInterval?
 }
 
 /// A take's recording as the take uses it: `TakeRecording`, or a fake in tests.
@@ -26,7 +28,8 @@ protocol TakeCapture: AnyObject {
     func prepare() async -> String?
     /// Starts recording from this host time: the take's slate (decision 3).
     func start(at hostTime: TimeInterval)
-    /// Stops and finishes the file; `nil` when nothing was recorded.
+    /// Records on for `RecordingWriter.tail` after the take, then finishes the file; `nil` when
+    /// nothing was recorded.
     func finish() async -> RecordingResult?
 }
 
@@ -102,11 +105,13 @@ final class TakeRecording: TakeCapture {
     func finish() async -> RecordingResult? {
         guard !finished else { return nil }
         finished = true
-        audio.setMicRecorder(nil)
-        camera?.setSink(nil)
         if let thermalObserver { NotificationCenter.default.removeObserver(thermalObserver) }
         thermalObserver = nil
-        let result = await writer?.finish()
+        // The sound and the frames keep coming until the writer has what it needs: the camera
+        // delivers a frame well after it is taken (stabilisation), so the end would be cut off.
+        let result = await writer?.finish(at: HostClock.now + RecordingWriter.tail)
+        audio.setMicRecorder(nil)
+        camera?.setSink(nil)
         await camera?.stopRunning()
         writer = nil
         guard var result else {
@@ -114,8 +119,9 @@ final class TakeRecording: TakeCapture {
             return nil
         }
         result.droppedVideo += camera?.droppedFrames ?? 0
-        log(String(format: "recording: finished %.1f s, %@, dropped %d audio buffers and %d frames%@, %@",
+        log(String(format: "recording: finished %.1f s, %@, dropped %d audio buffers and %d frames%@%@, %@",
                    result.duration, url.lastPathComponent, result.droppedAudio, result.droppedVideo,
+                   result.frameDelay.map { String(format: ", frames %.0f ms late", $0 * 1000) } ?? "",
                    result.videoStoppedAt.map { String(format: ", video stopped at %.1f s", $0) } ?? "", Self.conditions()))
         return result
     }
@@ -157,6 +163,11 @@ final class TakeRecording: TakeCapture {
 /// frame at or after the start (sound alone, on the first buffer), and sound before that is
 /// trimmed by the writer.
 final class RecordingWriter: @unchecked Sendable {
+    /// Seconds recorded after the take ends, so its last word is not cut off (device check 1c).
+    static let tail: TimeInterval = 1
+    /// The longest the end waits for the camera's frames to reach the end time.
+    static let endWait: TimeInterval = 3
+
     private let writer: AVAssetWriter
     private let audioInput: AVAssetWriterInput
     private let videoInput: AVAssetWriterInput?
@@ -181,6 +192,10 @@ final class RecordingWriter: @unchecked Sendable {
     private var videoStoppedAt: TimeInterval?
     private var videoStopReason: String?
     private var done = false
+    /// The end once asked for: host seconds, and what to call when it is reached.
+    private var stopHost: TimeInterval?
+    private var ending: CheckedContinuation<RecordingResult?, Never>?
+    private var frameDelay: TimeInterval?
     private var failed = false
     private var droppedAudio = 0
     private var droppedVideo = 0
@@ -250,28 +265,49 @@ final class RecordingWriter: @unchecked Sendable {
         }
     }
 
-    /// Finishes the file; `nil` when nothing was written.
-    func finish() async -> RecordingResult? {
+    /// Finishes the file at `hostTime`, once the sound and (for video) the frames have reached it,
+    /// or after `endWait` at most; `nil` when nothing was written.
+    func finish(at hostTime: TimeInterval) async -> RecordingResult? {
         await withCheckedContinuation { (continuation: CheckedContinuation<RecordingResult?, Never>) in
             queue.async { [self] in
-                guard !done else { return continuation.resume(returning: nil) }
-                done = true
-                guard !failed, writer.status == .writing, let sessionStart else {
-                    if writer.status == .writing { writer.cancelWriting() }
-                    return continuation.resume(returning: nil)
-                }
-                audioInput.markAsFinished()
-                if !videoEnded { videoInput?.markAsFinished() }
-                let end = [lastAudioEnd, lastVideo].compactMap { $0 }.max() ?? sessionStart
-                writer.endSession(atSourceTime: end)
-                let result = RecordingResult(url: writer.outputURL, video: videoInput != nil,
-                                             videoStoppedAt: videoStoppedAt, videoStopReason: videoStopReason,
-                                             duration: (end - sessionStart).seconds,
-                                             droppedAudio: droppedAudio, droppedVideo: droppedVideo)
-                writer.finishWriting { [writer] in
-                    continuation.resume(returning: writer.status == .completed ? result : nil)
-                }
+                guard !done, ending == nil else { return continuation.resume(returning: nil) }
+                stopHost = hostTime
+                ending = continuation
+                endIfReached()
+                queue.asyncAfter(deadline: .now() + max(0, hostTime - HostClock.now) + Self.endWait) { [self] in end() }
             }
+        }
+    }
+
+    /// Ends once the sound and the picture have both reached the end time.
+    private func endIfReached() {
+        guard let stopHost, ending != nil else { return }
+        let stop = CMTime(seconds: stopHost, preferredTimescale: 1_000_000_000)
+        let soundThere = (lastAudioEnd ?? .zero) >= stop
+        let pictureThere = videoInput == nil || videoEnded || (lastVideo ?? .zero) >= stop
+        if soundThere && pictureThere { end() }
+    }
+
+    private func end() {
+        guard let continuation = ending, !done else { return }
+        ending = nil
+        done = true
+        guard !failed, writer.status == .writing, let sessionStart else {
+            if writer.status == .writing { writer.cancelWriting() }
+            return continuation.resume(returning: nil)
+        }
+        audioInput.markAsFinished()
+        if !videoEnded { videoInput?.markAsFinished() }
+        let last = [lastAudioEnd, lastVideo].compactMap { $0 }.max() ?? sessionStart
+        let stop = stopHost.map { min(last, CMTime(seconds: $0, preferredTimescale: 1_000_000_000)) } ?? last
+        let endTime = max(stop, sessionStart)
+        writer.endSession(atSourceTime: endTime)
+        let result = RecordingResult(url: writer.outputURL, video: videoInput != nil,
+                                     videoStoppedAt: videoStoppedAt, videoStopReason: videoStopReason,
+                                     duration: (endTime - sessionStart).seconds,
+                                     droppedAudio: droppedAudio, droppedVideo: droppedVideo, frameDelay: frameDelay)
+        writer.finishWriting { [writer] in
+            continuation.resume(returning: writer.status == .completed ? result : nil)
         }
     }
 
@@ -280,7 +316,7 @@ final class RecordingWriter: @unchecked Sendable {
     private func writeAudio(_ buffer: AVAudioPCMBuffer, host: TimeInterval) {
         guard !done, !failed, let startHost, writer.status == .writing else { return }
         let length = Double(buffer.frameLength) / sampleRate
-        guard host + length > startHost else { return }
+        guard host + length > startHost, stopHost.map({ host < $0 }) ?? true else { return }
         if sessionStart == nil {
             if videoInput != nil, !videoEnded {
                 // Held until the first frame starts the file; a couple of seconds at most.
@@ -318,6 +354,7 @@ final class RecordingWriter: @unchecked Sendable {
         }
         if !audioInput.append(sample) { return fail() }
         lastAudioEnd = end
+        endIfReached()
     }
 
     private func writeVideo(_ sample: CMSampleBuffer) {
@@ -333,7 +370,7 @@ final class RecordingWriter: @unchecked Sendable {
                                                         sampleTimingArray: &timing, sampleBufferOut: &retimed) == noErr, let retimed else { return }
             sample = retimed
         }
-        guard pts.seconds >= startHost else { return }
+        guard pts.seconds >= startHost, stopHost.map({ pts.seconds <= $0 + 0.05 }) ?? true else { return }
         if sessionStart == nil {
             start(at: pts)
             let held = pending
@@ -346,6 +383,8 @@ final class RecordingWriter: @unchecked Sendable {
         }
         if !videoInput.append(sample) { return fail() }
         lastVideo = pts
+        frameDelay = HostClock.now - pts.seconds
+        endIfReached()
     }
 
     private func start(at time: CMTime) {

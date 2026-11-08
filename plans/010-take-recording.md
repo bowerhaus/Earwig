@@ -148,3 +148,145 @@ Two other ways were weighed and not chosen (2026-11-08):
 ## Results
 
 To be filled in.
+
+## Review pass — 2026-11-08
+
+Findings from `/review-branch` on branch `take-recording`, **unresolved as written**. Each is a claim
+from a review on that date, not an established fact, and each verdict under *Assessment* is a
+recommendation, not a decision. Work through them and annotate each with what was done — fixed,
+or rejected and why. A finding that turns out to be wrong should say so here rather than be
+deleted.
+
+### Code
+
+Review of `take-recording` against `main` (plan 010, issue #16). I did not run a build or tests. I found no compile breaks, the engine is untouched, and the colours are kept in `EarwigTheme` as CLAUDE.md asks. Seven findings, the first two the most important.
+
+**C1 — WARNING: Done during "Saving the recording…" lets a new take overlap the old take's teardown.**
+- Next Take is held until `isTornDown`, but Done is not.
+- `endTake()` drops the host. Its `Task { await tearDown() }` keeps running for 1–4 s, because `capture.finish()` waits `RecordingWriter.tail` plus up to `endWait`.
+- A Start tapped on the Script screen in that window builds a new take. The old teardown then calls `session.deactivate()` on the shared `AVAudioSession` under the new take. With video, the old capture session may also still hold the front camera while the new one configures it.
+- Before this branch the teardown was short. The recording widens the window to seconds.
+- Fix options: hold Done like Next Take, or have the Script screen's Start wait for the previous host's `isTornDown`.
+- Where: `Earwig/ViewModels/ScriptDetailViewModel.swift` (`endTake`, `startTake` guard `take == nil`), `Earwig/Services/TakeHost.swift:466-488`, `Earwig/Views/Prompt/PromptView.swift` bottom (Done always shown).
+
+**C2 — WARNING: two scripts with the same title share a recordings folder, so kept recordings get overwritten.**
+- `RecordingStore.url(scriptTitle:step:take:video:)` names the file only by title, step and take. It deletes any file already at that path, and it does so when the `TakeHost` is created, before Start or Cancel.
+- With Keep Recordings on, two scripts with the same title (or a script deleted and re-imported, whose take numbers restart at 1) silently replace each other's "Step 1 Take 1.mov". The older take's `recordingPath` then points at the other script's file.
+- Where: `Earwig/Services/RecordingStore.swift:15-21`, called from `ScriptDetailViewModel.takeRecording` (about line 186).
+
+**C3 — WARNING: a video take whose camera never delivers a frame after Start loses all its sound.**
+- `TakeRecording.stopVideo` does nothing until the writer exists (`guard video, let writer`). So an interruption or `runtimeErrorNotification` during framing is dropped, and nothing tells the writer the video has ended.
+- After Go, `writeAudio` holds the sound in `pending` (capped at 300 buffers, about 6 s, oldest dropped) waiting for a first frame that never comes. `end()` finds no `sessionStart` and returns nil, and Finished says "Nothing was recorded." Decision 9 says the sound carries on.
+- A related case: when `stopVideo` arrives before the first frame, `videoEnded` is set but `pending` is never flushed. The sound up to that point is lost.
+- Where: `Earwig/Services/TakeRecording.swift:139-145` (`stopVideo` guard), `:327-339` (pending hold), `:252-263` (`RecordingWriter.stopVideo`).
+
+**C4 — SUGGESTION: Play Video is offered for a `.mov` with no picture.**
+- `canPlayVideo` is `result.video == true && (videoStoppedAt ?? 1) > 0`. When video stopped before the first frame (C3, or `cameraMissing` in the simulator), `videoStoppedAt` stays nil but `video` is true. Finished then offers Play Video for a file with no video track.
+- Where: `Earwig/ViewModels/PromptViewModel.swift` (`canPlayVideo`), `Earwig/Services/TakeRecording.swift:258-261`.
+
+**C5 — SUGGESTION: three gaps against the plan's decisions.**
+- **Decision 9:** locking the phone produces `.videoDeviceNotAvailableInBackground`, which is mapped to "Earwig left the screen". The plan's "the phone was locked" is never shown. (`Earwig/Services/CameraCapture.swift`, `interrupted(_:)`)
+- **Decision 4:** the preview is meant to show while the take gets ready behind it. In fact the camera is prepared only after listening has started, and `CameraCapture.device` is not observed. So the "video.slash" placeholder stays up until `readyToGo` happens to trigger a redraw. (`Earwig/Services/TakeHost.swift` `readyListeningAndCamera`, `Earwig/Views/Prompt/FramingView.swift:15`)
+- **Decision 10:** the plan puts the dropped mic buffers and the thermal state on `TakeSummary`'s line. The line gains only the recording mode; the drops and thermal state go on a separate `recording: finished …` log line. (`Earwig/Services/TakeSummary.swift:86`)
+
+**C6 — SUGGESTION: the recording dot stays after the recording fails.**
+- `showsRecordingDot` depends only on `recordingSince` and the running phase. After `onFailed` the dot and timer go on although nothing is being recorded.
+- The sound-only icon is chosen by matching the note's text (`hasPrefix("Video stopped")`), which is fragile.
+- Where: `Earwig/ViewModels/PromptViewModel.swift` (`showsRecordingDot`, `recordingSoundOnly`).
+
+**C7 — SUGGESTION: a doc comment was split from its function.**
+- The new `TakeRecordingChoice` struct and `takeRecording(...)` were inserted between `endTake()` and its comment ("Closes the Prompt screen; a take still running is stopped and recorded so."). That comment now sits on the private struct, and `endTake()` has none.
+- Where: `Earwig/ViewModels/ScriptDetailViewModel.swift:160-197`.
+
+Files reviewed in full: `Earwig/Services/TakeRecording.swift`, `Earwig/Services/CameraCapture.swift`, `Earwig/Services/RecordingStore.swift`, `Earwig/Views/Prompt/FramingView.swift`, `Earwig/Views/Prompt/PlaybackView.swift`, plus the diffs of `TakeHost.swift`, `AudioEngineHost.swift`, `ScriptTakeRecorder.swift`, `PromptViewModel.swift`, `ScriptDetailViewModel.swift`, `PromptView.swift`, `ScriptDetailView.swift`, `SettingsView.swift`, `project.yml` and `Info.plist`. The test files were skimmed only. The only uncommitted change is `progress.md` (checklist ticks).
+
+### Tests
+
+Test review of take-recording against main. I read the committed test diff and all of TakeRecordingTests.swift. There are no staged, unstaged or untracked test changes. I also read TakeRecording.swift, RecordingStore.swift, and the diffs of TakeHost, ScriptTakeRecorder, PromptViewModel, ScriptDetailViewModel, AppSettings and TakeSummary.
+
+Overall the tests are well aimed. TakeHost's new paths are covered with a small fake: started at the slate, waiting for Go, cancelling on the preview, the camera failing, the video stopping or the writer failing mid-take. RecordingStore's keep/replace logic has clear, focused tests. The main gaps are the SwiftData side of recording and Next Take keeping the chosen recording. Both are pure logic and the plan lists them as tests to write.
+
+**T1 WARNING: ScriptTakeRecorder's new recording logic has no tests.**
+- `Earwig/Services/ScriptTakeRecorder.swift:32-60`
+- What is untested:
+  - `started(at:)` setting `take.recordingPath`.
+  - `forget(_:)` clearing `recordingPath` on earlier takes whose file the store just deleted. This is a `#Predicate` fetch, so it is easy to get wrong.
+  - `recordingFinished(nil)` discarding the file and clearing the path.
+- All of it runs with an in-memory `ModelContainer` and a `RecordingStore` in a temp folder, as `RecordingStoreTests` already does.
+- Where to add it: `EarwigTests/ScriptDetailViewModelTests.swift:116` (`aTakeIsRecordedAtItsSlateAndFinishedAtItsEnd`) is the place to extend. One test would do: two takes with keep off, the first take's `recordingPath` becomes nil; then `recordingFinished(nil)` clears the second.
+- Related host gap: TakeHost calling `recorder.recordingFinished(nil)` when the take started but the capture gave nothing back (`TakeHost.swift` tearDown, `if startedAt != nil`) is also unexercised. `FakeCapture.finish()` only returns nil when `start` was never called. One assertion would cover it, e.g. `recorder.recordings == [nil]` with `capture.result = nil`.
+
+**T2 WARNING: Next Take keeping the chosen recording is not tested.**
+- `Earwig/ViewModels/ScriptDetailViewModel.swift:161-201` (`takeRecording`, `nextTake` at 203)
+- The plan's step 3 lists ScriptDetailViewModelTests for "the recording in the setup, Next Take keeping it", but that file is unchanged on this branch.
+- The existing `onTheScreenAloneATakeStartsWithNothingRendered` (`EarwigTests/ScriptDetailViewModelTests.swift:65-87`) already checks that Next Take keeps the mode against a changed setting. The same few lines could check `setup.chosenRecording` / `setup.recording` for `.sound`.
+- It also matters that Next Take keeps `chosenRecording` and not the fallback mode. A take that fell back to sound because space was low should try video again on the next take.
+
+**T3 SUGGESTION: the camera-failure test does not check that everything is released.**
+- `EarwigTests/TakeHostTests.swift:249-257` (`aCameraThatCannotStartRecordsNoTake`)
+- It checks the phase and that no take was recorded. It does not check `capture.finishes == 1` or `session.deactivated == 1`.
+- That is the point of the fail path through `tearDown()`: the camera and the session are let go. The cancel test at 234 does assert this, so this test could too.
+
+**T4 SUGGESTION: the writer tests depend on timing and could be flaky on a loaded simulator.**
+- `EarwigTests/TakeRecordingTests.swift:55-79, 145-156`
+- `feed` hands over frames with `usleep(4_000)` and relies on the writer dropping frames it is not ready for. `finish` hands over the late media after a fixed 50 ms sleep.
+- `theEndWaitsForLateFrames` then expects the video track to be within 0.1 s (3 frames) of 1.0 s. If the last frames are dropped as not ready, the end waits the full 3 s `endWait` and the track comes out short.
+- Possible fixes: widen the tolerance, or have the last few frames wait until the writer is ready.
+
+**T5 SUGGESTION: two writer tests overlap.**
+- `EarwigTests/TakeRecordingTests.swift:106-125` and `145-156`
+- `videoStartsOnAFrameWithTheSoundBeforeItTrimmed` already hands over frames after the end is asked for (1.2 to 2.2 past an end of 1.6). `theEndWaitsForLateFrames` covers the same path and only adds the video-track duration check.
+- Adding `#expect(abs(video.duration.seconds - 1.5) < 0.1)` to the first test would let the second go. That is one fewer real-file writer test, and these are the slowest and most timing-sensitive tests here.
+
+**T6 SUGGESTION: a small pure branch in the writer is untested.**
+- `Earwig/Services/TakeRecording.swift:420-433`
+- `RecordingWriter.monoCopy` has an interleaved branch (stride > 1) that no test reaches; `micBuffer()` is always non-interleaved mono.
+- It is pure and cheap to test: a 2-channel interleaved buffer in, the first channel out. Do this only if the device's mic tap can actually deliver interleaved buffers; otherwise the branch could be removed.
+
+**T7 SUGGESTION: the settings round-trip test adds little.**
+- `EarwigTests/AppSettingsTests.swift:28-35` (`theRecordingSettingsAreKept`)
+- It only checks the UserDefaults setters round-trip.
+- The non-trivial part of the new getters is falling back on a stored value they do not recognise (`flatMap(init) ?? .off` / `.hd1080`), which `theModeIsKept` tests for the mode. Swap the round-trip for one "nonsense" fallback check per enum, or drop it.
+
+**T8 SUGGESTION: one PromptViewModel test checks two properties under one name.**
+- `EarwigTests/PromptViewModelTests.swift:48-56` (`theDotShowsWhileRecording`)
+- It also checks `recordingSoundOnly`, which the name does not mention.
+- Rename it, or split the two `recordingSoundOnly` expectations off. Keep it within the existing test count either way.
+
+No other issues. The volume of tests is proportionate: about 460 lines for roughly 1,000 lines of new non-view logic. The PromptViewModel and TakeSummary additions are compact and well aimed.
+
+### Assessment
+
+- C1 — FIX: real; `PromptViewModel.canTakeAgain` waits for `isSavingRecording` but Done does not, and `ScriptDetailViewModel.startTake` only guards `take == nil`. Hold Done while the recording is saved, as Next Take is.
+- C2 — FIX: real; `RecordingStore.url` removes any file at the name when the take is set up. Never delete there: when the name is taken, add " 2", " 3" … so no recording is overwritten.
+- C3 — FIX (part): real. Remember a camera interruption during framing and stop the video at Start (as for the simulator's missing camera); and when the video stops before its first frame, start the file on the held sound and write it. No frame-arrival timeout (a camera that runs but never delivers is not seen).
+- C4 — FIX: set `videoStoppedAt` to 0 when the video stops before a frame, so `canPlayVideo` is false.
+- C5 — FIX (part): prepare the camera before listening and publish when it is ready, so the preview shows while the take gets ready (decision 4); say "the phone was locked or Earwig left the screen", as iOS reports both the same. The summary line (decision 10) stays as built: the drops and thermal state are on the recording's own line, recorded in Results.
+- C6 — FIX: clear the dot when the recording fails; a `videoStopped` flag in place of matching the note's text.
+- C7 — FIX: move the comment back onto `endTake()`.
+- T1 — FIX: one ScriptTakeRecorder test (two takes with Keep off, the first's path cleared; `recordingFinished(nil)` clears the second); one TakeHost assertion for `recordingFinished(nil)` after a take that started.
+- T2 — FIX: extend the screen-only test to check Next Take keeps the chosen recording against a changed setting.
+- T3 — FIX: add `capture.finishes == 1` and `session.deactivated == 1`.
+- T4 — SKIP: three full runs passed; the timing is inside a fixed in-process feed. Revisit if it ever fails.
+- T5 — FIX: fold the late-frames check into `videoStartsOnAFrameWithTheSoundBeforeItTrimmed` and drop `theEndWaitsForLateFrames`.
+- T6 — SKIP: the phone's tap gives standard non-interleaved float (48 kHz, seen in device check 1a); the branch is a guard, and a test of it costs more than it tells.
+- T7 — FIX: swap the round-trip for a nonsense-value fallback check per enum.
+- T8 — FIX: rename to say it covers the sound-only icon too.
+
+### Outcome — 2026-11-08
+
+- C1 — fixed: Done is held, as Next Take is, while the recording is saved (`PromptView`).
+- C2 — fixed: `RecordingStore.url` never deletes; a name already taken gets " 2", " 3" … (test `aNameAlreadyTakenIsNeverWrittenOver`).
+- C3 — fixed (part): a camera interruption while framing stops the video at Start; video stopped before a frame starts the file on the held sound (test `videoStoppedBeforeAnyFrameKeepsTheSound`). No frame-arrival timeout.
+- C4 — fixed: `videoStoppedAt` is 0 when the video stopped before a frame, so Play Video is not offered.
+- C5 — fixed (part): the camera is prepared before listening and `TakeHost.cameraReady` shows the preview; the interruption reads "the phone was locked or Earwig left the screen". Not done: the summary line, as the drops and thermal state are on the recording's own line.
+- C6 — fixed: a failed recording clears the dot; `TakeHost.videoStopped` replaces matching the note's text.
+- C7 — fixed: the comment is back on `endTake()`.
+- T1 — fixed: `ScriptTakeRecorderTests` (two takes with Keep off, then a recording that came to nothing); `aRecordingThatCameToNothingIsGivenBackAsNothing` in `TakeHostTests`.
+- T2 — fixed: the screen-only test checks Next Take keeps the chosen recording.
+- T3 — fixed: the camera-failure test checks the camera and session are let go, and that listening never started.
+- T4 — not done: three full runs passed; revisit if it fails.
+- T5 — fixed: the late-frames check folded into `videoStartsOnAFrameWithTheSoundBeforeItTrimmed`; `theEndWaitsForLateFrames` removed.
+- T6 — not done: the phone's tap gives non-interleaved float; the branch is a guard.
+- T7 — fixed: `anUnknownStoredRecordingReadsAsTheDefault` in place of the round trip.
+- T8 — fixed: renamed `theDotShowsWhileRecordingAndTurnsToSoundWhenTheVideoStops`.

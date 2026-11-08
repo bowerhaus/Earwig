@@ -50,6 +50,8 @@ struct PromptViewModel: Equatable {
         var result: RecordingResult?
         var readyToGo = false
         var isTornDown = false
+        var cameraReady = false
+        var videoStopped = false
     }
 
     init(phase: TakeHost.Phase, snapshot: FollowSnapshot, route: AudioRoute, setup: TakeSetup.Summary,
@@ -68,7 +70,8 @@ struct PromptViewModel: Equatable {
         self.init(phase: host.phase, snapshot: host.snapshot, route: host.route, setup: host.summaryForScreen,
                   downloadProgress: host.downloadProgress, stopReason: host.stopReason,
                   recording: Recording(since: host.recordingSince, note: host.recordingNote, result: host.recording,
-                                       readyToGo: host.readyToGo, isTornDown: host.isTornDown))
+                                       readyToGo: host.readyToGo, isTornDown: host.isTornDown,
+                                       cameraReady: host.cameraReady, videoStopped: host.videoStopped))
     }
 
     // MARK: - Recording
@@ -80,7 +83,7 @@ struct PromptViewModel: Equatable {
     var showsRecordingDot: Bool { recording.since != nil && phase == .running }
 
     /// Video stopped early: the dot shows sound only.
-    var recordingSoundOnly: Bool { setup.recording == .sound || recording.note?.hasPrefix("Video stopped") == true }
+    var recordingSoundOnly: Bool { setup.recording == .sound || recording.videoStopped }
 
     /// The take was recorded and its file is still being finished.
     var isSavingRecording: Bool {

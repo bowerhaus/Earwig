@@ -157,7 +157,6 @@ final class ScriptDetailViewModel {
     /// The number the start step's next take will have.
     var nextTakeNumber: Int { script.nextTakeNumber(forStep: script.lastStep) }
 
-    /// Closes the Prompt screen; a take still running is stopped and recorded so.
     /// What a take records, from Settings or as chosen (plan 010, decisions 1 and 6): sound alone
     /// when there is too little room for video, nothing when no file can be made.
     private struct TakeRecordingChoice {
@@ -194,6 +193,7 @@ final class ScriptDetailViewModel {
         return choice
     }
 
+    /// Closes the Prompt screen; a take still running is stopped and recorded so.
     func endTake() {
         take?.end()
         take = nil

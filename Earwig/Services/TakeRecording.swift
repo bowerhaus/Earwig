@@ -52,6 +52,8 @@ final class TakeRecording: TakeCapture {
     private var finished = false
     /// No camera to film with: the simulator. The take records its sound alone.
     private var cameraMissing = false
+    /// The camera was interrupted while framing, with why: the video stops at Start (review C3).
+    private var videoLostBeforeStart: String?
 
     var onVideoStopped: ((String) -> Void)?
     var onFailed: ((String) -> Void)?
@@ -109,6 +111,7 @@ final class TakeRecording: TakeCapture {
             return
         }
         UIDevice.current.isBatteryMonitoringEnabled = true
+        if let reason = videoLostBeforeStart { stopVideo(reason) }
         log("recording: started \(video ? "video \(quality.label), rotation \(Int(angle))°" : "sound"), mic \(Int(sampleRate)) Hz, \(Self.conditions()), to \(url.lastPathComponent)")
         thermalObserver = NotificationCenter.default.addObserver(forName: ProcessInfo.thermalStateDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.log("recording: \(Self.conditions())") }
@@ -140,7 +143,12 @@ final class TakeRecording: TakeCapture {
     }
 
     private func stopVideo(_ reason: String) {
-        guard video, let writer, !finished else { return }
+        guard video, !finished else { return }
+        guard let writer else {
+            videoLostBeforeStart = reason
+            log("recording: camera interrupted before Start: \(reason)")
+            return
+        }
         camera?.setSink(nil)
         writer.stopVideo(reason: reason)
         log("recording: video stopped: \(reason)")
@@ -203,6 +211,7 @@ final class RecordingWriter: @unchecked Sendable {
     private var lastAudioEnd: CMTime?
     private var lastVideo: CMTime?
     private var videoEnded = false
+    private var videoFinished = false
     private var videoStoppedAt: TimeInterval?
     private var videoStopReason: String?
     private var done = false
@@ -276,9 +285,25 @@ final class RecordingWriter: @unchecked Sendable {
             videoStopReason = reason
             if let sessionStart {
                 videoStoppedAt = ((lastVideo ?? sessionStart) - sessionStart).seconds
-                videoInput?.markAsFinished()
+            } else {
+                // No frame yet: the file starts on the sound held for the first frame (review C3).
+                videoStoppedAt = 0
+                if let first = pending.first, let startHost {
+                    start(at: CMTime(seconds: max(first.host, startHost), preferredTimescale: 1_000_000_000))
+                    let held = pending
+                    pending = []
+                    for (buffer, host) in held { appendAudio(buffer, host: host) }
+                }
             }
+            finishVideoInput()
         }
+    }
+
+    /// The video input is marked finished once, and only while writing.
+    private func finishVideoInput() {
+        guard !videoFinished, writer.status == .writing else { return }
+        videoFinished = true
+        videoInput?.markAsFinished()
     }
 
     /// Finishes the file at `hostTime`, once the sound and (for video) the frames have reached it,
@@ -313,7 +338,7 @@ final class RecordingWriter: @unchecked Sendable {
             return continuation.resume(returning: nil)
         }
         audioInput.markAsFinished()
-        if !videoEnded { videoInput?.markAsFinished() }
+        finishVideoInput()
         let last = [lastAudioEnd, lastVideo].compactMap { $0 }.max() ?? sessionStart
         let stop = stopHost.map { min(last, CMTime(seconds: $0, preferredTimescale: 1_000_000_000)) } ?? last
         let endTime = max(stop, sessionStart)

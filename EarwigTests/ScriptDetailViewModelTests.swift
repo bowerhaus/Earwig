@@ -68,10 +68,14 @@ struct ScriptDetailViewModelTests {
         let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
         let model = ScriptDetailViewModel(script: script)
         #expect(model.renderState(renderer) == .idle)
+        let storedRecording = AppSettings.take.recording
+        AppSettings.take.recording = .sound
+        defer { AppSettings.take.recording = storedRecording }
 
         model.startTake(with: renderer, in: context, mode: .screen)
         let setup = try #require(model.take?.setup)
         #expect(setup.mode == .screen)
+        #expect(setup.recording == .sound)
         #expect(!setup.engineSettings.voiced)
         #expect(setup.audio.phrases.isEmpty)
         #expect(setup.script.phrases.count == setup.phraseList.phrases.count)
@@ -81,8 +85,12 @@ struct ScriptDetailViewModelTests {
         let stored = AppSettings.take.mode
         AppSettings.take.mode = .voice
         defer { AppSettings.take.mode = stored }
+        AppSettings.take.recording = .off
         model.nextTake(with: renderer, in: context)
         #expect(model.take?.setup.mode == .screen)
+        // And the recording chosen for it (review T2).
+        #expect(model.take?.setup.chosenRecording == .sound)
+        #expect(model.take?.setup.recording == .sound)
         model.endTake()
     }
 

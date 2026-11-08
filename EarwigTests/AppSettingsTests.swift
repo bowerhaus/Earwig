@@ -25,13 +25,11 @@ struct AppSettingsTests {
         #expect(!settings.keepsRecordings)
     }
 
-    @Test func theRecordingSettingsAreKept() {
-        settings.recording = .video
-        settings.videoQuality = .uhd4K
-        settings.keepsRecordings = true
-        #expect(settings.recording == .video)
-        #expect(settings.videoQuality == .uhd4K)
-        #expect(settings.keepsRecordings)
+    @Test func anUnknownStoredRecordingReadsAsTheDefault() {
+        settings.defaults.set("film", forKey: TakeSettings.recordingKey)
+        settings.defaults.set("8K", forKey: TakeSettings.videoQualityKey)
+        #expect(settings.recording == .off)
+        #expect(settings.videoQuality == .hd1080)
     }
 
     @Test func theFollowSettingsCarryThem() {

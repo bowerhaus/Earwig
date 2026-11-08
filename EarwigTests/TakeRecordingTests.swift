@@ -1,6 +1,7 @@
 import AVFoundation
 @testable import Earwig
 import Foundation
+import SwiftData
 import Testing
 
 /// The recording's writer against made-up frames and mic buffers on chosen host times (plan 010,
@@ -122,6 +123,8 @@ struct TakeRecordingTests {
         #expect(video.start.seconds < 0.01)
         #expect(audio.start.seconds < 0.03)
         #expect(abs(file.duration - 1.5) < 0.1)
+        // The frames handed over after the end was asked for reach it.
+        #expect(abs(video.duration.seconds - 1.5) < 0.1)
     }
 
     @Test func videoStoppedHalfwayLeavesTheSoundToTheEnd() async throws {
@@ -142,17 +145,20 @@ struct TakeRecordingTests {
         #expect(abs((file.audio?.duration.seconds ?? 0) - 2.0) < 0.1)
     }
 
-    @Test func theEndWaitsForLateFrames() async throws {
+    @Test func videoStoppedBeforeAnyFrameKeepsTheSound() async throws {
         let (writer, queue) = try writer(video: true)
         let start = HostClock.now - 20
         writer.begin(at: start)
-        feed(writer, queue, from: start, to: start + 0.5)
-        // The sound reaches the end, the camera's last half second comes after the end is asked for.
+        // The camera was interrupted while framing: no frame comes, the sound is kept (review C3).
+        feed(writer, queue, from: start, to: start + 0.5, frames: false)
+        writer.stopVideo(reason: "the camera stopped")
         let result = try #require(await finish(writer, at: start + 1.0) {
-            feed(writer, queue, from: start + 0.5, to: start + 1.2)
+            feed(writer, queue, from: start + 0.5, to: start + 1.2, frames: false)
         })
+        #expect(result.videoStoppedAt == 0)
         let file = try await tracks(result.url)
-        #expect(abs((file.video?.duration.seconds ?? 0) - 1.0) < 0.1)
+        #expect(file.video == nil || file.video?.duration.seconds == 0)
+        #expect(abs((file.audio?.duration.seconds ?? 0) - 1.0) < 0.1)
     }
 
     @Test func noFramesComingEndsAfterTheWaitWithTheSound() async throws {
@@ -202,6 +208,13 @@ struct RecordingStoreTests {
         #expect(url.lastPathComponent == "Step 3 Take 2.mov")
         #expect(store.relativePath(of: url) == "Recordings/The Harbour Walk/Step 3 Take 2.mov")
         #expect(RecordingStore.fileName(step: 1, take: 4, video: false) == "Step 1 Take 4.m4a")
+    }
+
+    @Test func aNameAlreadyTakenIsNeverWrittenOver() throws {
+        let first = try record(step: 1, take: 1)
+        let second = try store.url(scriptTitle: "The Harbour Walk", step: 1, take: 1, video: true)
+        #expect(second.lastPathComponent == "Step 1 Take 1 2.mov")
+        #expect(exists(first))
     }
 
     @Test func aTitleIsMadeSafeAsAFolder() {
@@ -254,5 +267,50 @@ struct RecordingStoreTests {
         try store.deleteAll(defaults: defaults)
         #expect(store.size() == 0)
         #expect(defaults.string(forKey: RecordingStore.lastUnkeptKey) == nil)
+    }
+}
+
+/// A take's recording as its script keeps it (plan 010, decision 6; review T1).
+@MainActor
+struct ScriptTakeRecorderTests {
+
+    /// Held for as long as its context is used, or the test host crashes (CLAUDE.md).
+    private let container = ModelContainerFactory.inMemory()
+
+    private let store = RecordingStore(documents: FileManager.default.temporaryDirectory
+        .appending(path: "ScriptTakeRecorderTests-\(UUID().uuidString)", directoryHint: .isDirectory))
+
+    private let defaults: UserDefaults = {
+        let name = "ScriptTakeRecorderTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        return defaults
+    }()
+
+    @Test func withKeepOffTheLastTakeAloneNamesARecording() throws {
+        let context = container.mainContext
+        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        func recorder(take: Int) throws -> (ScriptTakeRecorder, String) {
+            let url = try store.url(scriptTitle: script.title, step: 1, take: take, video: false)
+            try Data(count: 10).write(to: url)
+            let path = try #require(store.relativePath(of: url))
+            let place = ScriptTakeRecorder.Recording(path: path, keep: false, store: store, defaults: defaults)
+            return (ScriptTakeRecorder(script: script, stepIndex: 0, number: take, context: context, recording: place), path)
+        }
+        let (first, firstPath) = try recorder(take: 1)
+        first.started(at: Date())
+        #expect(first.take?.recordingPath == firstPath)
+
+        // The second replaces the first: its file goes, and the first take no longer names it.
+        let (second, secondPath) = try recorder(take: 2)
+        second.started(at: Date())
+        #expect(first.take?.recordingPath == nil)
+        #expect(second.take?.recordingPath == secondPath)
+        #expect(!FileManager.default.fileExists(atPath: store.url(forRelativePath: firstPath).path))
+
+        // A recording that came to nothing leaves no file and no path.
+        second.recordingFinished(nil)
+        #expect(second.take?.recordingPath == nil)
+        #expect(!FileManager.default.fileExists(atPath: store.url(forRelativePath: secondPath).path))
     }
 }

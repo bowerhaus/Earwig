@@ -45,12 +45,12 @@ struct PromptViewModelTests {
         #expect(!model(.running, .speaking, recording: .video).isFraming)
     }
 
-    @Test func theDotShowsWhileRecording() {
+    @Test func theDotShowsWhileRecordingAndTurnsToSoundWhenTheVideoStops() {
         let recorded = PromptViewModel.Recording(since: 100)
         #expect(model(.running, .speaking, recording: .video, recorded: recorded).showsRecordingDot)
         #expect(!model(.running, .speaking, recording: .video).showsRecordingDot)
         #expect(!model(.finished(.completed), .finished, recording: .video, recorded: recorded).showsRecordingDot)
-        let stopped = PromptViewModel.Recording(since: 100, note: "Video stopped at 1:23: the phone was locked.")
+        let stopped = PromptViewModel.Recording(since: 100, videoStopped: true)
         #expect(model(.running, .speaking, recording: .video, recorded: stopped).recordingSoundOnly)
         #expect(!model(.running, .speaking, recording: .video, recorded: recorded).recordingSoundOnly)
     }

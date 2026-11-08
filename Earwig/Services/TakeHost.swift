@@ -166,6 +166,10 @@ final class TakeHost: Identifiable {
     private(set) var readyToGo = false
     /// Everything is let go, the recording's file finished: Next Take may start another.
     private(set) var isTornDown = false
+    /// The camera is running, so the framing preview can show (review C5).
+    private(set) var cameraReady = false
+    /// The video stopped early; the sound carries on (decision 9).
+    private(set) var videoStopped = false
     /// The camera, for the framing preview.
     var camera: CameraCapture? { capture?.camera }
     /// The recording chosen for this take, which Next Take keeps (plan 010, decision 1).
@@ -255,18 +259,22 @@ final class TakeHost: Identifiable {
         begin(slate: slate)
     }
 
-    /// Listening, then the camera for a video take; `false` once failed or torn down.
+    /// The camera for a video take, first so the preview shows while the rest gets ready
+    /// (review C5), then listening; `false` once failed or torn down.
     private func readyListeningAndCamera() async -> Bool {
+        if let capture {
+            if let problem = await capture.prepare() {
+                await fail(problem)
+                return false
+            }
+            cameraReady = true
+            guard !ended else {
+                await tearDown()
+                return false
+            }
+        }
         if let problem = await heard.listen(contextWords: setup.contextWords) {
             await fail("Listening could not start: \(problem)")
-            return false
-        }
-        guard !ended else {
-            await tearDown()
-            return false
-        }
-        if let capture, let problem = await capture.prepare() {
-            await fail(problem)
             return false
         }
         guard !ended else {
@@ -418,10 +426,13 @@ final class TakeHost: Identifiable {
             guard let self else { return }
             let at = self.recordingSince.map { self.clock() - $0 } ?? 0
             self.recordingNote = "Video stopped at \(Self.minutesAndSeconds(at)): \(reason)."
+            self.videoStopped = true
             self.log("take: video stopped: \(reason)")
         }
         capture.onFailed = { [weak self] reason in
             self?.recordingNote = "Recording stopped: \(reason)."
+            // Nothing is being recorded now: the dot goes (review C6).
+            self?.recordingSince = nil
             self?.log("take: recording failed: \(reason)")
         }
         let now = clock()

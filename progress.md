@@ -11,11 +11,11 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 ## Checklist
 
 - [x] 1. (1a–1c passed; 1d, heat and the fixed ending, deferred by Andy to the manual tests) Device check first: the camera, the writer and the mic's second consumer behind `-EarwigRecordVideo YES`; Andy checks route, recogniser, sync, heat at 4K30
-- [ ] 2. The writer and the store (`TakeRecording`, `RecordingStore`, tests)
-- [ ] 3. Settings and the take (settings, start card, `TakeHost`, tests)
-- [ ] 4. The screens (framing, dot, Play Back, Share, tests, screenshots)
-- [ ] Tests + lint
-- [ ] Review + fixes
+- [x] 2. The writer and the store (`TakeRecording`, `RecordingStore`, tests)
+- [x] 3. Settings and the take (settings, start card, `TakeHost`, tests)
+- [x] 4. The screens (framing, dot, Play Back, Share, tests, screenshots)
+- [x] Tests + lint
+- [x] Review + fixes (review pass and outcome in the plan; issue comment posted)
 - [ ] Manual test: device (Verification 1d, then 2–6)
 - [ ] Complete (commit + PR)
 
@@ -26,6 +26,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - Take 49's file (copied to the scratchpad `takes/`): HEVC 3840x2160 30 fps rotation -90, AAC; video 26.20 s against sound 27.68 s, so the video's last ~1.5 s is missing: frames are likely delivered late (stabilisation), and finish stops the sink before they arrive. To fix: finish waits for a frame past the stop time (or a timeout), and log the frames' delivery delay and the stabilisation mode.
 - 1b (take 50, not filmed): delay 0.95 s against 0.89 filmed; rate 3.62 against 3.95; lead within 2 words 36% against 24%; waits 6 (longest 4.2 s) against 3 (1.9 s). Andy gave no verdict on feel for 1b.
 - 1c PASS (Andy): sound in sync, picture upright; the last sentence missing from the video. Fixed: the recording runs on `RecordingWriter.tail` (1 s) past the take's end and waits (up to 3 s) for the camera's late frames; the log gives the frames' delay. To check in 1d.
-- Step 4 must hold Next Take until the take's recording is finished (teardown now runs 1–4 s longer while it records on).
+- Done: Next Take waits for the recording to be saved (`isSavingRecording`). Andy added Play Sound beside Play Video (decision 7). Simulator screenshots taken (start card, framing placeholder, dot, Finished, Settings); the simulator records nothing, since its take hears a made-up reading with the mic off.
+- (was) Step 4 must hold Next Take until the take's recording is finished (teardown now runs 1–4 s longer while it records on).
 - No framing preview yet (step 4): frame the mount with the Camera app first.
 

@@ -12,7 +12,7 @@ struct FramingView: View {
 
     var body: some View {
         ZStack {
-            if let camera, camera.device != nil {
+            if model.recording.cameraReady, let camera, camera.device != nil {
                 CameraPreview(camera: camera)
                     .ignoresSafeArea()
             } else {

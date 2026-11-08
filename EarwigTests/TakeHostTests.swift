@@ -201,6 +201,7 @@ struct TakeHostTests {
         let host = host(capture: capture)
         await host.start()
         #expect(capture.prepared == 1)
+        #expect(host.cameraReady)
         #expect(capture.startedAt == [100])
         #expect(host.recordingSince == 100)
         #expect(recorder.started.count == 1)
@@ -254,6 +255,21 @@ struct TakeHostTests {
         #expect(host.phase == .failed("Earwig needs the camera."))
         #expect(recorder.started.isEmpty)
         #expect(!calls.list.contains("slate"))
+        #expect(!calls.list.contains("listen"))
+        await tornDown(host)
+        #expect(capture.finishes == 1)
+        #expect(session.deactivated == 1)
+    }
+
+    @Test func aRecordingThatCameToNothingIsGivenBackAsNothing() async {
+        let capture = FakeCapture(video: false)
+        capture.result = nil
+        let host = host(capture: capture)
+        await host.start()
+        host.control(.stop)
+        await tornDown(host)
+        #expect(recorder.recordings == [nil])
+        #expect(host.recording == nil)
     }
 
     @Test func theVideoStoppingOrTheRecordingFailingLeavesTheTakeRunning() async {
@@ -264,9 +280,11 @@ struct TakeHostTests {
         pass(83, host)
         capture.onVideoStopped?("the phone was locked")
         #expect(host.recordingNote == "Video stopped at 1:23: the phone was locked.")
+        #expect(host.videoStopped)
         #expect(host.phase == .running)
         capture.onFailed?("the disk is full")
         #expect(host.recordingNote == "Recording stopped: the disk is full.")
+        #expect(host.recordingSince == nil)
         #expect(host.phase == .running)
     }
 

@@ -133,7 +133,8 @@ final class CameraCapture {
     private func interrupted(_ reason: AVCaptureSession.InterruptionReason?) {
         let why: String
         switch reason {
-        case .videoDeviceNotAvailableInBackground: why = "Earwig left the screen"
+        // iOS reports the phone locked and Earwig sent to the background alike.
+        case .videoDeviceNotAvailableInBackground: why = "the phone was locked or Earwig left the screen"
         case .videoDeviceInUseByAnotherClient: why = "another app took the camera"
         case .videoDeviceNotAvailableDueToSystemPressure: why = "the phone was too hot"
         case .videoDeviceNotAvailableWithMultipleForegroundApps: why = "another app was on screen"

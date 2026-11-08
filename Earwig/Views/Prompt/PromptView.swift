@@ -285,6 +285,10 @@ struct PromptView: View {
                     .background(EarwigTheme.surface, in: Capsule())
             }
             .buttonStyle(.plain)
+            // Held, as Next Take is, while the file is saved: the take still has the mic, the
+            // camera and the session, and a take started now would overlap it (review C1).
+            .disabled(model.isSavingRecording)
+            .opacity(model.isSavingRecording ? 0.5 : 1)
         }
     }
 }

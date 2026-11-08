@@ -1,6 +1,6 @@
 # Plan 008: Screen Mode
 
-**GitHub Issue:** to be created (`/plan_create_issue`); the PR must include "Closes #N".
+**GitHub Issue:** [#25](https://github.com/bowerhaus/Earwig/issues/25) (PR must include "Closes #25")
 **Branch:** `screen-mode` (from `main` at `ed33225`, after plan 007 merged)
 **Status:** Approved for autopilot (2026-11-08), pausing for the device checks.
 **Manual test:** device, on Andy's iPhone 14 Pro, on the mount and in the hand, with and without the SK18 (Verification).

@@ -2,4 +2,22 @@
 
 Scratch state for the plan in flight. Overwritten at the start of a plan, emptied to a stub when it completes.
 
-**Plan 008 (Screen mode, stage 6) is planned, not started.** Branch `screen-mode`, from `main` at `ed33225`. The plan is `plans/008-screen-mode.md`. Andy's choices on 2026-11-08: Ear off follows the presenter directly (no voice, no rendering); the reading line holds the presenter's place; a smooth continuous scroll; the mode chosen before the take (Settings and beside Start on the Script screen, fixed during the take); the fixed-pace scroll out, as its own issue. Running as `/plan_autopilot`, stopping for the device checks.
+**Mode: autopilot (/plan_autopilot)**: carry on through the steps below without stopping, except for the device checks (one at a time) or a real decision.
+
+**Plan:** `plans/008-screen-mode.md` (Screen mode, stage 6) · **Issue:** #25 · **Branch:** `screen-mode` (from `main` at `ed33225`, pushed)
+**Manual test:** device, iPhone 14 Pro (Verification 1–6, one at a time)
+
+Andy's choices (2026-11-08): Ear off follows the presenter directly; reading line at the presenter's place; smooth continuous scroll; mode chosen before the take (Settings + beside Start), fixed during it; fixed-pace scroll out.
+
+## Checklist
+
+- [ ] Step 1: the engine with no voice (committed on its own)
+- [ ] Step 2: settings, the take's mode, Start without rendering
+- [ ] Step 3: the text, `ScreenText`, `ScreenScroll`, `ScreenTextView`, compact layout, `-EarwigScreen`, screenshots
+- [ ] Step 4: the pinch
+- [ ] Tests + lint
+- [ ] Review + fixes
+- [ ] Manual test: device (Verification 1–6)
+- [ ] Complete (commit + PR)
+
+## Notes

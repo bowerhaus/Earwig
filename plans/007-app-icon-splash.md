@@ -122,3 +122,53 @@ The sibling apps set the pattern: PhysiMate's icon is drawn as SVG by `scripts/a
 ## Results
 
 _To be filled in when the plan completes._
+
+## Review pass — 2026-11-08
+
+Findings from `/review-branch` on branch `app-icon-splash`, **unresolved as written**. Each is a claim
+from a review on that date, not an established fact, and each verdict under *Assessment* is a
+recommendation, not a decision. Work through them and annotate each with what was done — fixed,
+or rejected and why. A finding that turns out to be wrong should say so here rather than be
+deleted.
+
+### Code
+
+**C1 — WARNING — Completion declared ahead of the plan's own finish criteria (requirements / CLAUDE.md "One plan per branch" rule).**
+`CLAUDE.md` (Status paragraph) and `PRD.md` (v0.9 status line, §10 paragraph, §12 note, Document History row) state that plan 007 is complete, but:
+- `plans/007-app-icon-splash.md` still has **Status: Approved** and its **Results** section is the placeholder "_To be filled in when the plan completes._" The plan's step 7 and CLAUDE.md's rule require Results filled where a device check calls for one, and decision 8 requires the visual-refresh decision to be recorded there (issue #21 acceptance criterion 5).
+- The device check (Verification items 1–5; acceptance criterion 4) has not been run, per `progress.md`.
+- `progress.md` line ~17 says the PRD v0.9 and CLAUDE.md edits are "drafted (uncommitted until the device check)", yet commit `0435a70` contains them, so progress.md contradicts the repo.
+This is expected mid-flight state if review precedes the device check, but it must be reconciled before the PR: fill Results (including decision 8's verdict as Andy reports it, never guessed), set the plan Status, and either make the CLAUDE.md/PRD wording conditional or keep it and finish the plan; then empty progress.md to its stub.
+Files: `CLAUDE.md:15`, `PRD.md:3, 571–584, 635, 722`, `plans/007-app-icon-splash.md:5, 122–124`, `progress.md:17`.
+
+**C2 — SUGGESTION — `make_app_icon.py` crashes if not run from the repo root, after it has already written assets.**
+`main()` uses `root = Path.cwd()` and `svg_path.relative_to(root)` / `png_path.relative_to(root)` purely for the printed messages; from any other directory `relative_to` raises `ValueError` once the first SVG/PNG are written, leaving a half-regenerated catalogue. The script already knows the repo root (`SCRIPT_DIR.parent.parent`, used for `CATALOGUE`); use that for the messages so the "run from the repo root" note becomes advice rather than a requirement.
+File: `scripts/app_icon/make_app_icon.py` (`main()`, `root = Path.cwd()` and the three `relative_to(root)` calls).
+
+**No other issues found.** Specifically checked and fine:
+- Requirements: three icon appearances with correct `Contents.json` appearances; light opaque RGB, dark/tinted RGBA with transparent ground; the mark at @2x/@3x for 160 pt; `UILaunchScreen.UIColorName = LaunchBackground` in `project.yml` with `Info.plist` regenerated to match; `LaunchBackground.colorset` #5CB8F3 for both appearances, pinned to `EarwigTheme.background` (0x5CB8F3) by `LaunchSplashTests` in both styles; `SplashTiming.total` = 0.95 s with a test under 1 s; splash once per process via `@State showsSplash` in `EarwigApp`, not tied to `scenePhase`; `accessibilityHidden(true)`; taps swallowed; Debug flags unaffected; geometry in the SVGs matches decision 2 exactly (rotation and uniform scale about the same centre commute, so the transform order is equivalent).
+- Bugs: `withAnimation`/`Task.sleep` sequencing in `SplashView.play()` is sound; the overlay's first frame is plain sky blue matching the launch screen; `.environment(renderer)` moved to the ZStack still reaches `ScriptsView`.
+- CLAUDE.md compliance: all colours via `EarwigTheme`; UK spelling; no Engine/ changes; `xcodegen` sources cover the new `Views/Splash/` folder; SwiftLint excludes `Earwig/Resources` and `EarwigTests`, so nothing new is lint-sensitive beyond `SplashView.swift`, which is clean.
+- Build integrity: test target depends on the app, so `Bundle.main`/`UIColor(named:)`/`UIImage(named:)` resolve against the host app; `EarwigMark.imageset`'s empty 1x slot produces no asset-catalogue warning.
+
+### Tests
+
+T1 — SUGGESTION — Mixed focus in one test. `theLaunchScreenIsTheBackgroundAlone` (EarwigTests/LaunchSplashTests.swift:15-19) checks the Info.plist `UILaunchScreen` dictionary, then also asserts `UIImage(named: SplashView.markImage) != nil`. The mark belongs to the splash overlay, not the launch screen, so the third `#expect` does not match the test's name. Either move it to its own one-line test (e.g. `theMarkIsInTheCatalogue`) or widen the name. Cosmetic; no coverage change either way.
+
+T2 — SUGGESTION (accepted gap, no action proposed) — The once-per-process behaviour (`showsSplash` in `/Users/andybower/Projects/Earwig/Earwig/App/EarwigApp.swift:12-20`) and `SplashView.play()` calling `onFinished` after the two sleeps (`/Users/andybower/Projects/Earwig/Earwig/Views/Splash/SplashView.swift:56-63`) have no unit tests. These are SwiftUI `@State`/`withAnimation` paths that are not worth a unit-test harness; plan 007 steps 5-6 cover them with the simulator (background/foreground via `simctl`) and the device check. Mentioned only so the caller knows the gap is deliberate, not missed.
+
+Not flagged: `theSplashIsUnderASecond` is a one-line check of a constant sum, but it enforces the PRD's "under a second" rule against future retuning of `SplashTiming`, which is cheap and worth keeping. The asset-catalogue icon appearances and `make_app_icon.py` are checked by the script's own assertions and the plan's `assetutil` step, which is the right place for them rather than the Swift test suite.
+
+### Assessment
+
+- C1 — FIX (part): correct `progress.md`'s line, which says the PRD and CLAUDE.md edits are uncommitted when commit `0435a70` carries them. The rest (Results with the device verdicts and decision 8, the plan's Status, the progress stub) is the plan's own step 7, done at completion after the device check, as `/plan_autopilot` orders it; the PRD and CLAUDE.md wording stays, since the PR is not opened until the plan is complete.
+- C2 — FIX: print the paths relative to the repo root the script already knows (`SCRIPT_DIR.parent.parent`), so running it from another directory cannot raise after the first asset is written.
+- T1 — FIX: move the mark's `UIImage(named:)` check into its own test, `theMarkIsInTheCatalogue`.
+- T2 — SKIP: an accepted gap, as the agent says; the simulator checks (cold launch, background and foreground by `simctl`) and the device check cover it.
+
+### Outcome — 2026-11-08
+
+- C1 — fixed (part): progress.md now says the PRD and CLAUDE.md edits are committed; Results, the plan's Status and the progress stub are completed after the device check, as the plan's step 7.
+- C2 — fixed: paths in the script's messages are relative to the repo root it already knows; run from `/tmp`, it completed with identical output.
+- T1 — fixed: the mark's catalogue check is its own test, `theMarkIsInTheCatalogue`.
+- T2 — not done: an accepted gap; the simulator checks and the device check cover the once-per-process splash.

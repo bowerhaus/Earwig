@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Draw the app icon and the mark as SVG and render them into the asset catalogue (plan 007).
 
-Run from the repo root (Pillow is not in the Mac's Python):
+Run it with uv, which supplies Pillow (not in the Mac's Python); any working directory will do:
     uv run --with pillow scripts/app_icon/make_app_icon.py
 
 The mark is 2d-j from issue #21's concepts page: a white earwig crawling at 35 degrees
@@ -33,7 +33,8 @@ ROTATION = -35  # degrees; negative turns the insect anticlockwise, so it crawls
 SCALE = 1.06  # about the centre, after the turn, so the insect fills the tile
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-CATALOGUE = SCRIPT_DIR.parent.parent / "Earwig" / "Resources" / "Assets.xcassets"
+REPO = SCRIPT_DIR.parent.parent
+CATALOGUE = REPO / "Earwig" / "Resources" / "Assets.xcassets"
 ICON_SET = CATALOGUE / "AppIcon.appiconset"
 MARK_SET = CATALOGUE / "EarwigMark.imageset"
 MARK_POINTS = 160  # the box the mark image is made for; a smaller use scales it down
@@ -200,7 +201,6 @@ def mark_contents() -> dict:
 
 
 def main() -> None:
-    root = Path.cwd()
     ICON_SET.mkdir(parents=True, exist_ok=True)
     MARK_SET.mkdir(parents=True, exist_ok=True)
     for name, palette in PALETTES.items():
@@ -210,7 +210,7 @@ def main() -> None:
         opaque = palette["ground"] is not None
         render(svg_path, png_path, SIZE, transparent=not opaque)
         check(png_path, SIZE, opaque)
-        print(f"wrote {svg_path.relative_to(root)} and {png_path.relative_to(root)}")
+        print(f"wrote {svg_path.relative_to(REPO)} and {png_path.relative_to(REPO)}")
     write_json(ICON_SET / "Contents.json", icon_contents())
 
     mark_svg = SCRIPT_DIR / "EarwigMark.svg"
@@ -219,7 +219,7 @@ def main() -> None:
         png_path = MARK_SET / f"EarwigMark@{factor}x.png"
         render(mark_svg, png_path, MARK_POINTS * factor, transparent=True)
         check(png_path, MARK_POINTS * factor, opaque=False)
-        print(f"wrote {png_path.relative_to(root)}")
+        print(f"wrote {png_path.relative_to(REPO)}")
     write_json(MARK_SET / "Contents.json", mark_contents())
 
     # The tinted icon is the insect alone on nothing, so its alpha is the insect's footprint.

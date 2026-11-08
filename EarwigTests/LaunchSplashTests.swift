@@ -15,6 +15,9 @@ struct LaunchSplashTests {
     @Test func theLaunchScreenIsTheBackgroundAlone() {
         #expect(launchScreen["UIColorName"] as? String == SplashView.launchBackground)
         #expect(launchScreen["UIImageName"] == nil, "a picture would hand over to the overlay with a jerk")
+    }
+
+    @Test func theMarkIsInTheCatalogue() {
         #expect(UIImage(named: SplashView.markImage) != nil)
     }
 

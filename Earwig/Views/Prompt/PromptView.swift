@@ -199,7 +199,7 @@ struct PromptView: View {
     private func screenText(_ model: PromptViewModel) -> some View {
         ScreenTextView(tokens: model.screenTokens, place: model.place,
                        textSize: $textSize,
-                       blocksMark: !model.setup.mode.voiced, resume: moves)
+                       resume: moves)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onTapGesture {
                 if model.tapStarts { host.control(.tap) }

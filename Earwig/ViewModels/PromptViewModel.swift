@@ -24,18 +24,12 @@ struct PromptViewModel: Equatable {
         /// Before following starts, every word is dimmed.
         var isWaiting = false
 
-        /// Before the presenter's place, `mark`: dimmed. The mark is the screen's smoothed place,
-        /// the one the text scrolls by, not the engine's estimate, which jumps on with each burst
-        /// of results and falls back at each final (device check 1).
-        func isPassed(mark: Int?) -> Bool {
-            guard let mark, let index = word.word, !isWaiting else { return false }
-            return index < mark
-        }
-
-        /// The presenter's place: underlined.
-        func isMark(_ mark: Int?) -> Bool {
-            guard let mark, !isWaiting else { return false }
-            return word.word == mark
+        /// Heard already: before `heard`, the word after the last one heard, as the screen shows
+        /// it. Dimmed, the only mark of the presenter's place: a block on one word showed the
+        /// recogniser's second of delay as a word marker always behind (Andy, device check 2).
+        func isHeard(before heard: Int?) -> Bool {
+            guard let heard, let index = word.word, !isWaiting else { return false }
+            return index < heard
         }
     }
 
@@ -145,7 +139,7 @@ struct PromptViewModel: Equatable {
     // MARK: - The scrolling text
 
     /// Where the presenter is, for the scroll: the engine's place for the screen.
-    /// While following, never before the first word, so the mark is on it from the tones on.
+    /// While following, never before the first word.
     var place: Double { following ? max(snapshot.presenterPlace, 0) : -1 }
 
     /// The step's words as the screen shows them now.

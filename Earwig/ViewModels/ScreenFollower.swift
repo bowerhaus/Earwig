@@ -28,9 +28,9 @@ final class ScreenFollower {
         return layout.y(at: screenPlace.place) - dragged
     }
 
-    /// The word the presenter is at, as the screen shows it: the smoothed place's word, which
-    /// only goes back when the scroll does, and while it glides the word it is going to. `nil`
-    /// before the first word.
+    /// The word after the last one heard, as the screen shows it: the smoothed place's word,
+    /// which only goes back when the scroll does, and while it glides the word it is going to.
+    /// The words before it are dimmed. `nil` before the first word.
     var mark: Int? {
         let place = screenPlace.markPlace
         return place >= 0 ? Int(place.rounded(.down)) : nil

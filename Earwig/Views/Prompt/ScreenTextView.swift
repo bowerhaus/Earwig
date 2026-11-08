@@ -10,9 +10,6 @@ struct ScreenTextView: View {
     /// The engine's place for the screen: the word after the last one heard.
     let place: Double
     @Binding var textSize: Double
-    /// With no voice the presenter's place is a block on the word; with one, an underline, so
-    /// it does not compete with the voice's word on the accent (Andy, device check 1).
-    let blocksMark: Bool
     /// Changed by the Prompt screen on Back, Forward and Restart: the text follows again at once.
     let resume: Int
 
@@ -31,7 +28,7 @@ struct ScreenTextView: View {
             // little more than a still screen.
             TimelineView(.animation(minimumInterval: nil, paused: follower.isStill(toward: place) && !dragging)) { context in
                 let y = follower.y(at: context.date.timeIntervalSinceReferenceDate, place: place, layout: layout)
-                WordColumn(tokens: tokens, mark: follower.mark, blocksMark: blocksMark, size: textSize, width: geometry.size.width)
+                WordColumn(tokens: tokens, heard: follower.mark, size: textSize, width: geometry.size.width)
                     .equatable()
                     .offset(y: readingY - y)
             }
@@ -74,8 +71,8 @@ struct ScreenTextView: View {
     }
 
     private var accessibilityValue: String {
-        guard let mark = tokens.firstIndex(where: { $0.isMark(follower.mark) }) else { return "" }
-        return tokens[mark...].prefix(12).map(\.word.text).joined(separator: " ")
+        let next = tokens.firstIndex { !$0.word.isCue && !$0.isHeard(before: follower.mark) } ?? 0
+        return tokens[next...].prefix(12).map(\.word.text).joined(separator: " ")
     }
 }
 
@@ -83,16 +80,15 @@ struct ScreenTextView: View {
 /// does not rebuild three hundred words.
 private struct WordColumn: View, Equatable {
     let tokens: [PromptViewModel.ScreenToken]
-    /// The presenter's place, as the screen shows it.
-    let mark: Int?
-    let blocksMark: Bool
+    /// The word after the last one heard, as the screen shows it: the words before it are dimmed.
+    let heard: Int?
     let size: Double
     let width: CGFloat
 
     var body: some View {
         WordFlow(paragraphSpacing: size * 0.6) {
             ForEach(tokens, id: \.word.id) { token in
-                WordView(token: token, isMark: token.isMark(mark), isPassed: token.isPassed(mark: mark), blocksMark: blocksMark, size: size)
+                WordView(token: token, isHeard: token.isHeard(before: heard), size: size)
                     .layoutValue(key: StartsParagraph.self, value: token.word.startsParagraph)
                     .background {
                         GeometryReader { proxy in
@@ -110,13 +106,11 @@ private struct WordColumn: View, Equatable {
     static let space = "screenText"
 }
 
-/// One word: dimmed once passed or before following, the voice's phrase on a faint accent and
-/// its word on the accent, the presenter's place underlined, a cue in the cue colour.
+/// One word: dimmed once heard or before following, the voice's phrase on the mid-blue and its
+/// word on the accent, a cue in the cue colour.
 private struct WordView: View {
     let token: PromptViewModel.ScreenToken
-    let isMark: Bool
-    let isPassed: Bool
-    let blocksMark: Bool
+    let isHeard: Bool
     let size: Double
 
     var body: some View {
@@ -128,25 +122,18 @@ private struct WordView: View {
             .padding(.horizontal, size * 0.12)
             .padding(.vertical, size * 0.1)
             .background(background)
-            .overlay(alignment: .bottom) {
-                if isMark, !blocksMark {
-                    Capsule()
-                        .fill(EarwigTheme.accent)
-                        .frame(height: max(4, size * 0.12))
-                        .padding(.horizontal, size * 0.12)
-                }
-            }
     }
 
     private var foreground: Color {
         if token.word.isCue { return EarwigTheme.cue }
-        if token.isVoiceWord || (isMark && blocksMark) { return EarwigTheme.onAccent }
-        if token.isWaiting || isPassed { return EarwigTheme.secondaryText }
+        if token.isVoiceWord { return EarwigTheme.onAccent }
+        if isHeard { return EarwigTheme.heardText }
+        if token.isWaiting { return EarwigTheme.secondaryText }
         return EarwigTheme.text
     }
 
     private var background: Color {
-        if token.isVoiceWord || (isMark && blocksMark) { return EarwigTheme.accent }
+        if token.isVoiceWord { return EarwigTheme.accent }
         if token.inVoicePhrase { return EarwigTheme.voiceHighlight }
         return .clear
     }

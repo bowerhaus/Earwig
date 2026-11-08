@@ -2,7 +2,7 @@
 
 **GitHub Issue:** [#21](https://github.com/bowerhaus/Earwig/issues/21) (PR must include "Closes #21")
 **Branch:** `app-icon-splash` (from `main` at `5b1849e`, after plan 006 merged)
-**Status:** Draft (2026-11-08). A cosmetic plan outside PRD §12's stages, like PhysiMate's plans 010 (app icon) and 012 (launch splash). Screen mode (stage 6) moves to plan 008.
+**Status:** Approved (2026-11-08, `/plan_autopilot`). A cosmetic plan outside PRD §12's stages, like PhysiMate's plans 010 (app icon) and 012 (launch splash). Screen mode (stage 6) moves to plan 008.
 **Manual test:** device, on Andy's iPhone 14 Pro: the icon in light, dark and tinted, the splash on a cold launch, and no splash on a return from the background or an unlock mid-take (Verification).
 **Goal:** Give Earwig its identity. The Home Screen tile and TestFlight show a blank slot, and the app opens on a plain screen and snaps to sky blue. After this plan the tile is the chosen mark, a white earwig crawling at an angle on the theme's sky blue, in the three iOS appearances, drawn by a committed script so it can be regenerated; a cold launch opens on the same sky blue, the earwig and the name fade in and out in under a second, and nothing happens on a return from the background. The same mark is the logo wherever the app comes to show its name. A decision is recorded on the wider visual refresh the issue raises.
 

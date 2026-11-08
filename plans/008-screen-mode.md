@@ -541,3 +541,5 @@ Andy: "fix all". Every finding was fixed as assessed:
 - **T7 — fixed.** The two voiceless move tests are one, asserting `presenterWord` and `presenterPlace`; the cap test asserts `presenterPlace`.
 
 Tests: 322 passed (324 before; three pause tests became one with three cases). SwiftLint clean, no warnings.
+
+On the iPhone, With Voice, Hold then Forward: the text follows again (Andy, "Yes, it follows").

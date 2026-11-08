@@ -294,6 +294,9 @@ struct TakeSimulation {
         let heard: String
     }
     private(set) var releases: [Release] = []
+    /// With no voice, the presenter estimate less the last word the presenter began, while they
+    /// are reading (plan 008, decision 1).
+    private(set) var placeErrors: [(time: TimeInterval, error: Double)] = []
 
     init(script: FollowScript, settings: FollowSettings = FollowSettings(), acts: [PresenterAct], rate: Double = 2.5, recogniser: SimulatedRecogniser = SimulatedRecogniser()) {
         var settings = settings
@@ -314,7 +317,11 @@ struct TakeSimulation {
             let said = player.said
             if let spoken = presenter.advance(to: time, voiceSaid: { said[$0]?.first }) { recogniser.hear(spoken) }
             events += recogniser.advance(to: time)
-            for event in events { apply(engine.handle(event, at: time)) }
+            for event in events {
+                // With no voice the presenter starts after the tones, from the script.
+                if event == .tonesEnded, !engine.settings.voiced { presenter.begin(at: time + 0.3) }
+                apply(engine.handle(event, at: time))
+            }
             apply(engine.tick(at: time))
             measure()
         }
@@ -334,6 +341,11 @@ struct TakeSimulation {
 
     private mutating func measure() {
         statuses.append(engine.snapshot.status)
+        if !engine.settings.voiced {
+            guard presenter.position >= 0, let last = presenter.spoken.last, last.word.script != nil, time - last.end < 0.7 else { return }
+            placeErrors.append((time, engine.snapshot.presenterEstimate - Double(presenter.position)))
+            return
+        }
         guard player.isSpeakingAPhrase, let voice = player.word, presenter.position >= 0,
               let last = presenter.spoken.last, time - last.end < 0.7 else { return }
         leadErrors.append((time, voice - presenter.position - engine.settings.lead))

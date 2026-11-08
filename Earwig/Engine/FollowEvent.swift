@@ -62,6 +62,8 @@ enum FollowStatus: String, Equatable, Sendable {
     case tones
     case speaking
     case waiting
+    /// Following the presenter with no voice (plan 008, decision 1).
+    case reading
     case lost
     case held
     case finished

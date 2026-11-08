@@ -88,6 +88,7 @@ struct PromptViewModel: Equatable {
             case .tones: return "Tones"
             case .speaking: return "Speaking"
             case .waiting: return "Waiting"
+            case .reading: return "Reading"
             case .lost: return "Lost"
             case .held: return "Held"
             case .finished: return "Finished"

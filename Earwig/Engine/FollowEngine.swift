@@ -43,6 +43,9 @@ struct FollowEngine: Sendable {
     private var phase: Phase = .idle
     private var voice: Voice = .idle
     private var held = false
+    /// With no voice, where the presenter was estimated to be when Hold was pressed: the place
+    /// shown while held, so the text stays still (plan 008, decision 1).
+    private var heldPlace: Double?
     /// The phrase the voice last started, when, and the word it is saying.
     private var voicePhrase: Int?
     private var voiceStartedAt: TimeInterval?
@@ -105,7 +108,7 @@ struct FollowEngine: Sendable {
         case .tonesEnded:
             guard phase == .tones else { break }
             phase = .following
-            voice = .waiting(0)
+            voice = settings.voiced ? .waiting(0) : .idle
         default:
             break
         }
@@ -165,7 +168,7 @@ struct FollowEngine: Sendable {
         }
         snapshot.voiceWord = voiceWord
         snapshot.presenterWord = current.confident
-        snapshot.presenterEstimate = presenterNow()
+        snapshot.presenterEstimate = heldPlace ?? presenterNow()
         snapshot.confident = current.run >= (current.lost ? settings.lostRun : settings.run) && current.sinceMatch == 0
         snapshot.speed = pacer.speed
         snapshot.error = lastError
@@ -184,6 +187,7 @@ struct FollowEngine: Sendable {
         case .following:
             if held { return .held }
             if current.lost { return .lost }
+            if !settings.voiced { return .reading }
             if case .playing = voice { return .speaking }
             return .waiting
         }
@@ -265,7 +269,7 @@ struct FollowEngine: Sendable {
         case .playing(let phrase): cap = script.lastWord(of: phrase) ?? script.firstWord[phrase] - 1
         case .waiting(let next): cap = script.firstWord[next] - 1
         case .done: cap = script.lastSpokenWord
-        case .idle: cap = nil
+        case .idle: cap = settings.voiced ? nil : script.lastSpokenWord
         }
         let start = voicePhrase.map { script.firstWord[$0] }
         let boundary = atGate ? script.phrase(containing: current.confident).map { script.range(of: $0).upperBound } : nil
@@ -354,6 +358,7 @@ struct FollowEngine: Sendable {
     /// Gates and the end of the take, after anything that may have moved them.
     private mutating func advance() -> [FollowCommand] {
         guard phase == .following, !held else { return [] }
+        guard settings.voiced else { return isCompleteReading ? finish(.completed) : [] }
         if case .waiting(let next) = voice {
             guard next < script.phrases.count else {
                 voice = .done(now)
@@ -401,6 +406,7 @@ struct FollowEngine: Sendable {
         phase = .finished
         voice = .idle
         held = false
+        heldPlace = nil
         self.outcome = outcome
         return [.finished(outcome)]
     }
@@ -436,6 +442,7 @@ extension FollowEngine {
         phase = .tones
         voice = .idle
         held = false
+        heldPlace = nil
         voicePhrase = nil
         voiceStartedAt = nil
         voiceWord = nil
@@ -466,8 +473,12 @@ extension FollowEngine {
         guard phase == .following else { return [] }
         if held {
             held = false
+            heldPlace = nil
             return reanchor(.release)
         }
+        // With no voice the place is kept while held, and released to wherever the presenter
+        // has been heard since.
+        if !settings.voiced { heldPlace = presenterNow() }
         held = true
         pacer.pause()
         if case .playing(let phrase) = voice {
@@ -484,6 +495,7 @@ extension FollowEngine {
     /// one again).
     private mutating func move(by offset: Int) -> [FollowCommand] {
         guard phase == .following, !script.phrases.isEmpty else { return [] }
+        guard settings.voiced else { return moveReading(by: offset) }
         var commands: [FollowCommand] = []
         let at: Int
         switch voice {
@@ -501,5 +513,34 @@ extension FollowEngine {
         ignoreHeardBefore = now
         ignoreSpokenBefore = now - estimate.delay
         return commands + startPhrase(target)
+    }
+
+    /// With no voice, Back or Forward moves the presenter's place a spoken phrase from the one
+    /// they are in (the phrase of the next word they will say), taken to be at its start until
+    /// they are heard again. Cues are passed over, as there is nothing in them to read. Forward
+    /// from the last spoken phrase does nothing (plan 008, decision 1).
+    private mutating func moveReading(by offset: Int) -> [FollowCommand] {
+        let spoken = script.phrases.indices.filter { script.phrases[$0].kind == .spoken && !script.phrases[$0].words.isEmpty }
+        guard let lastWord = script.lastSpokenWord, !spoken.isEmpty else { return [] }
+        let next = min(max(current.confident + 1, 0), lastWord)
+        guard let inPhrase = script.phrase(containing: next), let at = spoken.firstIndex(of: inPhrase) else { return [] }
+        guard at + offset < spoken.count else { return [] }
+        let target = spoken[max(at + offset, 0)]
+        held = false
+        heldPlace = nil
+        settled = MatchState(last: script.firstWord[target] - 1, confident: script.firstWord[target] - 1)
+        current = settled
+        ignoreHeardBefore = now
+        ignoreSpokenBefore = now - estimate.delay
+        return []
+    }
+
+    /// With no voice, the take completes when the last word is heard, or with the presenter in
+    /// the last spoken phrase and not heard there for `endGrace` (plan 008, decision 1).
+    private var isCompleteReading: Bool {
+        guard let last = script.lastSpokenWord, let lastPhrase = script.phrase(containing: last) else { return true }
+        if current.confident >= last { return true }
+        guard current.confident >= script.firstWord[lastPhrase], let at = current.confidentAt else { return false }
+        return now - at >= settings.endGrace
     }
 }

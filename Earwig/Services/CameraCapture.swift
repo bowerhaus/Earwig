@@ -12,7 +12,8 @@ final class CameraCapture {
     private let frames = FrameDelegate()
     private let queue: DispatchQueue
     private let sessionQueue = DispatchQueue(label: "com.bowerhaus.Earwig.camera")
-    private var device: AVCaptureDevice?
+    /// The front camera once configured, for the framing preview's rotation.
+    private(set) var device: AVCaptureDevice?
     private var rotation: AVCaptureDevice.RotationCoordinator?
     /// Removed in `deinit`, which is not on the main actor.
     nonisolated(unsafe) private var observers: [NSObjectProtocol] = []

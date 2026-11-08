@@ -10,13 +10,13 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 ## Checklist
 
-- [ ] 1. (built, committed `Plan 010 step 1`; installed on the phone) Device check first: the camera, the writer and the mic's second consumer behind `-EarwigRecordVideo YES`; Andy checks route, recogniser, sync, heat at 4K30
+- [x] 1. (1a–1c passed; 1d, heat and the fixed ending, deferred by Andy to the manual tests) Device check first: the camera, the writer and the mic's second consumer behind `-EarwigRecordVideo YES`; Andy checks route, recogniser, sync, heat at 4K30
 - [ ] 2. The writer and the store (`TakeRecording`, `RecordingStore`, tests)
 - [ ] 3. Settings and the take (settings, start card, `TakeHost`, tests)
 - [ ] 4. The screens (framing, dot, Play Back, Share, tests, screenshots)
 - [ ] Tests + lint
 - [ ] Review + fixes
-- [ ] Manual test: device (Verification 2–6)
+- [ ] Manual test: device (Verification 1d, then 2–6)
 - [ ] Complete (commit + PR)
 
 ## Notes

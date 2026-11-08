@@ -45,4 +45,59 @@ struct RecordingStore {
     func url(forRelativePath path: String) -> URL {
         documents.appending(path: path)
     }
+
+    // MARK: - Keeping
+
+    /// The last recording made with Keep Recordings off: the one the next such recording replaces.
+    static let lastUnkeptKey = "lastUnkeptRecording"
+
+    /// A recording has started at `path`. With Keep off, the last recording made with Keep off
+    /// is deleted and this one takes its place; with Keep on, it is kept and nothing is deleted.
+    /// Returns the path deleted, if any.
+    @discardableResult
+    func started(_ path: String, keep: Bool, defaults: UserDefaults) -> String? {
+        guard !keep else { return nil }
+        let previous = defaults.string(forKey: Self.lastUnkeptKey)
+        defaults.set(path, forKey: Self.lastUnkeptKey)
+        guard let previous, previous != path else { return nil }
+        delete(previous)
+        return previous
+    }
+
+    /// A recording at `path` came to nothing: its file, if any, goes, and it is not the last.
+    func discard(_ path: String, defaults: UserDefaults) {
+        delete(path)
+        if defaults.string(forKey: Self.lastUnkeptKey) == path { defaults.removeObject(forKey: Self.lastUnkeptKey) }
+    }
+
+    func delete(_ path: String) {
+        let url = url(forRelativePath: path)
+        if FileManager.default.fileExists(atPath: url.path) { try? FileManager.default.removeItem(at: url) }
+    }
+
+    /// Every recording, with their folders.
+    func deleteAll(defaults: UserDefaults) throws {
+        if FileManager.default.fileExists(atPath: root.path) { try FileManager.default.removeItem(at: root) }
+        defaults.removeObject(forKey: Self.lastUnkeptKey)
+    }
+
+    /// Bytes the recordings take up.
+    func size() -> Int64 {
+        guard let files = FileManager.default.enumerator(at: root, includingPropertiesForKeys: [.fileSizeKey]) else { return 0 }
+        var total: Int64 = 0
+        for case let url as URL in files {
+            total += Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
+        }
+        return total
+    }
+
+    // MARK: - Room
+
+    /// Below this a video take records sound only (decision 6).
+    static let minimumFreeForVideo: Int64 = 1_000_000_000
+
+    /// Bytes free for a recording, as iOS counts room for important use; `nil` if unknown.
+    func freeSpace() -> Int64? {
+        (try? documents.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]))?.volumeAvailableCapacityForImportantUsage
+    }
 }

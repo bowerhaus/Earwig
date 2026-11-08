@@ -15,11 +15,14 @@ struct PromptView: View {
     @AppStorage(TakeSettings.textSizeKey) private var textSize = TakeSettings.defaultTextSize
     /// Counts Back, Forward and Restart, so the text follows again at once after a drag.
     @State private var moves = 0
+    @State private var playing: Playback?
 
     var body: some View {
         let model = PromptViewModel(host: host)
         Group {
-            if !model.isOver {
+            if model.isFraming {
+                FramingView(model: model, camera: host.camera, onStart: { host.go() }, onCancel: onDone)
+            } else if !model.isOver {
                 screen(model)
             } else {
                 VStack(spacing: 20) {
@@ -35,6 +38,9 @@ struct PromptView: View {
         .task(id: ObjectIdentifier(host)) { await host.start() }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+        .sheet(item: $playing) { playback in
+            PlaybackView(playback: playback, title: "\(model.stepText) · \(model.takeText)")
+        }
     }
 
     // MARK: - Top
@@ -105,6 +111,11 @@ struct PromptView: View {
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(failed(model) ? EarwigTheme.warning : EarwigTheme.secondaryText)
             }
+            if let note = model.recordingText {
+                Text(note)
+                    .font(.headline)
+                    .foregroundStyle(EarwigTheme.caution)
+            }
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -166,6 +177,9 @@ struct PromptView: View {
                             .textCase(.uppercase)
                             .tracking(1)
                             .foregroundStyle(EarwigTheme.secondaryText)
+                        if model.showsRecordingDot, let since = model.recording.since {
+                            recordingDot(since: since, soundOnly: model.recordingSoundOnly)
+                        }
                     }
                 }
                 Spacer(minLength: 8)
@@ -194,6 +208,21 @@ struct PromptView: View {
                     .minimumScaleFactor(0.7)
             }
         }
+    }
+
+    /// The dot and the time recorded (plan 010, decision 5); a waveform once only sound is.
+    private func recordingDot(since: TimeInterval, soundOnly: Bool) -> some View {
+        let start = Date().addingTimeInterval(since - HostClock.now)
+        return HStack(spacing: 4) {
+            Image(systemName: soundOnly ? "waveform" : "circle.fill")
+                .font(.caption2.bold())
+                .foregroundStyle(EarwigTheme.recording)
+            Text(timerInterval: start...Date.distantFuture, countsDown: false)
+                .font(.caption.monospacedDigit().bold())
+                .foregroundStyle(EarwigTheme.text)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(soundOnly ? "Recording sound" : "Recording")
     }
 
     private func screenText(_ model: PromptViewModel) -> some View {
@@ -241,6 +270,7 @@ struct PromptView: View {
     /// Next Take and Done, once the take is over or could not start.
     private func bottom(_ model: PromptViewModel) -> some View {
         VStack(spacing: 12) {
+            recordingButtons(model)
             if model.canTakeAgain {
                 Button(action: onNextTake) {
                     AccentPill(title: "Next Take", systemImage: "arrow.forward.circle.fill", expands: true)
@@ -256,6 +286,53 @@ struct PromptView: View {
             }
             .buttonStyle(.plain)
         }
+    }
+}
+
+extension PromptView {
+    /// Play Video, Play Sound and Share once the take's file is finished, or that it is being
+    /// saved (plan 010, decision 7).
+    @ViewBuilder
+    fileprivate func recordingButtons(_ model: PromptViewModel) -> some View {
+        if model.isSavingRecording {
+            HStack(spacing: 8) {
+                ProgressView().tint(EarwigTheme.accent)
+                Text("Saving the recording…")
+                    .font(.headline)
+                    .foregroundStyle(EarwigTheme.secondaryText)
+            }
+            .frame(maxWidth: .infinity, minHeight: 52)
+        } else if let result = model.recording.result {
+            HStack(spacing: 10) {
+                if model.canPlayVideo {
+                    playButton("Play Video", systemImage: "play.rectangle.fill") { playing = Playback(url: result.url, soundOnly: false) }
+                    playButton("Play Sound", systemImage: "waveform") { playing = Playback(url: result.url, soundOnly: true) }
+                } else {
+                    playButton("Play Back", systemImage: "play.fill") { playing = Playback(url: result.url, soundOnly: true) }
+                }
+                ShareLink(item: result.url) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.title3.bold())
+                        .foregroundStyle(EarwigTheme.text)
+                        .frame(width: 52, height: 52)
+                        .background(EarwigTheme.surface, in: Circle())
+                }
+                .accessibilityLabel("Share")
+            }
+        }
+    }
+
+    private func playButton(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.headline)
+                .foregroundStyle(EarwigTheme.text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, minHeight: 52)
+                .background(EarwigTheme.surface, in: Capsule())
+        }
+        .buttonStyle(.plain)
     }
 }
 

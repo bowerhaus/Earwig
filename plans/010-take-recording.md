@@ -67,7 +67,7 @@ Two other ways were weighed and not chosen (2026-11-08):
    - `Take` gains `recordingPath: String?` (relative to Documents), an optional property, a lightweight change to the store. It is set when the recording starts and cleared when its file is deleted, so a later plan can list takes with their recordings.
    - Before a video take, if the phone has under 1 GB free (`volumeAvailableCapacityForImportantUsage`), the take records sound only and says so. A writer that fails mid-take stops recording, the take carries on, and Finished says why.
 
-7. **Play Back and Share on the Finished screen.** When the take was recorded, Finished adds **Play Back** and **Share** above Next Take and Done.
+7. **Play Back and Share on the Finished screen.** When the take was recorded, Finished adds **Play Back** and **Share** above Next Take and Done. For a video take, Play Back is two buttons, **Play Video** and **Play Sound** (Andy, 2026-11-08: the option of the sound alone). Play Sound plays the file's sound track alone, from a composition of that track, so no picture is decoded.
    - Play Back opens a sheet with `VideoPlayer` (AVKit) for both video and sound, with its own play, pause and scrub, and Done. The take has let the audio session go by then. Playback sets the category to `.playback`, so it is heard on the earpiece or the speaker, whichever is connected; Next Take configures the session for a take again, as it always does.
    - Share is the share sheet with the file: AirDrop to the Mac, Save Video to Photos, Save to Files.
    - Only what was said is in the file (Out). Mixed or one-ear playback of the earpiece is not needed.
@@ -138,7 +138,7 @@ Two other ways were weighed and not chosen (2026-11-08):
 
 - `xcodebuild test` passes in the simulator; no warnings; SwiftLint clean.
 - On the iPhone 14 Pro, installed with `devicectl` and the console read live, one at a time, with the sample script (made up). Lead 5, hybrid, tones only, voice speed 0.95x (the defaults):
-  1. **Filming and following at once** (step 1, before the rest is built): as step 1.
+  1. **Filming and following at once** (step 1, before the rest is built): as step 1. 1a to 1c done on 2026-11-08 (Results). **1d, deferred by Andy to here:** ten minutes of filmed takes at 4K30 for heat and battery, and the last take's final sentence in the picture (the fix after 1c).
   2. **Sound only, in the hand.** Record Sound, With Voice, the SK18. Read a step, then Play Back. Andy's verdict on hearing his reading; the file in Files under the script's name.
   3. **Video on the mount, With Voice and Screen Only.** Frame on the preview, Start, read a step, Play Back. Andy's verdicts on framing, on the dot and time, and on the picture and sync at 1080p. The take's waits against a take with recording off.
   4. **4K30.** The same at 4K30; the file's size; Share to the Mac by AirDrop and Save Video to Photos.

@@ -25,6 +25,8 @@ enum EarwigTheme {
     static let warning = Color(hex: 0xFF8A7A)
     static let good = Color(hex: 0x7FE0A4)
     static let caution = Color(hex: 0xFFB454)
+    /// The dot while a take is recorded (plan 010, decision 5).
+    static let recording = Color(hex: 0xFF3B30)
     /// Words already heard in the scrolling text: white, faint, so the presenter's place is
     /// where the white starts (plan 008, Andy's eyeline choice).
     static let heardText = Color.white.opacity(0.45)

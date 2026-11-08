@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 /// The first Settings screen (PRD §4.8, §8.4; plan 005, decision 11): what stage 5 judges by ear,
@@ -11,6 +12,12 @@ struct SettingsView: View {
     @AppStorage(TakeSettings.modeKey) private var mode: TakeMode = TakeSettings.defaultMode
     @AppStorage(TakeSettings.textSizeKey) private var textSize = TakeSettings.defaultTextSize
     @AppStorage(TakeSettings.lightsVoiceKey) private var lightsVoice = false
+    @AppStorage(TakeSettings.recordingKey) private var recording: TakeRecordingMode = .off
+    @AppStorage(TakeSettings.videoQualityKey) private var videoQuality: VideoQuality = .hd1080
+    @AppStorage(TakeSettings.keepsRecordingsKey) private var keepsRecordings = false
+    @Environment(\.modelContext) private var context
+    @State private var recordingsSize: Int64 = 0
+    @State private var confirmingDeleteAll = false
 
     var body: some View {
         NavigationStack {
@@ -76,6 +83,27 @@ struct SettingsView: View {
                 .listRowBackground(EarwigTheme.surface)
 
                 Section {
+                    Picker("Record", selection: $recording) {
+                        ForEach(TakeRecordingMode.allCases, id: \.self) { Label($0.label, systemImage: $0.systemImage).tag($0) }
+                    }
+                    Picker("Video Quality", selection: $videoQuality) {
+                        ForEach(VideoQuality.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
+                    Toggle("Keep Recordings", isOn: $keepsRecordings)
+                    LabeledContent("Recordings") {
+                        Text(ByteCountFormatter.string(fromByteCount: recordingsSize, countStyle: .file)).monospacedDigit()
+                    }
+                    Button("Delete All Recordings", role: .destructive) { confirmingDeleteAll = true }
+                        .disabled(recordingsSize == 0)
+                } header: {
+                    Text("Recording")
+                } footer: {
+                    Text("Sound records what you say on the iPhone's mic; Video adds the front camera, framed before the take starts. Also beside Start on the Script screen. 1080p is about 60 MB a minute, 4K about 170 MB. With Keep Recordings off, each take's recording replaces the last. Recordings are in the Files app, under On My iPhone › Earwig.")
+                        .foregroundStyle(EarwigTheme.secondaryText)
+                }
+                .listRowBackground(EarwigTheme.surface)
+
+                Section {
                     NavigationLink {
                         ListeningCheckView()
                     } label: {
@@ -96,7 +124,25 @@ struct SettingsView: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .onAppear { recordingsSize = RecordingStore.standard.size() }
+            .confirmationDialog("Delete every recording?", isPresented: $confirmingDeleteAll, titleVisibility: .visible) {
+                Button("Delete All Recordings", role: .destructive) { deleteAllRecordings() }
+            } message: {
+                Text("Every take's recording is deleted from this iPhone. This can't be undone.")
+            }
         }
+    }
+
+    private func deleteAllRecordings() {
+        do {
+            try RecordingStore.standard.deleteAll(defaults: .standard)
+        } catch {
+            Log.event("recordings not deleted: \(error.localizedDescription)")
+        }
+        let recorded = FetchDescriptor<Take>(predicate: #Predicate { $0.recordingPath != nil })
+        for take in (try? context.fetch(recorded)) ?? [] { take.recordingPath = nil }
+        try? context.save()
+        recordingsSize = RecordingStore.standard.size()
     }
 
     private var modeFooter: String {

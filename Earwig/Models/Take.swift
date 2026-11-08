@@ -12,6 +12,9 @@ final class Take {
     /// Seconds.
     var duration: Double = 0
     var outcomeRaw: String = TakeOutcome.stopped.rawValue
+    /// The take's recording, relative to the app's Documents; `nil` when not recorded or its file
+    /// was deleted (plan 010, decision 6).
+    var recordingPath: String?
     var script: Script?
 
     init(stepIndex: Int = 0, number: Int = 1, startedAt: Date = Date()) {

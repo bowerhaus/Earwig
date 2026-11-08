@@ -10,6 +10,7 @@ struct ScriptDetailView: View {
     @Environment(ScriptRenderer.self) private var renderer
     @AppStorage(AppSettings.inlineDirectionsKey) private var inlineDirections: InlineDirections = .chime
     @AppStorage(TakeSettings.modeKey) private var mode: TakeMode = TakeSettings.defaultMode
+    @AppStorage(TakeSettings.recordingKey) private var recording: TakeRecordingMode = .off
     @State private var model: ScriptDetailViewModel
     @State private var confirmingDelete = false
 
@@ -172,6 +173,15 @@ struct ScriptDetailView: View {
                         ModeTile(mode: option, selected: option == mode) { mode = option }
                     }
                 }
+                HStack(spacing: 8) {
+                    Text("Record")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(EarwigTheme.secondaryText)
+                    Spacer(minLength: 4)
+                    ForEach(TakeRecordingMode.allCases, id: \.self) { option in
+                        RecordChip(recording: option, selected: option == recording) { recording = option }
+                    }
+                }
             }
             renderStatus(state, step: stepNumber)
             if isReady {
@@ -282,6 +292,29 @@ private struct ModeTile: View {
         }
         // Borderless, so each tile in the row takes its own tap.
         .buttonStyle(.borderless)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+/// Off, Sound or Video on the start card (plan 010, decision 1): the same value as Settings.
+private struct RecordChip: View {
+    let recording: TakeRecordingMode
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(recording.label, systemImage: recording.systemImage)
+                .font(.subheadline.bold())
+                .lineLimit(1)
+                .foregroundStyle(selected ? EarwigTheme.onAccent : EarwigTheme.text)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 36)
+                .background(selected ? EarwigTheme.accent : EarwigTheme.control, in: Capsule())
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel("Record \(recording.label)")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

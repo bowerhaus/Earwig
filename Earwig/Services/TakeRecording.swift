@@ -31,6 +31,8 @@ protocol TakeCapture: AnyObject {
     /// Records on for `RecordingWriter.tail` after the take, then finishes the file; `nil` when
     /// nothing was recorded.
     func finish() async -> RecordingResult?
+    /// The camera, for the framing preview; `nil` for sound.
+    var camera: CameraCapture? { get }
 }
 
 /// Records a take (plan 010, decisions 2 and 3): the sound from the mic tap the listener already
@@ -44,10 +46,12 @@ final class TakeRecording: TakeCapture {
     private let audio: AudioEngineHost
     private let log: (String) -> Void
     private let queue = DispatchQueue(label: "com.bowerhaus.Earwig.recording", qos: .userInitiated)
-    private let camera: CameraCapture?
+    let camera: CameraCapture?
     private var writer: RecordingWriter?
     private var thermalObserver: NSObjectProtocol?
     private var finished = false
+    /// No camera to film with: the simulator. The take records its sound alone.
+    private var cameraMissing = false
 
     var onVideoStopped: ((String) -> Void)?
     var onFailed: ((String) -> Void)?
@@ -70,6 +74,14 @@ final class TakeRecording: TakeCapture {
         }
         do {
             try camera.configure(quality: quality)
+        } catch CameraCapture.CameraError.noCamera {
+            #if targetEnvironment(simulator)
+            log("recording: no camera in the simulator; sound only")
+            cameraMissing = true
+            return nil
+            #else
+            return CameraCapture.CameraError.noCamera.localizedDescription
+            #endif
         } catch {
             return error.localizedDescription
         }
@@ -91,6 +103,7 @@ final class TakeRecording: TakeCapture {
             writer.begin(at: hostTime)
             audio.setMicRecorder { buffer, host in writer.appendAudio(buffer, hostTime: host) }
             camera?.setSink { sample in writer.appendVideo(sample) }
+            if cameraMissing { writer.stopVideo(reason: "there is no camera") }
         } catch {
             failed("the recording could not start: \(error.localizedDescription)")
             return

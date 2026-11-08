@@ -79,7 +79,7 @@ final class ScriptDetailViewModel {
     /// `mode` is the take's, from the setting unless given (Next Take keeps the last take's).
     /// Screen Only needs nothing rendered: the engine follows the presenter alone (plan 008,
     /// decision 7).
-    func startTake(with renderer: ScriptRenderer, in context: ModelContext, mode given: TakeMode? = nil) {
+    func startTake(with renderer: ScriptRenderer, in context: ModelContext, mode given: TakeMode? = nil, recording chosen: TakeRecordingMode? = nil) {
         // One take at a time: a second Start (the card's and the row's) does not orphan one.
         guard take == nil, let step = startStep else { return }
         let mode = given ?? AppSettings.take.mode
@@ -105,7 +105,7 @@ final class ScriptDetailViewModel {
             return
         }
         let slateText = Slate.text(for: step, take: number, cuesOn: script.cuesOn)
-        let setup = TakeSetup(
+        var setup = TakeSetup(
             stepNumber: step.number,
             stepTitle: step.title,
             take: number,
@@ -127,7 +127,6 @@ final class ScriptDetailViewModel {
         let listener = Listener(audio: output)
         listener.onEvent = { Log.event($0) }
         var heard: HeardSource = listener
-        var capture: TakeCapture?
         #if DEBUG
         // `-EarwigNoListen YES`: a take that hears nothing, for the simulator, which cannot
         // transcribe en-GB.
@@ -138,19 +137,19 @@ final class ScriptDetailViewModel {
         // `-EarwigListenGivesUp YES`: listening gives up ten seconds into the take, to see the
         // take stop and say why on the phone (plan 006, decision 7).
         if UserDefaults.standard.bool(forKey: "EarwigListenGivesUp") { heard = GivingUpHeardSource(heard) }
-        // `-EarwigRecordVideo YES`: film the take at 4K30, for plan 010's first device check.
-        if UserDefaults.standard.bool(forKey: "EarwigRecordVideo"),
-           let url = try? RecordingStore.standard.url(scriptTitle: script.title, step: step.number, take: number, video: true) {
-            capture = TakeRecording(url: url, video: true, quality: .uhd4K, audio: output)
-        }
         #endif
+        let recording = takeRecording(stepNumber: step.number, take: number, chosen: chosen, output: output)
+        setup.chosenRecording = recording.chosen
+        setup.recording = recording.mode
+        setup.videoQuality = AppSettings.take.videoQuality
+        setup.recordingNote = recording.note
         take = TakeHost(
             setup: setup,
             session: session,
             output: output,
             heard: heard,
-            recorder: ScriptTakeRecorder(script: script, stepIndex: stepIndex, number: number, context: context),
-            capture: capture,
+            recorder: ScriptTakeRecorder(script: script, stepIndex: stepIndex, number: number, context: context, recording: recording.place),
+            capture: recording.capture,
             renderSlate: { text in try await renderer.renderCue(text).buffer }
         )
     }
@@ -159,6 +158,42 @@ final class ScriptDetailViewModel {
     var nextTakeNumber: Int { script.nextTakeNumber(forStep: script.lastStep) }
 
     /// Closes the Prompt screen; a take still running is stopped and recorded so.
+    /// What a take records, from Settings or as chosen (plan 010, decisions 1 and 6): sound alone
+    /// when there is too little room for video, nothing when no file can be made.
+    private struct TakeRecordingChoice {
+        var chosen: TakeRecordingMode
+        var mode: TakeRecordingMode
+        var note: String?
+        var capture: TakeCapture?
+        var place: ScriptTakeRecorder.Recording?
+    }
+
+    private func takeRecording(stepNumber: Int, take number: Int, chosen given: TakeRecordingMode?, output: AudioEngineHost) -> TakeRecordingChoice {
+        let chosen = given ?? AppSettings.take.recording
+        var choice = TakeRecordingChoice(chosen: chosen, mode: chosen)
+        #if DEBUG
+        // `-EarwigRecordVideo YES`: film the take whatever Settings says (plan 010, device check 1).
+        if UserDefaults.standard.bool(forKey: "EarwigRecordVideo") { choice.mode = .video }
+        #endif
+        let store = RecordingStore.standard
+        if choice.mode == .video, let free = store.freeSpace(), free < RecordingStore.minimumFreeForVideo {
+            choice.mode = .sound
+            choice.note = "Less than 1 GB free, so only the sound was recorded."
+        }
+        guard choice.mode != .off else { return choice }
+        let video = choice.mode == .video
+        do {
+            let url = try store.url(scriptTitle: script.title, step: stepNumber, take: number, video: video)
+            choice.capture = TakeRecording(url: url, video: video, quality: AppSettings.take.videoQuality, audio: output)
+            choice.place = store.relativePath(of: url).map { ScriptTakeRecorder.Recording(path: $0, keep: AppSettings.take.keepsRecordings) }
+        } catch {
+            Log.event("recording: no file: \(error.localizedDescription)")
+            choice.mode = .off
+            choice.note = "The take could not be recorded: \(error.localizedDescription)"
+        }
+        return choice
+    }
+
     func endTake() {
         take?.end()
         take = nil
@@ -167,9 +202,10 @@ final class ScriptDetailViewModel {
     /// The same step again, as the next take.
     func nextTake(with renderer: ScriptRenderer, in context: ModelContext) {
         let mode = take?.setup.mode
+        let recording = take?.chosenRecording
         take?.end()
         take = nil
-        startTake(with: renderer, in: context, mode: mode)
+        startTake(with: renderer, in: context, mode: mode, recording: recording)
     }
 
     /// The presenter voices to pick from, and whether Personal Voice may still be asked for.

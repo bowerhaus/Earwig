@@ -120,6 +120,9 @@ struct TakeSettings {
     /// The Prompt screen's text size in points (plan 008, decision 8).
     static let textSizeRange = 24.0...72.0
     static let defaultTextSize = 40.0
+    static let recordingKey = "recording"
+    static let videoQualityKey = "videoQuality"
+    static let keepsRecordingsKey = "keepsRecordings"
 
     let defaults: UserDefaults
 
@@ -152,6 +155,24 @@ struct TakeSettings {
     var lightsVoice: Bool {
         get { defaults.bool(forKey: Self.lightsVoiceKey) }
         nonmutating set { defaults.set(newValue, forKey: Self.lightsVoiceKey) }
+    }
+
+    /// Whether a take is recorded, and how; off unless set (plan 010, decision 1).
+    var recording: TakeRecordingMode {
+        get { defaults.string(forKey: Self.recordingKey).flatMap(TakeRecordingMode.init) ?? .off }
+        nonmutating set { defaults.set(newValue.rawValue, forKey: Self.recordingKey) }
+    }
+
+    /// A video take's size; 1080p unless set (decision 8).
+    var videoQuality: VideoQuality {
+        get { defaults.string(forKey: Self.videoQualityKey).flatMap(VideoQuality.init) ?? .hd1080 }
+        nonmutating set { defaults.set(newValue.rawValue, forKey: Self.videoQualityKey) }
+    }
+
+    /// Whether every recording is kept; off unless set, when only the last is (decision 6).
+    var keepsRecordings: Bool {
+        get { defaults.bool(forKey: Self.keepsRecordingsKey) }
+        nonmutating set { defaults.set(newValue, forKey: Self.keepsRecordingsKey) }
     }
 
     /// The Prompt screen's text size, kept within `textSizeRange`.

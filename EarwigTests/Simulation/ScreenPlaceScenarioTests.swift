@@ -32,7 +32,7 @@ struct ScreenPlaceScenarioTests {
          Pace(rate: 4, interimInterval: 1, voiced: voiced, within2: 0.65, within3: 0.85)]
     }
 
-    private func run(_ acts: [PresenterAct], _ pace: Pace) -> TakeSimulation {
+    private func run(_ acts: [PresenterAct], _ pace: Pace, script: FollowScript? = nil) -> TakeSimulation {
         var settings = FollowSettings()
         settings.voiced = pace.voiced
         settings.lead = TakeSettings.defaultLead
@@ -40,7 +40,7 @@ struct ScreenPlaceScenarioTests {
         recogniser.interimInterval = pace.interimInterval
         // With a voice the presenter reads behind it; with none, from the screen.
         let acts = pace.voiced ? acts : acts.map { if case .read(let range) = $0 { .recite(range) } else { $0 } }
-        var take = TakeSimulation(script: step, settings: settings, acts: acts, rate: pace.rate, recogniser: recogniser)
+        var take = TakeSimulation(script: script ?? step, settings: settings, acts: acts, rate: pace.rate, recogniser: recogniser)
         take.run()
         return take
     }
@@ -83,6 +83,21 @@ struct ScreenPlaceScenarioTests {
         #expect(!paused.isEmpty)
         #expect(paused.allSatisfy { (6...7).contains(Int($0.rounded(.down))) })
         expectFollowed(take, pace)
+    }
+
+    /// Device check 1 again: "The plan is simple:" then a pause, and the mark was on "up the
+    /// cliff path", five words into the same phrase. It now waits at the colon's next word.
+    @Test(arguments: paces)
+    func aPauseAtAColonMidPhraseWaitsAtTheNextWord(_ pace: Pace) {
+        // Step 1: "Morning! … tide turns." is words 0–11, "The plan is simple:" 12–15.
+        let script = SimulationScripts.harbour(step: 0)
+        #expect(script.words[15].text == "simple")
+        let take = run([.read(0...15), .pause(3), .read(16...(script.words.count - 1))], pace, script: script)
+        let resume = take.presenter.spoken.first { $0.word.script == 16 }?.start ?? 0
+        let paused = take.screenPlaces.filter { $0.time > resume - 2 && $0.time < resume }.map(\.place)
+        #expect(!paused.isEmpty)
+        #expect(paused.allSatisfy { Int($0.rounded(.down)) <= 16 })
+        #expect(take.screenBackSteps.isEmpty)
     }
 
     @Test(arguments: paces)

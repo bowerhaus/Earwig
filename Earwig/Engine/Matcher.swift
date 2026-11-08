@@ -152,7 +152,11 @@ struct Matcher: Sendable {
         state.last = candidate.script + candidate.scriptCount - 1
         state.sinceMatch = 0
         let needed = state.lost ? settings.lostRun : settings.run
-        if state.run >= needed {
+        // With no voice, the take's first word, heard first, is trusted on its own: waiting for
+        // a second word kept the screen still for a second more at the start (plan 008, device
+        // check 1). With a voice the presenter starts behind it, and its first gate waits for two.
+        let opening = !settings.voiced && state.confident < 0 && !state.lost && candidate.script == 0
+        if state.run >= needed || opening {
             state.confident = state.last
             state.confidentAt = heardAt
             state.unmatched = 0

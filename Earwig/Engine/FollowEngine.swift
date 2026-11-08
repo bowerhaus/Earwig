@@ -169,7 +169,7 @@ struct FollowEngine: Sendable {
         snapshot.voiceWord = voiceWord
         snapshot.presenterWord = current.confident
         snapshot.presenterEstimate = presenterNow()
-        snapshot.presenterPlace = heldPlace ?? presenterNow(atGate: true)
+        snapshot.presenterPlace = heldPlace ?? presenterNow(atGate: true, atPause: true)
         snapshot.confident = current.run >= (current.lost ? settings.lostRun : settings.run) && current.sinceMatch == 0
         snapshot.speed = pacer.speed
         snapshot.error = lastError
@@ -261,7 +261,10 @@ struct FollowEngine: Sendable {
     /// Where the presenter is estimated to be now. For a gate, the coast stops at the end of the
     /// phrase they were last confidently heard in (plan 006, decision 5); pacing and the snapshot
     /// keep the free coast, so the voice is not slowed at every phrase crossing (review C2).
-    private func presenterNow(atGate: Bool = false) -> Double {
+    /// For the screen (`atPause`), the coast also stops at the next place the punctuation lets
+    /// the presenter pause: pausing at a colon mid-phrase, the screen's mark ran on five words,
+    /// and it never moves back (plan 008, device check 1).
+    private func presenterNow(atGate: Bool = false, atPause: Bool = false) -> Double {
         // Never past what the voice has given: the end of the phrase it plays, or the word
         // before the phrase it waits to play (which, after a re-anchor, is not the phrase it
         // last started).
@@ -273,7 +276,8 @@ struct FollowEngine: Sendable {
         case .idle: cap = settings.voiced ? nil : script.lastSpokenWord
         }
         let start = voicePhrase.map { script.firstWord[$0] }
-        let boundary = atGate ? script.phrase(containing: current.confident).map { script.range(of: $0).upperBound } : nil
+        var boundary = atGate ? script.phrase(containing: current.confident).map { script.range(of: $0).upperBound } : nil
+        if atPause, let pause = script.pauseBoundary(after: max(current.confident, 0)) { boundary = min(boundary ?? pause, pause) }
         let pausedSince = lastFinalAt.map { (current.confidentAt ?? -.infinity) <= $0 } ?? false
         let basis = PresenterEstimate.Basis(
             confident: current.confident,
@@ -479,7 +483,7 @@ extension FollowEngine {
         }
         // The place shown is kept while held, so the text stays still, and released to
         // wherever the presenter has been heard since (plan 008, decision 4; review C1).
-        heldPlace = presenterNow(atGate: true)
+        heldPlace = presenterNow(atGate: true, atPause: true)
         held = true
         pacer.pause()
         if case .playing(let phrase) = voice {

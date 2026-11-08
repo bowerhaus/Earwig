@@ -31,6 +31,16 @@ struct MatcherTests {
         #expect(state.confident == -1)
     }
 
+    @Test func withNoVoiceTheFirstWordHeardFirstIsTrustedAlone() {
+        var settings = FollowSettings()
+        settings.voiced = false
+        let silent = Matcher(words: matcher.words, settings: settings)
+        let first = silent.align(heard("the"), from: MatchState(), prefixLast: false)
+        #expect(first.confident == 0)
+        // Only the first word, and only at the start.
+        #expect(silent.align(heard("sea"), from: MatchState(), prefixLast: false).confident == -1)
+    }
+
     @Test func numbersAndCompoundsAsTheRecogniserWritesThem() {
         let state = matcher.align(heard("the seawall was built in 1890"), from: MatchState(), prefixLast: false)
         #expect(state.confident == 6)

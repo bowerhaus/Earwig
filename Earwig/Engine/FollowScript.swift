@@ -16,13 +16,17 @@ struct FollowPhrase: Equatable, Sendable {
     let wordStarts: [TimeInterval]
     /// The rendering's length at 1.0x.
     let duration: TimeInterval
+    /// The words, by their place in the phrase, after which the script's punctuation lets the
+    /// presenter pause: a comma, colon, full stop and the like (plan 008, device check 1).
+    let pausesAfter: Set<Int>
 
-    init(kind: Kind, words: [ScriptWord], wordStarts: [TimeInterval], duration: TimeInterval) {
+    init(kind: Kind, words: [ScriptWord], wordStarts: [TimeInterval], duration: TimeInterval, pausesAfter: Set<Int> = []) {
         precondition(words.count == wordStarts.count, "one start time per word")
         self.kind = kind
         self.words = kind == .cue ? [] : words
         self.wordStarts = kind == .cue ? [] : wordStarts
         self.duration = duration
+        self.pausesAfter = kind == .cue ? [] : pausesAfter.filter { words.indices.contains($0) }
     }
 
     static func cue(duration: TimeInterval) -> FollowPhrase {
@@ -39,17 +43,30 @@ struct FollowScript: Equatable, Sendable {
     /// The flat index of each phrase's first word. For a cue, or a phrase with no words, the
     /// index of the next word after it.
     let firstWord: [Int]
+    /// The flat indices of the words after which the punctuation lets the presenter pause, in
+    /// order, each phrase's last word among them.
+    let pausesAfter: [Int]
 
     init(phrases: [FollowPhrase]) {
         self.phrases = phrases
         var words: [ScriptWord] = []
         var firstWord: [Int] = []
+        var pauses: [Int] = []
         for phrase in phrases {
             firstWord.append(words.count)
+            pauses += phrase.pausesAfter.union(phrase.words.isEmpty ? [] : [phrase.words.count - 1]).sorted().map { words.count + $0 }
             words += phrase.words
         }
         self.words = words
         self.firstWord = firstWord
+        pausesAfter = pauses
+    }
+
+    /// The first word after the next place the presenter may pause, at or after `word`: where
+    /// the screen's place stops coasting until a word beyond it is heard (plan 008). `nil` with
+    /// none left.
+    func pauseBoundary(after word: Int) -> Int? {
+        pausesAfter.first { $0 >= word }.map { $0 + 1 }
     }
 
     /// The flat indices of a phrase's words; empty for a cue.

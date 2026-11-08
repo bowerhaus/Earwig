@@ -173,12 +173,13 @@ struct PhraseSplitter {
         return ".!?…".contains(last)
     }
 
-    private static func endsClause(_ word: String) -> Bool {
+    /// A word ending in `,`, `;` or `:`, closing quotes and brackets aside.
+    static func endsClause(_ word: String) -> Bool {
         guard let last = stripTrailingClosers(word).last else { return false }
         return ",;:".contains(last)
     }
 
-    private static func isDash(_ word: String) -> Bool {
+    static func isDash(_ word: String) -> Bool {
         ["-", "–", "—", "--"].contains(word)
     }
 }

@@ -15,7 +15,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - [x] Step 2: #19 reproduction (`interimInterval`, 4 w/s scenario disabled as reproducing, release moment recorded in the plan, misheard-end wait pinned); commit
 - [x] Step 3: #19 rule (candidates A, B, C; the kept one passes all scenarios at both rates; `PresenterEstimateTests`); commit
 - [x] Tests + lint (265 tests pass, no warnings, SwiftLint clean)
-- [ ] Review + fixes
+- [x] Review + fixes (C2, C3, C4 part, T1, T3, T4, T5 part, T7, T8 fixed; C1 for device check 2)
 - [ ] Manual test: device (iPhone 14 Pro, SK18)
 - [ ] Complete (commit + PR)
 

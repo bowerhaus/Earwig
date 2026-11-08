@@ -285,7 +285,6 @@ struct TakeSimulation {
     private(set) var leadErrors: [(time: TimeInterval, error: Int)] = []
     /// What the engine knew when it released each phrase (plan 006, decision 4).
     struct Release {
-        let time: TimeInterval
         let phrase: Int
         /// The presenter estimate and confident word just before the release.
         let estimate: Double
@@ -325,7 +324,7 @@ struct TakeSimulation {
         for command in new {
             if case .play(let phrase, _) = command {
                 let snapshot = engine.snapshot
-                releases.append(Release(time: time, phrase: phrase, estimate: snapshot.presenterEstimate, confident: snapshot.presenterWord,
+                releases.append(Release(phrase: phrase, estimate: snapshot.presenterEstimate, confident: snapshot.presenterWord,
                                         presenterAt: presenter.position, heard: recogniser.lastInterim))
             }
             player.apply(command, at: time)

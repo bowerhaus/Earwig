@@ -195,6 +195,7 @@ struct TakeHostTests {
         pass(0.5, host)
         host.control(.stop)
         #expect(host.phase == .finished(.stopped))
+        #expect(host.stopReason == nil)
         #expect(recorder.finished.map(\.outcome) == [.stopped])
         #expect(output.stopped.contains(.voice))
     }
@@ -269,13 +270,6 @@ struct TakeHostTests {
         for _ in 0..<20 where session.deactivated == 0 { await Task.yield() }
         #expect(heard.stopped == 1)
         #expect(heard.onGaveUp == nil)
-    }
-
-    @Test func aTakeStoppedByThePresenterHasNoStopReason() async {
-        let host = host()
-        await throughTheSlate(host)
-        host.control(.stop)
-        #expect(host.stopReason == nil)
     }
 
     @Test func aCallStopsTheTake() async {

@@ -208,7 +208,8 @@ struct FollowScenarioTests {
         #expect(take.outcome == .completed)
         #expect(take.statuses.contains(.lost))
         let release = take.releases.first { $0.phrase == 4 }
-        #expect((release?.presenterAt ?? -1) >= 28, "phrase 4 released with the presenter at word \(release?.presenterAt ?? -1)")
+        #expect((release?.presenterAt ?? -1) >= 28,
+                "phrase 4 released with the presenter at word \(release?.presenterAt ?? -1), estimated \(release?.estimate ?? -1) from \(release?.confident ?? -1), heard “\(release?.heard ?? "")”")
         #expect(take.player.plays.filter { $0.phrase == 4 }.count == 1)
         #expect(take.presenter.waits.allSatisfy { $0.length <= 0.5 })
     }
@@ -258,5 +259,9 @@ struct FollowScenarioTests {
         let take = atLeadFive(Self.scenarios[scenario].acts, rate: rate, interval: interval, writes: Self.scenarios[scenario].writes)
         #expect(take.outcome == .completed, "\(Self.scenarios[scenario].name)")
         #expect(take.presenter.waits.isEmpty, "\(Self.scenarios[scenario].name): waits \(take.presenter.waits.map(\.length))")
+        if scenario == 0 {
+            // A clean read at lead 5 was within two words for 97, 91 and 88% of samples.
+            #expect(share(underWay(take), within: 2) >= 0.85)
+        }
     }
 }

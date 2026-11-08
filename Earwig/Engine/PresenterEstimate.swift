@@ -64,8 +64,8 @@ struct PresenterEstimate: Equatable, Sendable {
         var voiceStartedAt: TimeInterval?
         /// The estimate never passes this word: the end of the phrase the voice is in.
         var cap: Int?
-        /// The first word after the phrase holding the confident word. Coasting stops there:
-        /// crossing into the next phrase needs a word of it heard (plan 006, decision 5).
+        /// The first word after the phrase holding the confident word, for a gate. Coasting stops
+        /// there: crossing into the next phrase needs a word of it heard (plan 006, decision 5).
         var boundary: Int?
     }
 
@@ -80,11 +80,11 @@ struct PresenterEstimate: Equatable, Sendable {
     /// phrase). Going no further than its first word means silence lets at most a phrase of
     /// `lead + 1` words through a gate. Off script, or lost, it stays at the last confident word.
     ///
-    /// Coasting never crosses a phrase boundary: it goes no further than the first word of the
-    /// next phrase until a word of that phrase is confidently heard. A phrase end is where a
-    /// presenter pauses or leaves the script, and there the coast is a guess with nothing heard
-    /// to back it: off script straight after a phrase end, it released the next phrase before
-    /// the presenter was seen to be lost (#19, plan 006).
+    /// Given a boundary (the engine gives one for a gate), coasting does not cross it: it goes
+    /// no further than the first word of the next phrase until a word of that phrase is
+    /// confidently heard. A phrase end is where a presenter pauses or leaves the script, and there
+    /// the coast is a guess with nothing heard to back it: off script straight after a phrase end,
+    /// it released the next phrase before the presenter was seen to be lost (#19, plan 006).
     func position(_ basis: Basis, lead: Int, at now: TimeInterval) -> Double {
         let base = Double(basis.confident)
         var estimate = base

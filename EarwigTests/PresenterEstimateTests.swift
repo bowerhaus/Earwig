@@ -106,21 +106,9 @@ struct PresenterEstimateTests {
         #expect(estimate.position(basis(boundary: 11), lead: 3, at: 0.2) == 11)
     }
 
-    @Test func insideAPhraseTheCoastRunsOnAsBefore() {
+    @Test func aBoundaryBeyondTheCoastChangesNothing() {
         let estimate = PresenterEstimate(settings: settings)
-        #expect(abs(estimate.position(basis(boundary: 20), lead: 3, at: 0.2) - 12.75) < 1e-9)
         #expect(abs(estimate.position(basis(boundary: 13), lead: 3, at: 0.2) - 12.75) < 1e-9)
-    }
-
-    @Test func offScriptTheEstimateStaysAtTheConfidentWord() {
-        let estimate = PresenterEstimate(settings: settings)
-        #expect(estimate.position(basis(offScript: true, boundary: 11), lead: 3, at: 0.2) == 10)
-    }
-
-    @Test func aWordHeardInTheNextPhraseMovesTheBoundaryOn() {
-        let estimate = PresenterEstimate(settings: settings)
-        // Word 11 heard, the first of a phrase running to 16: the coast is free again.
-        #expect(abs(estimate.position(basis(confident: 11, boundary: 17), lead: 3, at: 0.2) - 13.75) < 1e-9)
     }
 
     @Test func theBoundaryLeavesThePauseRuleAlone() {

@@ -212,7 +212,10 @@ final class SilentHeardSource: HeardSource {
 final class GivingUpHeardSource: HeardSource {
     private let inner: HeardSource
     private var timer: Task<Void, Never>?
-    var onGaveUp: ((String) -> Void)?
+    /// The wrapped source's own give-up is passed on too (review C3).
+    var onGaveUp: ((String) -> Void)? {
+        didSet { inner.onGaveUp = onGaveUp }
+    }
 
     init(_ inner: HeardSource) { self.inner = inner }
 

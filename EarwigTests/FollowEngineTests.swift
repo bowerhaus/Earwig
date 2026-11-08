@@ -136,6 +136,21 @@ struct FollowEngineTests {
         #expect(engine.handle(.phraseEnded(2), at: 9) == [.play(phrase: 3, speed: 1)])
     }
 
+    @Test func aGateDoesNotOpenOnACoastAcrossAPhraseEnd() {
+        // Plan 006, #19: heard to "are", the end of phrase 0, while the voice waits after phrase 1
+        // (its gate opens with the presenter at word 7). The free coast passes 7; the gate's
+        // stops at word 5 until a word of phrase 1 is confidently heard.
+        var engine = following()
+        _ = engine.handle(.interim("morning all here"), at: 3.5)
+        _ = engine.handle(.phraseEnded(0), at: 4.2)
+        _ = engine.handle(.phraseEnded(1), at: 6.4)
+        #expect(engine.handle(.interim("morning all here we are"), at: 6.5) == [])
+        #expect(engine.tick(at: 7) == [])
+        #expect(engine.snapshot.status == .waiting)
+        #expect(engine.snapshot.presenterEstimate > 7)
+        #expect(engine.handle(.interim("morning all here we are the tide"), at: 7.2) == [.play(phrase: 2, speed: 1)])
+    }
+
     // MARK: - Re-anchoring
 
     /// Phrase 0 from 2, heard into phrase 1, the cue and phrase 3 played: the voice is saying

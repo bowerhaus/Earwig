@@ -17,7 +17,7 @@ Andy's choices (2026-11-08): Ear off follows the presenter directly; reading lin
 - [x] Step 4: the pinch (in `ScreenTextView`; checked on the device only)
 - [x] Tests + lint (322 tests pass, SwiftLint clean, at ea4512e)
 - [x] Review + fixes (Review pass and Outcome in the plan; #25 comment; 325 tests pass, lint clean)
-- [ ] Manual test: device (Verification 1–6). Check 1 passed (recorded in the plan); the underline now follows the smoothed place and the tick is gone (installed). Open question: Andy asked why an underline, not a block (decision 4). Next: his answer, then check 2. Console: scratchpad console.log (check 1's in console-check1.log).
+- [ ] Manual test: device (Verification 1–6). Check 1 passed; two fixes from it are installed (the mark follows the smoothed place, no tick; the screen's place keeps the gate's rule at a phrase end, `presenterPlace`). Open: Andy's choice of underline or block (decision 4), and his look at the phrase-end fix. Then check 2. Console: scratchpad console.log (earlier: console-check1.log, console-check1b.log).
 - [ ] Complete (commit + PR)
 
 ## Notes

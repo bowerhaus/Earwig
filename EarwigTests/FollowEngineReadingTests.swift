@@ -135,6 +135,19 @@ struct FollowEngineReadingTests {
         #expect(engine.snapshot.presenterWord == -1)
     }
 
+    @Test func afterAMoveTheScreensPlaceIsThePhrasesFirstWord() {
+        var engine = reading()
+        _ = engine.handle(.final([FinalWord(text: "morning", start: 2.2), FinalWord(text: "all", start: 2.6)]), at: 3.5)
+        _ = engine.handle(.forward, at: 4)
+        // At the start of phrase 1 (words 5–9): the confident word is 4, the screen's place 5.
+        #expect(engine.snapshot.presenterWord == 4)
+        #expect(engine.snapshot.presenterPlace == 5)
+        _ = engine.tick(at: 5)
+        #expect(engine.snapshot.presenterPlace == 5)
+        _ = engine.handle(.back, at: 5.5)
+        #expect(engine.snapshot.presenterPlace == 0)
+    }
+
     @Test func backFromInsideAPhraseGoesToThePhraseBefore() {
         var engine = reading()
         _ = engine.handle(.interim("morning all here we are the tide"), at: 4)

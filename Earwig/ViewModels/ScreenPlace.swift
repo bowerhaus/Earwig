@@ -67,6 +67,7 @@ struct ScreenPlace: Equatable, Sendable {
     /// either way (review C2: a Back of two words or fewer was not followed).
     mutating func move() {
         glide = .either
+        glideTarget = nil
     }
 
     /// Moves the place on to `time`, toward the engine's estimate then; `confident` is the

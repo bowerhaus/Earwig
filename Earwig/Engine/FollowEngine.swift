@@ -169,7 +169,7 @@ struct FollowEngine: Sendable {
         snapshot.voiceWord = voiceWord
         snapshot.presenterWord = current.confident
         snapshot.presenterEstimate = presenterNow()
-        snapshot.presenterPlace = heldPlace ?? presenterNow(atGate: true, atPause: true)
+        snapshot.presenterPlace = heldPlace ?? screenPlace
         snapshot.presenterPaused = isPaused
         snapshot.confident = current.run >= (current.lost ? settings.lostRun : settings.run) && current.sinceMatch == 0
         snapshot.speed = pacer.speed
@@ -555,5 +555,17 @@ extension FollowEngine {
     private var isPaused: Bool {
         phase == .following && !held && current.confident >= 0
             && lastFinalAt.map { (current.confidentAt ?? -.infinity) <= $0 } == true
+    }
+
+    /// Where the screen shows the presenter. At the start, and after Back or Forward, before they
+    /// are heard again, the presenter is at the start of a phrase, taken as its first word: the
+    /// confident word is set to the one before it, and the screen showed that word for a moment
+    /// before its pause rule took it on to the first (device check 2 of plan 008).
+    private var screenPlace: Double {
+        // Nothing heard since (a move, or the start): the next word, the phrase's first.
+        if current.confidentAt == nil, let last = script.lastSpokenWord {
+            return Double(min(current.confident + 1, last))
+        }
+        return presenterNow(atGate: true, atPause: true)
     }
 }

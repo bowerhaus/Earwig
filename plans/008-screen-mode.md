@@ -2,7 +2,7 @@
 
 **GitHub Issue:** [#25](https://github.com/bowerhaus/Earwig/issues/25) (PR must include "Closes #25")
 **Branch:** `screen-mode` (from `main` at `ed33225`, after plan 007 merged)
-**Status:** Approved for autopilot (2026-11-08), pausing for the device checks.
+**Status:** Complete (2026-11-08). Results below; PRD v0.10.
 **Manual test:** device, on Andy's iPhone 14 Pro, on the mount and in the hand, with and without the SK18 (Verification).
 **Goal:** Stage 6 of PRD §12. The take's step appears on the Prompt screen as large scrolling text, kept at the presenter's place by the same engine that follows them in Ear mode. Ear and Screen can run together (Flow 2, the desk head on the mount), and either can be switched off. With Ear off, the text follows the presenter directly: there is no voice and no rendering, so a take starts as soon as Start is tapped. Font size is a setting and a pinch.
 
@@ -29,6 +29,8 @@
 - the script text beyond the take's step: the engine follows one step, and so does the screen.
 
 ## Design decisions
+
+As planned. Several changed at the device check; the **As built** list in Results is what the app does, and the device check section says why each changed.
 
 1. **Ear off follows the presenter directly (Andy, 2026-11-08).** Andy chose this over a silent voice (the voice rendered and played muted) and over leaving Ear off out. A teleprompter shows the whole text, so a lead and phrase-end waits that nobody hears would only make the highlight run ahead and stop.
 
@@ -191,7 +193,26 @@
 
 ## Results
 
-*To be filled in at the device check.*
+**Outcome: PASS** (2026-11-08). All six device checks passed on Andy's iPhone 14 Pro, with changes made along the way at his call (the device check section below). 324 tests pass in the simulator; no warnings; SwiftLint clean.
+
+### As built
+
+1. **Two modes, chosen before the take** (decision 6 changed). **With Voice** is the voice in the earpiece with the scrolling text. **Screen Only** is the text with no voice. They are chosen on the start card's tiles or in Settings (one value), fixed for the take, and kept by Next Take. Ear alone was dropped (check 1), and a stored Ear or Both reads as With Voice.
+2. **Following with no voice** (decision 1), as planned. The take's first word, heard first, is trusted on its own (with no voice only).
+3. **The screen's place** (decision 2 changed) is the word after the last one confidently heard (`FollowEngine.screenPlace`), never a guess ahead. Guessing, and the rules added to undo bad guesses (stopping at punctuation, sliding back after a pause, never moving back with its exceptions), were tried and removed after check 2.
+4. **The scroll** (decision 3 changed). `ScreenPlace` has two rules. A move glides, with any mark on the target at once. Otherwise it follows forward, never back, up to 0.9 of a word into the next word, with a response of 1.5 rad/s. The text is a clipped column offset every frame, and it redraws only while moving.
+5. **What the text shows** (decision 4 changed). It has an eyeline a third of the way down, and the words already heard are a faint white (`EarwigTheme.heardText`). There is no word marker and no reading-line tick. With the voice, its phrase is lit on the cards' mid-blue, with its word on the accent, when **Light the Voice's Phrase** is on (off by default). Directions are in the cue colour, a word at a time.
+6. **Back and Forward**, with a voice or without, ignore what was said before the press. That speech is heard from a delay on and spoken from the press (an engine fix, check 2).
+7. **Start without rendering in Screen Only** (decision 7), as planned.
+8. **Font size** (decision 8): 24 to 72 pt, default 40 (Andy: "sounds good"). The pinch scales the text about the eyeline while pinching and lays it out once at the end.
+9. **The Prompt screen** (decision 9 changed) has one layout for every take: a top row, the text, and a row of icon controls (down the side in landscape). Finished and Can't start keep plan 005's layout. Ear mode's take screen, with its phrase and sentence display, is removed.
+10. **The route check** (decision 10): the earpiece is not judged in Screen Only, and a lost earpiece does not hold a take with no voice.
+11. **The Script screen's start card** (Andy's pick, check 1). It shows "Step N · take M", the mode tiles, Listen once rendered, and the rendering only while it runs or if it failed. Start Take is at the foot of the start step's card.
+12. **Not done:** the fixed-pace scroll (decision 11: its own issue), and treating 1.5 s with nothing heard as a pause (check 1: the recogniser goes quiet for that long mid-speech).
+
+### Measured
+
+The simulated takes run on the harbour walk, with and without a voice. At 2.5 words a second, the screen's place is 0.7 words behind on average and within two words 98–100% of the time. At the phone's 4 words a second, in bursts a second apart, it is 2.6 to 3.0 behind and within four words 70–85% of the time. It never moves back. Through bursts, the text moves on 96% of frames.
 
 ## Review pass — 2026-11-08
 
@@ -368,3 +389,5 @@ File: /Users/andybower/Projects/Earwig/EarwigTests/ScreenLayoutTests.swift, line
 4. **Choosing the mode.** Passed (Andy): the tiles beside Start and Settings show the same mode, each take's top bar shows it, and Next Take keeps it.
 
 5. **Size and orientation.** Passed (Andy): pinching, landscape on the mount with the controls down the side, and the size from Settings at the next take. The default of 40 pt "sounds good". The pinch was "a little bit jumpy", because every word was laid out again at each step of the pinch. Changed: while pinching, the text is scaled as a picture about the eyeline, and laid out again at the new size when the pinch ends.
+
+6. **With Voice, in a pocket, with the SK18** (in place of "Ear only, unchanged", since Ear mode went). Andy: "fine". The console: a take of step 1 completed, 30.9 s, all 70 words heard, six waits with the longest 3.1 s, speed 0.94–1.19, delay 0.82 s, never Lost. Plan 006's clean read, of step 3, had six waits with the longest 2.1 s. The pinch, made smooth after check 5, was also "fine".

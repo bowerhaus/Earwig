@@ -16,7 +16,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - [x] Step 3: #19 rule (candidates A, B, C; the kept one passes all scenarios at both rates; `PresenterEstimateTests`); commit
 - [x] Tests + lint (265 tests pass, no warnings, SwiftLint clean)
 - [x] Review + fixes (C2, C3, C4 part, T1, T3, T4, T5 part, T7, T8 fixed; C1 for device check 2)
-- [ ] Manual test: device (iPhone 14 Pro, SK18). Installed f753123 build; console in scratchpad console1.log. Check 1 PASS; check 2 given, awaiting verdict
+- [ ] Manual test: device (iPhone 14 Pro, SK18). Installed f753123 build; console in scratchpad console1.log. Checks 1, 2 PASS; check 3 given, awaiting verdict
 - [ ] Complete (commit + PR)
 
 ## Notes

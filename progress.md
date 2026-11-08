@@ -17,7 +17,7 @@ Andy's choices (2026-11-08): Ear off follows the presenter directly; reading lin
 - [x] Step 4: the pinch (in `ScreenTextView`; checked on the device only)
 - [x] Tests + lint (322 tests pass, SwiftLint clean, at ea4512e)
 - [x] Review + fixes (Review pass and Outcome in the plan; #25 comment; 325 tests pass, lint clean)
-- [ ] Manual test: device. Check 1 passed with changes; check 2 led to the simplification (the screen marks only what has been heard; engine ignores speech before Back/Forward), all recorded in the plan's device check section. Now the eyeline with heard words dimmed, no word marker (Andy's choice), installed; console in scratchpad console.log. Check 2 passed on the eyeline ("feels right"); Back/Forward on this build to confirm in check 3. Next: 3 (With Voice on the mount), 4 (choosing the mode), 5 (size, landscape), 6 (With Voice in a pocket).
+- [ ] Manual test: device. Check 1 passed with changes; check 2 led to the simplification (the screen marks only what has been heard; engine ignores speech before Back/Forward), all recorded in the plan's device check section. Now the eyeline with heard words dimmed, no word marker (Andy's choice), installed; console in scratchpad console.log. Check 2 passed on the eyeline ("feels right"); Back/Forward on this build to confirm in check 3. Check 3: eyeline right, Back/Forward OK (recorded); Andy is trying With Voice without the lit phrase (launched with -EarwigNoVoiceLight YES). Then, 4 (choosing the mode), 5 (size, landscape), 6 (With Voice in a pocket).
 - [ ] Complete (commit + PR)
 
 ## Notes

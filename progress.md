@@ -8,7 +8,7 @@ Plan file: `plans/007-app-icon-splash.md`. Concepts page (the chosen mark's geom
 
 ## Checklist
 
-- [ ] 1. Script: `scripts/app_icon/make_app_icon.py`, SVGs, the three icon PNGs, the mark PNGs; run twice, identical; committed on its own
+- [x] 1. Script: `scripts/app_icon/make_app_icon.py`, SVGs, the three icon PNGs, the mark PNGs; run twice, identical; committed on its own
 - [ ] 2. Review: Final section on the concepts page with the real renders; Andy approves (a pause)
 - [ ] 3. Asset catalogue: AppIcon Contents.json with three appearances, EarwigMark.imageset; xcodegen; test; simulator Home Screen; assetutil for dark
 - [ ] 4. Launch colour: LaunchBackground.colorset, UILaunchScreen in project.yml, LaunchSplashTests

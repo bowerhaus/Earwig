@@ -2,7 +2,7 @@
 
 **GitHub Issue:** none yet (to open on Andy's yes; the PR then says "Closes #N")
 **Branch:** `longer-phrases` (from `screen-mode` at `04e37c3`, so the phone keeps Screen mode; PR #26 carries plan 008 and is not yet merged)
-**Status:** In progress.
+**Status:** Complete (2026-11-08). Results below; PRD v0.11.
 **Manual test:** device, on Andy's iPhone 14 Pro with the SK18: a take of a script with a long clause that has no punctuation. (Fluff handling was tried on this branch and dropped; see "Tried and dropped".)
 **Goal:** The voice should not stop in the middle of a clause. On a take on 2026-11-08 the splitter cut a 14-word clause with no punctuation into two halves of seven, so the voice ended "…that ground flour for" with a sentence's fall and a pause, the presenter paused with it, and the recogniser heard a full stop there. After this plan a clause is never cut unless it is longer than 20 words.
 
@@ -56,3 +56,13 @@ Dropped at Andy's word ("Yes, drop them"). Telling a fluff from a misheard word 
 **Device check, 2026-11-08, iPhone 14 Pro with the SK18.** Step 1 of a made-up-for-the-phone script, whose second sentence has a 14-word clause with no punctuation: rendered as one phrase ("at a watermill that ground flour for this village for nearly three hundred years.", 4.26 s). Andy: "the long clause sounded right."
 
 The cost of decision 3 showed on the same take: a fluff early in that clause, and the voice read the clause to its end, about four seconds, where the old cut would have stopped it after "…flour for".
+
+**Decision 4, the same day, two takes of step 1 and one of step 2.** Andy: "I think I'm happy with where we are." What the log shows:
+- Step 2: stopped at "It takes water off." The voice finished the phrase it had begun ("and brings it round the hillside on a very gentle slope.") and then waited 4.2 s, giving nothing more, until Andy went back to "This channel is called the leat", when it gave that phrase again. Before decision 4, the same stop on step 1 let two phrases through.
+- Step 2: stopped at "…the whole thing was" (heard as "fed"). The voice finished "by eye and by level, long before anyone had a laser." and waited, and gave "which tells you…" again when Andy went back to it.
+- Both takes of step 1 completed, every word heard, with the long clause as one phrase.
+
+**Follow-ups, drafted and not opened:**
+- After a fluff in the last phrase, the voice never gives it again, and the take completes three seconds after the presenter was last heard there, short of the end (seen on `main` too, step 4).
+- Voice commands for a fluff ("Earwig, back"), Andy's idea: the presenter says when they have fluffed, which the recogniser cannot tell from a misheard word. Phrases or sentences, not seconds; counted from the presenter, not the voice; a spike on the phone for how reliably the command word is heard.
+- The diagnostics line ("lead error …") hidden unless Settings turns it on, for stage 7.

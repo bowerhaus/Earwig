@@ -2,11 +2,4 @@
 
 Scratch state for the plan in flight. Overwritten at the start of a plan, emptied to a stub when it completes.
 
-**Plan:** `plans/009-longer-phrases.md` · **Issue:** none yet (needs Andy's yes) · **Branch:** `longer-phrases`, from `screen-mode` at `04e37c3`. Plan 008's PR #26 is not part of this plan; `gh pr view 26 --json state` says whether `main` has it.
-
-## Where things stand
-
-- `PhraseSplitter.maxClauseWords = 20`: a clause is cut only past 20 words. `PhraseList.currentVersion` is 2. Tests and lint pass (323 tests).
-- Fluff handling (the voice stopping, the text going back) was tried and dropped at Andy's word; recorded in the plan under "Tried and dropped". The code is as it was at `100c784`.
-- Andy's verdict on the long clause is recorded in Results ("the long clause sounded right"). The late-result rule in `PresenterEstimate` now applies only within `lateStartReach` (3) words of the voice's phrase (decision 4); 325 tests pass; on the phone for Andy to try. Then Results, the PRD version bump and Document History row (§3), CLAUDE.md's status, the issue and the PR.
-- Follow-up issue draft, not opened: after a fluff in the last phrase the voice never gives it again, and the take completes `endGrace` (3 s) later, short of the end (seen on `main` too).
+**No plan in flight.** Plan 009 (longer phrases) is complete on branch `longer-phrases`, branched from `screen-mode`, so its PR also carries plan 008 until PR #26 merges; `gh pr view 26 --json state` says whether `main` has plan 008 yet (`OPEN` means not merged, `MERGED` means it is), and the plan 009 PR, once opened, names itself in its own body. The next plan is 010, stage 7 (Settings and TestFlight). `git status -sb` shows which branch you are on. Open follow-ups: #5, #6, #10, #13, #14, #16, #22. Drafts not yet opened: the fixed-pace scroll when listening is off (PRD §4.6, P1); optionally a more visible Lost in Screen mode; the voice never giving the last phrase again after a fluff in it; voice commands for a fluff ("Earwig, back"); the diagnostics line hidden unless Settings turns it on (stage 7).

@@ -17,7 +17,7 @@ Andy's choices (2026-11-08): Ear off follows the presenter directly; reading lin
 - [x] Step 4: the pinch (in `ScreenTextView`; checked on the device only)
 - [x] Tests + lint (322 tests pass, SwiftLint clean, at ea4512e)
 - [x] Review + fixes (Review pass and Outcome in the plan; #25 comment; 325 tests pass, lint clean)
-- [ ] Manual test: device (Verification, revised: two modes). Check 1 passed with changes (all in the plan's device check section): two modes With Voice / Screen Only, the place stops at punctuation, the first word trusted alone with no voice, a block mark on Screen Only, redraw paused while still. Installed at the commit after d88d94f; the phone was locked, so relaunch the console (devicectl --console) before the next check. Open: Andy picks a start-card restyle (A slim bar, B on the step card, C a start button per mode); then check 2 onward.
+- [ ] Manual test: device (Verification, revised: two modes). Check 1 passed with changes (all in the plan's device check section): two modes With Voice / Screen Only, the place stops at punctuation, the first word trusted alone with no voice, a block mark on Screen Only, redraw paused while still. Installed at the commit after d88d94f; the phone was locked, so relaunch the console (devicectl --console) before the next check. Start card restyled (card C, tiles only choose, Start Take on the step card), installed. Next: Andy re-runs check 1 on the new build, then check 2 (Screen Only: off script and back, Back, Forward, Hold).
 - [ ] Complete (commit + PR)
 
 ## Notes

@@ -18,9 +18,9 @@ final class ScreenFollower {
     private var heldUntil: TimeInterval?
     private var lastTime: TimeInterval?
 
-    func y(at time: TimeInterval, place: Double, confident: Int, paused: Bool = false, layout: ScreenLayout) -> CGFloat {
+    func y(at time: TimeInterval, place: Double, layout: ScreenLayout) -> CGFloat {
         defer { lastTime = time }
-        screenPlace.step(toward: place, confident: confident, paused: paused, at: time)
+        screenPlace.step(toward: place, at: time)
         if dragStart == nil, dragged != 0, let lastTime, time >= heldUntil ?? 0 {
             dragged *= CGFloat(exp(-(time - lastTime) / ScreenPlace.jumpGlide))
             if abs(dragged) < 0.5 { dragged = 0 }
@@ -38,8 +38,8 @@ final class ScreenFollower {
 
     /// Whether nothing would move in the next frame: the place at the estimate and at rest, and
     /// no drag being made or fading. The frame-by-frame redraw pauses then.
-    func isStill(toward place: Double, confident: Int, paused: Bool = false) -> Bool {
-        dragStart == nil && dragged == 0 && screenPlace.isAtRest(toward: place, confident: confident, paused: paused)
+    func isStill(toward place: Double) -> Bool {
+        dragStart == nil && dragged == 0 && screenPlace.isAtRest(toward: place)
     }
 
     func drag(by translation: CGFloat) {

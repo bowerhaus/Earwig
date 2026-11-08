@@ -2,18 +2,13 @@
 import Foundation
 import Testing
 
-/// What the screen shows through simulated takes (plan 008, decision 3): the engine's estimate
-/// smoothed by `ScreenPlace`, against the last word the presenter began, with no voice and with
-/// one. Measured on 2026-11-08 (within two words / three):
-///
-/// | | 2.5 w/s | 4 w/s, bursts 1 s |
-/// |---|---|---|
-/// | clean read | 90% / 99% | 76–89% / 93–100% |
-/// | stop and resume | 89% / 99% | 71–84% / 88–98% |
-/// | fluff and step back | 86% / 96% | 69–81% / 88–94% |
-///
-/// The raw estimate at the phone's pace is 60–70% / 80–85% (`FollowReadingScenarioTests`).
-/// Through every read the text never moves back.
+/// What the screen shows through simulated takes (plan 008, decision 3): the engine's place,
+/// the word after the last one heard, smoothed by `ScreenPlace`, against the last word the
+/// presenter began, with no voice and with one. It only marks what has been heard (Andy, device
+/// check 2), so it trails. Measured on 2026-11-08: at 2.5 words a second, 0.7 words behind on
+/// average and within two words 98–100% of the time; at the phone's 4 words a second in bursts
+/// a second apart, 2.6–3.0 words behind, within four words 70–85% of the time. Through every
+/// read the text never moves back.
 struct ScreenPlaceScenarioTests {
 
     private let step = SimulationScripts.harbour(step: 1)
@@ -22,14 +17,15 @@ struct ScreenPlaceScenarioTests {
         let rate: Double
         let interimInterval: TimeInterval
         let voiced: Bool
-        let within2: Double
-        let within3: Double
+        /// The least share of samples within `words` of the presenter.
+        let words: Double
+        let share: Double
         var testDescription: String { "\(voiced ? "voiced" : "voiceless"), \(rate) w/s, bursts \(interimInterval) s" }
     }
 
     static let paces = [false, true].flatMap { voiced in
-        [Pace(rate: 2.5, interimInterval: 0, voiced: voiced, within2: 0.83, within3: 0.94),
-         Pace(rate: 4, interimInterval: 1, voiced: voiced, within2: 0.65, within3: 0.85)]
+        [Pace(rate: 2.5, interimInterval: 0, voiced: voiced, words: 2, share: 0.95),
+         Pace(rate: 4, interimInterval: 1, voiced: voiced, words: 4, share: 0.65)]
     }
 
     private func run(_ acts: [PresenterAct], _ pace: Pace, script: FollowScript? = nil) -> TakeSimulation {
@@ -57,8 +53,12 @@ struct ScreenPlaceScenarioTests {
             return
         }
         let errors = take.screenErrors.filter { $0.time >= start + 1.5 }.map(\.error)
-        #expect(share(errors, within: 2) >= pace.within2)
-        #expect(share(errors, within: 3) >= pace.within3)
+        #expect(share(errors, within: pace.words) >= pace.share)
+        // Behind on average, as it only marks what has been heard, and by no more than the
+        // recogniser's delay at the presenter's pace and a word.
+        let mean = errors.reduce(0, +) / Double(max(errors.count, 1))
+        #expect(mean <= 0.5)
+        #expect(mean >= -(pace.rate * 0.9 + 1))
         #expect(take.screenBackSteps.isEmpty)
     }
 

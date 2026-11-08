@@ -170,7 +170,6 @@ struct FollowEngine: Sendable {
         snapshot.presenterWord = current.confident
         snapshot.presenterEstimate = presenterNow()
         snapshot.presenterPlace = heldPlace ?? screenPlace
-        snapshot.presenterPaused = isPaused
         snapshot.confident = current.run >= (current.lost ? settings.lostRun : settings.run) && current.sinceMatch == 0
         snapshot.speed = pacer.speed
         snapshot.error = lastError
@@ -262,10 +261,7 @@ struct FollowEngine: Sendable {
     /// Where the presenter is estimated to be now. For a gate, the coast stops at the end of the
     /// phrase they were last confidently heard in (plan 006, decision 5); pacing and the snapshot
     /// keep the free coast, so the voice is not slowed at every phrase crossing (review C2).
-    /// For the screen (`atPause`), the coast also stops at the next place the punctuation lets
-    /// the presenter pause: pausing at a colon mid-phrase, the screen's mark ran on five words,
-    /// and it never moves back (plan 008, device check 1).
-    private func presenterNow(atGate: Bool = false, atPause: Bool = false) -> Double {
+    private func presenterNow(atGate: Bool = false) -> Double {
         // Never past what the voice has given: the end of the phrase it plays, or the word
         // before the phrase it waits to play (which, after a re-anchor, is not the phrase it
         // last started).
@@ -277,8 +273,7 @@ struct FollowEngine: Sendable {
         case .idle: cap = settings.voiced ? nil : script.lastSpokenWord
         }
         let start = voicePhrase.map { script.firstWord[$0] }
-        var boundary = atGate ? script.phrase(containing: current.confident).map { script.range(of: $0).upperBound } : nil
-        if atPause, let pause = script.pauseBoundary(after: max(current.confident, 0)) { boundary = min(boundary ?? pause, pause) }
+        let boundary = atGate ? script.phrase(containing: current.confident).map { script.range(of: $0).upperBound } : nil
         let pausedSince = lastFinalAt.map { (current.confidentAt ?? -.infinity) <= $0 } ?? false
         let basis = PresenterEstimate.Basis(
             confident: current.confident,
@@ -484,7 +479,7 @@ extension FollowEngine {
         }
         // The place shown is kept while held, so the text stays still, and released to
         // wherever the presenter has been heard since (plan 008, decision 4; review C1).
-        heldPlace = presenterNow(atGate: true, atPause: true)
+        heldPlace = screenPlace
         held = true
         pacer.pause()
         if case .playing(let phrase) = voice {
@@ -556,22 +551,12 @@ extension FollowEngine {
         return now - at >= settings.endGrace
     }
 
-    /// Following, not held, and nothing confidently heard since the last final: the presenter
-    /// has paused (plan 008).
-    private var isPaused: Bool {
-        phase == .following && !held && current.confident >= 0
-            && lastFinalAt.map { (current.confidentAt ?? -.infinity) <= $0 } == true
-    }
-
-    /// Where the screen shows the presenter. At the start, and after Back or Forward, before they
-    /// are heard again, the presenter is at the start of a phrase, taken as its first word: the
-    /// confident word is set to the one before it, and the screen showed that word for a moment
-    /// before its pause rule took it on to the first (device check 2 of plan 008).
+    /// Where the screen shows the presenter: the word after the last one confidently heard, the
+    /// next they will say. Only what has been heard, never a guess ahead: guessing ran the mark
+    /// past pauses, and every rule to bring it back interacted with the others (Andy, device
+    /// check 2 of plan 008). It trails the presenter by about the recogniser's delay.
     private var screenPlace: Double {
-        // Nothing heard since (a move, or the start): the next word, the phrase's first.
-        if current.confidentAt == nil, let last = script.lastSpokenWord {
-            return Double(min(current.confident + 1, last))
-        }
-        return presenterNow(atGate: true, atPause: true)
+        guard let last = script.lastSpokenWord else { return 0 }
+        return Double(min(max(current.confident + 1, 0), last))
     }
 }

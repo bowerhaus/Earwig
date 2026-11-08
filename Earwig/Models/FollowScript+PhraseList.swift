@@ -23,26 +23,9 @@ extension FollowScript {
             case .spoken:
                 var timed = timing(index) ?? even
                 if timed.wordStarts.count != words.count { timed.wordStarts = even.wordStarts }
-                return FollowPhrase(kind: .spoken, words: words, wordStarts: timed.wordStarts, duration: timed.duration,
-                                    pausesAfter: Self.pauses(in: stepPhrase.phrase))
+                return FollowPhrase(kind: .spoken, words: words, wordStarts: timed.wordStarts, duration: timed.duration)
             }
         }
         self.init(phrases: phrases)
-    }
-
-    /// The words of a phrase, by their place among its script words, that punctuation lets the
-    /// presenter pause after: one ending a clause or a sentence, or one before a dash.
-    static func pauses(in phrase: Phrase) -> Set<Int> {
-        var pauses: Set<Int> = []
-        var word = -1
-        for token in phrase.tokens {
-            if token.word != nil {
-                word += 1
-                if PhraseSplitter.endsSentence(token.text) || PhraseSplitter.endsClause(token.text) { pauses.insert(word) }
-            } else if PhraseSplitter.isDash(token.text), word >= 0 {
-                pauses.insert(word)
-            }
-        }
-        return pauses
     }
 }

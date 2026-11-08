@@ -176,7 +176,6 @@ struct PromptViewModelTests {
         #expect(!tokens.contains { $0.isMark(nil) || $0.isPassed(mark: nil) })
         #expect(!tokens.contains { $0.inVoicePhrase })
         #expect(model.place == 2.6)
-        #expect(model.confident == 2)
     }
 
     @Test func aCueIsNeverMarkedPassedOrLit() {

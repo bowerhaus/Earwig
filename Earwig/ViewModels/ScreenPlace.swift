@@ -1,37 +1,33 @@
 import Foundation
 
-/// Where the screen shows the presenter, in script words, smoothed from the engine's estimate
-/// (plan 008, decision 3). On the phone the estimate moves in bursts a second apart (plan 006),
-/// so it is a sawtooth: four words at once, then still. The shown place follows it as a
-/// second-order tracker, with a speed as well as a place, so that while the presenter reads
-/// steadily it moves at their pace with no lag and no jumps. Plain values in, so it is tested
-/// without views and in the simulated takes.
+/// Where the screen shows the presenter, in script words, smoothed from the engine's place: the
+/// word after the last one heard (plan 008, decision 3). That place moves in steps, a burst of
+/// words about once a second on the phone (plan 006), so the shown place follows it as a
+/// second-order tracker, with a speed as well as a place, and turns the bursts into an even
+/// movement at the presenter's pace. Plain values in, so it is tested without views and in the
+/// simulated takes. Two rules:
 ///
-/// - It never runs on more than half a word past the estimate: when the presenter pauses it stops.
-///   When the estimate falls back under it, it waits there; it is not pulled back.
-/// - It goes back only when the presenter's confident word does, by more than `backJump` words:
-///   a step back, Back, Restart, or found behind after Lost. The estimate itself falls back a few
-///   words whenever a final settles a block (it stops counting the recogniser's delay), and
-///   text that slipped back at every phrase end would be hard to read.
-/// - A move like that, or the estimate jumping more than `forwardJump` words ahead (Forward,
-///   found ahead), glides there quickly.
-/// - When the presenter has paused (the recogniser has settled and heard nothing since) and the
-///   place ran on past the word after the one they stopped at, it slides back to that word: a
-///   pause the punctuation did not mark (Andy's choice, device check 1).
+/// - **A move glides.** Back, Forward or Restart (`move()`), the place falling more than
+///   `backJump` words behind (the presenter stepped back), or jumping more than `forwardJump`
+///   ahead: the place glides there quickly, and the mark shows the word it is going to at once.
+/// - **Otherwise it follows forward**, never back, and never as far as the word after the
+///   engine's place: it may run on into that word (up to `runOn`), so the scroll keeps moving
+///   between bursts, but the mark, which is on whole words, never passes the next word to say.
+///   A fall of a word or two, as the recogniser rewrites a block, is waited out.
 struct ScreenPlace: Equatable, Sendable {
-    /// How quickly the tracker follows, in radians a second, critically damped.
-    static let response = 2.5
-    /// Time constant of the glide to a jump.
+    /// How quickly the tracker follows, in radians a second, critically damped. 1.5 moved on 96%
+    /// of frames through bursts of four words a second, against 68% at 2.5, for 0.2 words more
+    /// trail in the simulated takes.
+    static let response = 1.5
+    /// Time constant of a glide.
     static let jumpGlide: TimeInterval = 0.3
-    /// A fall back of the confident word by more words than this, or a jump forward of the
-    /// estimate by more than `forwardJump`, is a move.
-    static let backJump = 2.0
+    /// Past the run-on into the next word, a fall of more than a word and a half; the engine's
+    /// own step back is three words or more.
+    static let backJump = 2.5
     static let forwardJump = 6.0
-    /// How far past the estimate the place may run.
-    static let overrun = 0.5
     static let maxSpeed = 8.0
-    /// How far past the word after a pause the place may sit before it slides back.
-    static let settleSlack = 0.6
+    /// How far into the next word the place may run, short of a whole word.
+    static let runOn = 0.9
     /// The longest step taken at once, so a stall in frames is not a leap.
     static let maxStep: TimeInterval = 0.1
 
@@ -39,95 +35,54 @@ struct ScreenPlace: Equatable, Sendable {
     /// Words a second.
     private(set) var speed = 0.0
     private var lastTime: TimeInterval?
-    private var lastConfident: Int?
-    /// `either` is a move the presenter asked for, which may go either way.
-    private enum Glide { case none, forward, back, either, settle }
-    private var glide = Glide.none
     /// Where a glide is going, while one is under way.
     private var glideTarget: Double?
-
-    /// The place the mark shows: while gliding, the glide's target, so the mark jumps straight
-    /// to the word it is going to and does not hop through each word on the way (Andy, device
-    /// check 1); otherwise the place.
-    var markPlace: Double { glide == .none ? place : glideTarget ?? place }
+    private var gliding = false
 
     init(place: Double = -1) {
         self.place = place
     }
 
-    /// Whether a step toward this estimate would leave the place where it is: no glide, at rest,
-    /// and not behind the estimate, nor the confident word fallen back far enough to glide.
-    func isAtRest(toward estimate: Double, confident: Int, paused: Bool = false) -> Bool {
-        guard glide == .none, speed == 0, estimate <= place + 0.01 else { return false }
-        if paused, place > Double(confident + 1) + Self.settleSlack { return false }
-        return lastConfident.map { confident >= $0 - Int(Self.backJump) } ?? false
-    }
+    /// The place the mark shows: while gliding, the target, so the mark jumps straight to the
+    /// word it is going to and does not hop through each word on the way (Andy, device check 1);
+    /// otherwise the place.
+    var markPlace: Double { gliding ? glideTarget ?? place : place }
 
-    /// Back, Forward or Restart was pressed: glide to wherever the estimate goes, however near,
-    /// either way (review C2: a Back of two words or fewer was not followed).
+    /// Back, Forward or Restart was pressed: glide to the engine's place, however near.
     mutating func move() {
-        glide = .either
+        gliding = true
         glideTarget = nil
     }
 
-    /// Moves the place on to `time`, toward the engine's estimate then; `confident` is the
-    /// engine's last confident word.
-    mutating func step(toward estimate: Double, confident: Int, paused: Bool = false, at time: TimeInterval) {
-        defer {
-            lastTime = time
-            lastConfident = confident
-        }
+    /// Whether a step toward this place would leave the shown place where it is.
+    func isAtRest(toward target: Double) -> Bool {
+        !gliding && speed == 0 && target <= place + 0.01 && target >= place - Self.backJump
+    }
+
+    /// Moves the shown place on to `time`, toward the engine's place then.
+    mutating func step(toward target: Double, at time: TimeInterval) {
+        defer { lastTime = time }
         guard let lastTime else {
-            place = estimate
+            place = target
             return
         }
-        if let lastConfident, confident < lastConfident - Int(Self.backJump) { glide = .back }
         let interval = min(max(time - lastTime, 0), Self.maxStep)
         guard interval > 0 else { return }
-        if settle(confident: confident, paused: paused, interval: interval) { return }
-        if glideIfMoving(toward: estimate, interval: interval) { return }
-        track(estimate, interval: interval)
-    }
-
-    /// Paused past the word after the one the presenter stopped at: slide back to it. Heard
-    /// again, the slide is given up and the place follows as ever. Whether it moved.
-    private mutating func settle(confident: Int, paused: Bool, interval: TimeInterval) -> Bool {
-        let settled = Double(confident + 1)
-        if paused, glide == .none, place > settled + Self.settleSlack { glide = .settle }
-        guard glide == .settle else { return false }
-        guard paused else {
-            glide = .none
-            return false
+        let error = target - place
+        if error < -Self.backJump || error > Self.forwardJump { gliding = true }
+        if gliding {
+            glideTarget = target
+            place += error * (1 - exp(-interval / Self.jumpGlide))
+            speed = 0
+            if abs(target - place) <= 0.05 { gliding = false }
+            return
         }
-        glideTarget = settled
-        place += (settled - place) * (1 - exp(-interval / Self.jumpGlide))
-        speed = 0
-        if abs(settled - place) <= 0.05 { glide = .none }
-        return true
-    }
-
-    /// A move: glide there, from rest. A glide forward never turns back. Whether it moved.
-    private mutating func glideIfMoving(toward estimate: Double, interval: TimeInterval) -> Bool {
-        let error = estimate - place
-        if glide == .none, error > Self.forwardJump { glide = .forward }
-        guard glide != .none else { return false }
-        glideTarget = estimate
-        var change = error * (1 - exp(-interval / Self.jumpGlide))
-        if glide == .forward { change = max(change, 0) }
-        place += change
-        speed = 0
-        if abs(estimate - place) <= 0.25 || (glide == .forward && error <= 0) { glide = .none }
-        return true
-    }
-
-    /// Reading on: the second-order tracker, never back, and never more than `overrun` past.
-    private mutating func track(_ estimate: Double, interval: TimeInterval) {
-        let error = estimate - place
         let omega = Self.response
         speed = min(max(speed + omega * omega * error * interval, 0), Self.maxSpeed)
         let next = place + max((speed + 2 * omega * error) * interval, 0)
-        if next > estimate + Self.overrun {
-            place = max(place, estimate + Self.overrun)
+        let limit = target + Self.runOn
+        if next >= limit {
+            place = max(place, limit)
             speed = 0
         } else {
             place = next

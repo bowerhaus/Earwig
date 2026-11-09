@@ -58,6 +58,14 @@ struct PromptViewModelTests {
         #expect(!model(.running, .speaking, recording: .video, recorded: stopped).showsCameraBehindText)
     }
 
+    @Test func theTextFadesOverTheCameraTheMoreWithTheVoice() {
+        let ready = PromptViewModel.Recording(since: 100, cameraReady: true)
+        #expect(model(.running, .speaking, recording: .video, recorded: ready).textOpacity == 0.35)
+        #expect(model(.running, .speaking, mode: .screen, recording: .video, recorded: ready).textOpacity == 0.6)
+        #expect(model(.running, .speaking, recording: .video, cameraBehind: false, recorded: ready).textOpacity == 1)
+        #expect(model(.running, .speaking, recording: .sound, recorded: ready).textOpacity == 1)
+    }
+
     @Test func onePreviewCarriesOnFromFramingToTheTake() {
         let ready = PromptViewModel.Recording(cameraReady: true)
         #expect(model(.gettingReady, .idle, recording: .video, recorded: ready).showsCamera)

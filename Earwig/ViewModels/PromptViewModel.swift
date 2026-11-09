@@ -86,6 +86,13 @@ struct PromptViewModel: Equatable {
             && recording.cameraReady && !recording.videoStopped
     }
 
+    /// The scrolling text's opacity: full, or faded down over the camera, the more so with the
+    /// voice, which prompts in the ear (Andy, check 4b).
+    var textOpacity: Double {
+        guard showsCameraBehindText else { return 1 }
+        return setup.mode == .voice ? 0.35 : 0.6
+    }
+
     /// The camera's preview on the screen at all: while framing, and behind the text after.
     var showsCamera: Bool { (isFraming && recording.cameraReady) || showsCameraBehindText }
 

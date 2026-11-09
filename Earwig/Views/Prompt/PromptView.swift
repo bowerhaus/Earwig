@@ -19,7 +19,11 @@ struct PromptView: View {
 
     var body: some View {
         let model = PromptViewModel(host: host)
-        Group {
+        // A ZStack, not a Group: a Group's modifiers go to each of its children, so a camera
+        // behind a Group was built again at Start, a second preview layer that held the main
+        // thread for seven seconds (check 4b). Here it is one view for the whole take.
+        ZStack {
+            camera(model)
             if model.isFraming {
                 FramingView(model: model, camera: host.camera, onStart: { host.go() }, onCancel: onDone)
             } else if !model.isOver {
@@ -34,7 +38,6 @@ struct PromptView: View {
                 .padding(.vertical, 12)
             }
         }
-        .background { camera(model) }
         .background(EarwigTheme.background.ignoresSafeArea())
         .task(id: ObjectIdentifier(host)) { await host.start() }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
@@ -163,7 +166,7 @@ struct PromptView: View {
 
     /// The camera's preview, one for the whole take: behind framing, then behind the text under
     /// a scrim if Settings says so. Never a second preview layer on the running session, which
-    /// held the screen and the tones for seven seconds at 4K (check 4b, 2026-11-09).
+    /// held the main thread for seven seconds (check 4b, 2026-11-09).
     @ViewBuilder
     private func camera(_ model: PromptViewModel) -> some View {
         if model.showsCamera, let camera = host.camera, camera.device != nil {
@@ -245,6 +248,7 @@ struct PromptView: View {
         ScreenTextView(tokens: model.screenTokens, place: model.place,
                        textSize: $textSize,
                        resume: moves)
+            .opacity(model.textOpacity)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onTapGesture {
                 if model.tapStarts { host.control(.tap) }

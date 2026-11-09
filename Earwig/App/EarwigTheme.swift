@@ -27,9 +27,10 @@ enum EarwigTheme {
     static let caution = Color(hex: 0xFFB454)
     /// The dot while a take is recorded (plan 010, decision 5).
     static let recording = Color(hex: 0xFF3B30)
-    /// Over the camera behind the scrolling text: the cards' mid-blue, light, so the white text
-    /// reads on a moving picture (plan 010, Andy after check 3; 60% was too faint a picture).
-    static let cameraScrim = Color(hex: 0x2B82CC).opacity(0.3)
+    /// Over the camera behind the scrolling text: the cards' mid-blue, barely there, so the
+    /// picture is almost at its own brightness and the text is faded instead (plan 010, Andy
+    /// after check 4b: 60% made the picture too faint, and he wants it near normal).
+    static let cameraScrim = Color(hex: 0x2B82CC).opacity(0.1)
     /// Words already heard in the scrolling text: white, faint, so the presenter's place is
     /// where the white starts (plan 008, Andy's eyeline choice).
     static let heardText = Color.white.opacity(0.45)

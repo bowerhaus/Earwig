@@ -320,3 +320,105 @@ No other issues. The volume of tests is proportionate: about 460 lines for rough
 - T6 — not done: the phone's tap gives non-interleaved float; the branch is a guard.
 - T7 — fixed: `anUnknownStoredRecordingReadsAsTheDefault` in place of the round trip.
 - T8 — fixed: renamed `theDotShowsWhileRecordingAndTurnsToSoundWhenTheVideoStops`.
+
+## Review pass — 2026-11-09
+
+Findings from `/review-branch` on branch `take-recording`, the range `d16639e..HEAD` only (the commits since the first pass's fixes: the camera behind the text, the one preview, the slider on the preview, Save Video, the console lines, the footers), **unresolved as written**. Each is a claim from a review on that date, not an established fact, and each verdict under *Assessment* is a recommendation, not a decision. Work through them and annotate each with what was done — fixed, or rejected and why. A finding that turns out to be wrong should say so here rather than be deleted.
+
+### Code
+
+Review of `d16639e..HEAD` on `take-recording`, 19 commits. No critical bugs. The build should be fine (I did not build or run tests, as asked).
+
+What I checked and found sound:
+- **One preview for the whole take.** In `PromptView.swift` (lines 27-28 and 172-179) `camera(model)` is the first child of the `ZStack`, a single `if` on `showsCamera`. That is `(isFraming && cameraReady) || showsCameraBehindText` (`PromptViewModel.swift` lines 82-90).
+  - `TakeHost.begin` (`TakeHost.swift` line 313) sets `phase = .running` synchronously, and `cameraReady` stays true. So nothing renders between framing and running where the condition could be false.
+  - The `CameraPreview` UIView therefore stays the same from framing into the running take when Camera Behind the Text is on.
+  - `.task(id:)` and `.sheet` now attach once to the `ZStack`, which is an improvement on the `Group`.
+- **`AudioEngineHost` completion callback** (lines 155-170).
+  - The captures are all Sendable values: `scheduled`, `length`, `delay` (Doubles), `channel` and `token`.
+  - `HostClock.now` is nonisolated and is already called from the mic tap, under `SWIFT_VERSION` 5.
+  - The token guard runs before the log, so a stopped or replaced buffer's early callback logs nothing.
+- **Tick-loop diagnostic** (`TakeHost.swift` lines 506-512): correct. The ticker task runs on the main actor, so a late wake does measure a held main thread.
+- **Other requirements are met:**
+  - the camera stays behind the text while a video take runs;
+  - the camera goes when the video stops or the take finishes, and is never shown for Sound;
+  - the text is faded by the shared `@AppStorage` slider, 10-100%, default 35%;
+  - the slider is on the framing preview over the opening words;
+  - the scrim is gone from `EarwigTheme`;
+  - `NSPhotoLibraryAddUsageDescription` is in both `project.yml` and `Info.plist`, for Save Video;
+  - the toggle is on by default and fixed for the take through `TakeSetup` and the `Summary`;
+  - the footers are one line or none.
+- **CLAUDE.md compliance:** colours come only from `EarwigTheme`, the UI text uses UK spelling, and `Engine/` is untouched.
+
+Findings, most severe first:
+
+**C1. SUGGESTION. Verification 4b is only partly recorded.** The plan's Verification 4b asks for two things that the 4b Results do not report:
+- the Off leg ("Off: the take looks as before");
+- Andy's verdict on "whether seeing himself draws his eye off the line".
+
+The 4b Results cover only Camera Behind the Text on (takes 60-64, "Everything looked good"). This matters because, with the toggle off, the framing preview is now taken down at Start, while the slate or tones play. The Results' own last 4b bullet says taking the preview down holds the main thread about 0.7 s (1080p) to 1.1 s (4K) at a take's end. The same behaviour existed in check 3 before this range, so the risk is low, but the Off path was not re-checked after the `ZStack` change.
+- `plans/010-take-recording.md`: Verification 4b (line ~146); Results 4b (lines ~166-171)
+- `Earwig/Views/Prompt/PromptView.swift` lines 172-179
+
+**C2. SUGGESTION. Parts of the plan now contradict the amended behaviour.**
+- The Scope "Out" list still excludes "a preview during the take, or the text over the camera".
+- It also still says Save Video works "with no Photos permission of Earwig's own", but this range adds `NSPhotoLibraryAddUsageDescription`.
+- Decision 8 says "Settings says the measured figures", but d5ed82b removed the sizes from the Recording footer, and Settings now states none.
+- `plans/010-take-recording.md` lines ~27-31 (Out) and ~67 (decision 8)
+
+**C3. SUGGESTION. The new Following footer says something that isn't true.** "Hybrid speeds the voice up or down to keep the lead; Phrase-gated only waits." reads as if Hybrid does not wait. The earlier text, and the PRD, say Hybrid also waits at every phrase end. A wording such as "Both wait at phrase ends; Hybrid also speeds the voice up or down to keep the lead." would still fit on one line.
+- `Earwig/Views/Settings/SettingsView.swift` line 42
+
+**C4. SUGGESTION. The new clamp is never applied in the app.**
+- `TakeSettings.textOverCamera` and `clampTextOverCamera` are used only by the tests.
+- Both views bind the raw `@AppStorage(TakeSettings.textOverCameraKey)` value, so a stored value outside the range is never clamped. Only the Slider's bounds keep it in range.
+- This copies the existing `textSize` pattern, so it is consistent, but the clamp protects nothing in the running app.
+- `Earwig/Models/AppSettings.swift` lines 191-202
+- `Earwig/Views/Prompt/FramingView.swift` line 16
+- `Earwig/Views/Prompt/PromptView.swift` line 17
+
+**C5. SUGGESTION. The framing screen fades the text in more cases than the take does.**
+- `FramingView` fades its text whenever `setup.cameraBehindText` is on, including while the `video.slash` placeholder shows (camera not ready, or no device in the simulator).
+- The running take fades only when `showsCameraBehindText` is true.
+- So the framing text can look dimmer than the take's when there is no picture behind it.
+- `Earwig/Views/Prompt/FramingView.swift` lines 43-47
+- compare `Earwig/Views/Prompt/PromptView.swift` line 250
+
+### Tests
+
+Test review of d16639e..HEAD. These commits add three test changes: two new PromptViewModel tests (`showsCameraBehindText`, `showsCamera`), one AppSettings clamp test, and two new lines in `theDefaults`. The volume is about right for the change, and the logging-only changes in AudioEngineHost and TakeHost need no tests. There is one real gap and a few small rationalisations.
+
+**T1. WARNING: no test shows that framing ignores the "Camera Behind the Text" setting.**
+- In `PromptViewModel.swift:90`, framing shows the camera whatever the setting says: `showsCamera = (isFraming && recording.cameraReady) || showsCameraBehindText`. That is the point of the one-preview change, because with the setting off the framing preview must still appear.
+- The only test of the framing case, `EarwigTests/PromptViewModelTests.swift:63`, uses the helper's default `cameraBehind: true`. So a regression that added `setup.cameraBehindText` to `showsCamera` would blank the framing screen for anyone who turned the setting off, and no test would fail.
+- Fix: pass `cameraBehind: false` on line 63, or add one expectation with it.
+
+**T2. SUGGESTION: `onePreviewCarriesOnFromFramingToTheTake` overlaps the test above it.**
+- Lines 64–65 (running, ready, setting on or off) repeat lines 51–52 of `theCameraShowsBehindTheTextWhileAVideoTakeRuns`, because `showsCamera` just ORs in `showsCameraBehindText`.
+- The only new things this test covers are the framing branch (line 63, see T1) and the camera-not-ready case (line 66).
+- Fix: cut it to those two framing expectations (with T1's `cameraBehind: false`). Or fold them into the first test as a short `showsCamera` block. That file: `EarwigTests/PromptViewModelTests.swift:61-67`.
+
+**T3. SUGGESTION: the clamp test covers a property the app never uses.**
+- `EarwigTests/AppSettingsTests.swift:30-35` tests that `TakeSettings.textOverCamera` clamps its value. But nothing in the app reads or writes that property.
+- `FramingView` and `PromptView` use `@AppStorage(TakeSettings.textOverCameraKey)` directly, and the Slider's range is what keeps the value in bounds (`Earwig/Views/Prompt/FramingView.swift:16,82`, `Earwig/Views/Prompt/PromptView.swift:17,250`).
+- So the test guards code that has no effect on the app. Either drop the accessor with its clamp and this test, keeping only the default check in `theDefaults`, or have the views use it.
+- If it stays, the test checks clamping at both ends but never that an in-range value comes back unchanged (the `textSize` test does check this).
+
+**T4. SUGGESTION: no test checks that the setting reaches the take.**
+- `ScriptDetailViewModel.swift:145` copies `AppSettings.take.cameraBehindText` into the take's setup.
+- `TakeSetup.cameraBehindText` and `Summary.cameraBehindText` default to `false`, but the setting defaults to `true`. If that copy line were lost, the feature would quietly switch off.
+- One `#expect(setup.cameraBehindText == AppSettings.take.cameraBehindText)` would cover it. It fits in the existing `onTheScreenAloneATakeStartsWithNothingRendered` (`EarwigTests/ScriptDetailViewModelTests.swift:76-81`), beside the `recording` check; no new test is needed.
+
+The 7-expectation truth table in `theCameraShowsBehindTheTextWhileAVideoTakeRuns` (lines 49–59) is clear and well focused; it needs no change.
+
+### Assessment
+
+- C1 — FIX (part): say in Results 4b that the Off leg and the eye-line verdict were not reported. Nothing to change in code: with the toggle off, the preview going at Start is what check 3 ran, and the tones then ended 1.8 s after Start (takes 54, 55). A quick Off take is Andy's to give or not.
+- C2 — FIX: the Scope's Out list (the preview during the take, and the Photos permission) and decision 8's "Settings says the measured figures" now contradict what was built; correct them.
+- C3 — FIX: the footer reads as if Hybrid never waits; use "Both wait at phrase ends; Hybrid also speeds the voice up or down to keep the lead." (`SettingsView.swift:42`).
+- C4 — SKIP: real, but it is the same unused accessor and clamp as `textSize` (`AppSettings.swift`, used only by `AppSettingsTests`); the Slider's range bounds the value. Consistent, harmless.
+- C5 — SKIP: on the phone the placeholder shows only for the 0.3 s before the camera runs (`camera running` 0.3 s after `camera configured`); fading only with a picture would make the text flash bright, then faint.
+- T1 — FIX: `onePreviewCarriesOnFromFramingToTheTake` checks framing only with the setting on; add `cameraBehind: false` to the framing expectation.
+- T2 — FIX: with T1, cut that test to the framing expectations (setting off, and camera not ready); its running cases repeat the test above.
+- T3 — SKIP: as C4. The clamp test stays with its accessor, like `textSize`'s.
+- T4 — FIX: add `#expect(setup.cameraBehindText == AppSettings.take.cameraBehindText)` in `onTheScreenAloneATakeStartsWithNothingRendered` (`ScriptDetailViewModelTests.swift`), so a lost copy line fails a test.

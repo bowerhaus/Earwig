@@ -2,7 +2,7 @@
 
 **GitHub Issue:** [#16](https://github.com/bowerhaus/Earwig/issues/16) (PR must include "Closes #16"). Its title and acceptance criteria were updated to this plan on 2026-11-08: video added, the earpiece's audio not recorded.
 **Branch:** `take-recording` (from `main` at `efd0e86`, after plan 009 merged)
-**Status:** Planned (2026-11-08).
+**Status:** Complete (2026-11-09). PASS on the iPhone 14 Pro; results below. PRD v0.12.
 **Manual test:** device, on Andy's iPhone 14 Pro on the mount with the SK18 (Verification). Step 1 is a device check that decides whether video stays in the plan.
 **Goal:** A take can be recorded, as sound alone or as video from the front camera with the sound from the iPhone's mic, and played back on the Finished screen. It is for checking a performance: how the reading sounds and looks when following the voice or the text. Recording never changes what the recogniser hears, what the earpiece plays, or its latency.
 
@@ -150,7 +150,34 @@ Two other ways were weighed and not chosen (2026-11-08):
 
 ## Results
 
-To be filled in.
+**PASS**, on Andy's iPhone 14 Pro with the SK18, 2026-11-08 and 2026-11-09. Verdicts are Andy's; numbers are from the console. 356 tests in 40 suites pass, no warnings, SwiftLint clean.
+
+**1. Filming and following at once.**
+- 1a, take 49, 4K, flag build: Andy: the voice stayed in the earpiece throughout and "everything felt as usual". SK18 A2DP and the built-in mic throughout, no drops, thermal nominal; lead within 2 words 24%, waits 3 (longest 1.9 s), delay 0.89 s.
+- 1b, take 50, the same not filmed: delay 0.95 s, waits 6 (longest 4.2 s). Later pairs (checks 2 and 3) match closely: take 53, sound, waits 3, longest 1.9 s; take 54, video, waits 3, longest 1.9 s. Recording does not change the follow.
+- 1c: Andy: "The sound is in sync, looks great with the picture. The picture is upright. However, the last sentence is cut off." The video was about 1.5 s short of the sound, since the camera delivers frames 1 to 1.6 s late. Fixed: the recording runs on a second past the take's end and waits up to three seconds for late frames.
+- 1d, deferred by Andy to the end: six 4K takes in a row, about four minutes, with the camera behind the text: thermal nominal throughout, battery 90% throughout, no buffers or frames dropped. Andy: "The phone got slightly warm, but not really too bad. I didn't see any stuttering or slowing down, and the last recording did seem to be good." Ten minutes were not run; Andy did about five.
+
+**2. Sound only.** Takes 52 and 53: Andy: "The recording is clear to hear back"; the file in Files under the script's name.
+
+**3. Video on the mount, 1080p, With Voice and Screen Only.** Takes 54 and 55: Andy: the preview "worked, and it was easy to frame the shot"; "The picture and sound are good quality and in sync." He did not notice the dot and time; in check 4: "they're small, but they're not really that essential." Andy then asked for the preview kept on during the take, with the words over it, and for it in this plan (decision 4, amended).
+
+**4. 4K30 and Share.** About 280 MB a minute at 4K (step 2 take 15: 128.5 MB for 27.2 s) and 80 MB at 1080p (take 55: 38.6 MB for 29.3 s), against the plan's 170 and 60. AirDrop to the Mac worked. Save Video was missing from Share, for want of `NSPhotoLibraryAddUsageDescription`; added, and then "I can save a video to photos."
+
+**4b. The camera behind the text** (added after check 3), four tries:
+- The first three: the tones ended 9.2 s after Start against 1.8 s, and Andy "thought it had hung". The console line added for it read `player: tone of 1.80 s rendered in 1.79 s, its end handled 7.40 s later`: the main thread was held. Cause: the Prompt screen's content was a `Group`, whose modifiers go to each child, so the camera behind it was built again at Start, and a preview layer added to the running capture session held the main thread for about seven seconds. Fixed with one preview for the whole take, in a `ZStack`.
+- The picture: a blue scrim at 60% made the picture "too faint"; at 30% better; Andy then asked why there was a layer at all, and for the picture near normal with the text faded instead, by a slider he can set on the preview. Built so.
+- The fourth try, takes 60 to 64: "the screen appeared at once"; the tones ended 1.8 s after Start in every take, no frames dropped. "The text in the take matches what we set, and the picture looks right without the blue layer … Everything looked good."
+- Each video take's end holds the main thread about 0.7 s at 1080p and 1.1 s at 4K as the preview goes, a short delay before Finished: a follow-up.
+
+**5. Locked mid-take.** Take 65: Andy: "The voice kept going in the [ear]piece while the phone was locked"; on waking, the voice was running and the camera gone from behind the text; Finished said "Video stopped at 0:07: the phone was locked or Earwig left the screen."; "The video is cut short at the point the phone locked. To be honest, I don't see this as much of a problem." The listener followed to the last word, and the sound ran the whole 28.4 s.
+
+**6. Keeping.** With Keep Recordings off, two takes left one file (check 2); on, every take was kept (checks 3 and 4). Andy: "The delete all recordings works fine, and it does then show 0 kilobytes at the end."
+
+**Beside the checks.**
+- Settings' footers cut to one line where a choice does something its name does not say, or none, at Andy's asking ("They tend to let you work things out yourself"), all of them in this plan.
+- Andy saw the Script screen open twice ("the page slide twice"; Back went to a second Script screen). Not this plan: most likely the Debug `-EarwigDemo` flag, whose `.task` pastes the sample and sets the navigation path at launch, so a tap pushes a second copy. A follow-up.
+- Andy: the route icons never look green on the take screen (the theme's pale mint on sky blue). A follow-up.
 
 ## Review pass — 2026-11-08
 

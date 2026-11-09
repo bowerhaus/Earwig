@@ -1,6 +1,6 @@
 # Earwig - Product Requirements Document (PRD)
 
-**Status:** Draft v0.11, 2026-11-08. Changes by version are in the Document History at the end.
+**Status:** Draft v0.12, 2026-11-09. Changes by version are in the Document History at the end.
 **Name:** Earwig (decided 2026-11-05: UK slang for listening in). Bundle identifier `com.bowerhaus.Earwig`.
 
 ## Executive Summary
@@ -58,9 +58,10 @@ take sounds like you talking, not reading.
 
 - Not a script editor. Scripts are written elsewhere (Cutaway, a text file). Earwig
   parses, shows and plays them; a rewrite is a new paste.
-- Not a camera app in v1. The camera is the Osmo. Filming on the iPhone with Earwig
-  prompting is a later phase (section 13), because the stock Camera app takes the audio
-  session when it records and silences any other app.
+- Not a camera app in v1. The camera is the Osmo. Since plan 010 Earwig can film a take
+  itself with the front camera, for checking a performance (4.7); the stock Camera app is
+  still no use with it, since it takes the audio session and silences Earwig. Filming meant
+  for use, with framing aids and the files to Photos, is a later phase (section 13).
 - Not a transcription or editing tool. What Earwig hears is used to follow the
   presenter, not kept, in v1. A take record for Cutaway is on the roadmap (section 13).
 - Not a cloud product. No accounts, no server, no API keys in the app. Cloud voices, if
@@ -225,7 +226,27 @@ sound track say "take two" and mean it, and lets the next shoot carry on from "t
 three". A take is recorded when its slate (or, with tones only, its tones) plays, as
 stopped, and its length and outcome are set when it ends, so a take the app never finished
 still holds its number; getting ready that fails records nothing (plan 005). Nothing the
-presenter said is kept in v1; recording a take to play back is #16.
+presenter said is kept unless the take is recorded.
+
+**Recording a take (plan 010, #16).** A take can be recorded, Off (default), Sound or
+Video, chosen on the start card's Record row or in Settings and kept by Next Take. Sound is
+the built-in mic, the same buffers the listener hears; Video adds the front camera, 1080p30
+by default or 4K30, with no sound of its own, so the earpiece's audio is never recorded and
+the audio session, the route and the engine are untouched. A video take opens on the
+camera's preview to frame the shot, and Start begins it; the preview can stay behind the
+scrolling text while the take runs (Camera Behind the Text, on by default), the picture at
+its own brightness and the text faded as a slider on the preview says (35% by default).
+While recording, a red dot and the time show in the top row. Locking the phone or leaving
+the screen stops the video, since iOS allows no camera in the background, and the sound
+and the take carry on; Finished says when ("Video stopped at 0:07: the phone was locked or
+Earwig left the screen."). Finished saves the file ("Saving the recording…", Next Take and
+Done held), then offers Play Video and Play Sound, or Play Back for sound, and Share
+(AirDrop, Save Video to Photos). Files are in Earwig's folder in the Files app,
+`Recordings/<script title>/Step 3 Take 2.mov` (or `.m4a`), never written over; with Keep
+Recordings off (default) each recording replaces the last, and Settings shows their size
+and deletes them all. Below 1 GB free a video take records sound only and says so. About
+80 MB a minute at 1080p and 280 MB at 4K. Recording does not change the take: on the
+phone, the waits and the delay were the same filmed as not.
 
 The take record for Cutaway (the take's audio, the words heard with their times, and the
 slate) is a roadmap item (section 13): cheap once the microphone is open, but scope.
@@ -241,12 +262,18 @@ slate) is a roadmap item (section 13): cheap once the microphone is open, but sc
 - Start ritual: slate with a reply, slate alone, or tones only (default).
 - Screen: the mode (With Voice or Screen Only), whether the voice's phrase is lit, font
   size; fixed-pace words per minute when that is built.
+- Recording: Off, Sound or Video; video quality (1080p or 4K); Camera Behind the Text;
+  Keep Recordings; the recordings' size and Delete All Recordings (plan 010). The text's
+  brightness over the camera is set on the preview, not here.
 - Diagnostics: the Listening check (4.3) and the route check.
 
 Plan 005 built the first Settings screen, from a gear on the Scripts screen, with what it
 judged: Following (lead, pacing, voice speed), Start, and Diagnostics (the Listening check).
 The voice and the directions setting stay in the Script screen's menu until stage 7. Plan
-008 added the Screen group: Mode, Light the Voice's Phrase, and Text size.
+008 added the Screen group: Mode, Light the Voice's Phrase, and Text size. Plan 010 added
+the Recording group, and cut every footer to one line where a choice does something its
+name does not say, or none (the author: other iPhone apps "tend to let you work things out
+yourself").
 
 ---
 
@@ -476,6 +503,13 @@ Views (SwiftUI) → ViewModels (@Observable) → Models (SwiftData)
   scheduled on the audio clock, as PhysiMate's plan 001 found necessary.
 - **Slate**: the slate's text and its reply words (4.5).
 - **ScreenText**: the take's step as words for the scrolling text (plan 008).
+- **CameraCapture**, **TakeRecording** and **RecordingStore** (plan 010): the front camera
+  as an `AVCaptureSession` that never configures the audio session and has no audio input;
+  one `AVAssetWriter` writing the mic's buffers (a second consumer of the listener's tap)
+  and the camera's frames on the host clock, running on a second past the take's end for
+  frames that come late; and where the files go, what is kept and what is deleted. The
+  preview is one layer for the whole take: a second layer added to the running session held
+  the main thread for seven seconds.
 - **TakeHost**: one take, from getting ready (microphone, session, audio engine, listening,
   the slate's render, in that order) to its end: ticks the engine twenty times a second with
   the player's progress, passes it what is heard and what the player reports, passes its
@@ -545,17 +579,24 @@ The take screen, usable at arm's length and glanceable from a mount (plan 008):
   while pinching and laid out again when the pinch ends.
 - Bottom: Back, Hold, Forward, Restart step, Stop as one row of icons, down the side in
   landscape. The screen stays awake while the take runs, the text redraws only while it
-  moves, and a take runs on with the phone locked.
+  moves, and a take runs on with the phone locked (a video take's video stops; 4.7).
+- A recorded take (4.7): a video take opens on the camera's preview with the step's opening
+  words, a slider for their brightness, Cancel and Start; the camera can stay behind the
+  text while it runs. The top row shows a red dot and the time recorded, the sound icon
+  once the video has stopped.
 - A take ends at the end of the step, on Stop, on an interruption, or when listening gives
   up ("Stopped: listening stopped …", with why). Finished then shows the outcome large and
-  offers Next Take (the same step again, in the same mode) and Done, and the Script screen
+  offers Next Take (the same step again, in the same mode) and Done, with Play Video, Play
+  Sound (or Play Back) and Share above them for a recorded take, and the Script screen
   shows the next take number. Getting ready that fails (no microphone, listening or slate)
   says why, with Done.
 
 ### 8.4 Settings
 
-As 4.8, grouped: Voice, Following, Start, Screen, Diagnostics. From plan 005, Following,
-Start and Diagnostics, opened from a gear on the Scripts screen; from plan 008, Screen.
+As 4.8, grouped: Voice, Following, Start, Screen, Recording, Diagnostics. From plan 005,
+Following, Start and Diagnostics, opened from a gear on the Scripts screen; from plan 008,
+Screen; from plan 010, Recording. A footer only where a choice does something its name does
+not say, in one line.
 
 ### 8.5 Listening check
 
@@ -633,7 +674,7 @@ shows nothing, and Reduce Motion changes nothing, since fades are not motion.
 | Numbers, years and compounds stall the follower | Plan 001 saw a year at a phrase end hold a gate for 2.8 s at every lead, and "sea wall" heard as "seawall". The matcher folds them (5.3); in plan 003's simulated take with "seawall" and 1890 building up as digits, no gate held (longest voice gap 1.1 s, no wait felt by the presenter). |
 | An incoming call | Ends the take as stopped; the presenter starts the next take after it. An interruption on an earpiece put away does the same (plan 005). A call itself is not tested (calls are rare; waived as in PhysiMate). |
 | Earpiece audio heard by the Osmo | One listen on the first real take at the chosen volume. Expected inaudible. Not yet done: it waits for the author's next shoot (stage 6 or 7). |
-| Filming on the iPhone with Earwig running | Out of v1 (section 13). The stock Camera app stops Earwig's audio; the later mode films inside Earwig. |
+| Filming on the iPhone with Earwig running | The stock Camera app stops Earwig's audio, so Earwig films its own takes (plan 010) with a capture session that leaves the audio session alone: the earpiece stayed in A2DP with the built-in mic throughout. Heat: six 4K takes in a row with the camera behind the text stayed at the nominal thermal state, battery steady, no frames dropped ("slightly warm, but not really too bad"). Longer runs are not measured. |
 
 ---
 
@@ -673,7 +714,8 @@ Beside the stages, plan 007 (app icon, logo and splash, #21) gave the app its ma
 ### Excluded from MVP
 
 Share sheet and Files import, fixed-pace modes, the take record, imported renderings,
-filming on the iPhone, Watch or earpiece-button controls.
+filming on the iPhone for use (plan 010 records takes for checking only), Watch or
+earpiece-button controls.
 
 ---
 
@@ -693,9 +735,10 @@ filming on the iPhone, Watch or earpiece-button controls.
 
 ### Phase 3: Filming on the iPhone
 
-A camera view inside Earwig (front camera, recording to Photos) with the prompt running,
-for the shots filmed on the phone. Its own plan: capture, framing aids, the audio session
-shared between recording and listening.
+Plan 010 built the base: Earwig films a take with the front camera at 1080p or 4K, with
+the mic's sound, the prompt running and the camera behind the text, and plays it back. What
+is left for filming meant for use: framing aids, the back cameras, files to Photos
+directly, and filming with the phone locked, which iOS does not allow.
 
 ### Phase 4: Expansion
 
@@ -755,6 +798,7 @@ shared between recording and listening.
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.12 | 2026-11-09 | Plan 010 (#16): recording a take, Off, Sound or Video, as built and checked on the iPhone 14 Pro with the SK18 (4.7). The front camera at 1080p30 (default) or 4K30, the sound from the built-in mic, never the earpiece; the audio session, route and engine untouched, and the follow the same filmed as not. Framing on the preview before Start; the camera behind the text while the take runs, the text's brightness set on the preview (8.3). Locking stops the video while the sound and the take go on. Finished saves, then Play Video, Play Sound or Play Back, and Share with Save Video. Files in Earwig's folder in Files, the last kept or every one, and Delete All (4.8, 8.4). Settings' footers cut to one line or none (4.8). The new services (7.2); heat (11); Phase 3 is what is left (12, 13). Non-goals (1.4). |
 | 0.11 | 2026-11-08 | Plan 009, longer phrases: a clause with no break is cut only past twenty words, after the voice stopped mid-clause on the phone ("…that ground flour for"); stored scripts are split again (3, "Phrase"). After a final, the presenter is taken to have begun the voice's phrase only if heard within three words of it, after silence let two phrases through once Andy had stopped mid-phrase (5.4). Stopping the voice for a fluff, and the text going back to the phrase's start after one, were tried on the phone and dropped: the recogniser mishears some words every time, and each looked like a fluff (recorded in the plan). |
 | 0.10 | 2026-11-08 | Plan 008 (#25), stage 6: Screen mode as built and judged on the phone. Every take scrolls the script, With Voice or Screen Only, chosen on the start card or in Settings and fixed for the take; Ear alone dropped (Executive Summary, 4.6, 4.8, 8.3, Flow 2, Flow 3). The eyeline with the heard words dimmed, no word marker; the voice's phrase lit as a setting, off by default (4.6). Following with no voice, the screen's place as the word after the last one heard, and what was said before Back or Forward not followed (5.4a). The start card, Start Take on the step's card (8.2). The Prompt screen's one layout (8.3). ScreenText and the screen's view models (7.2, 7.3). Stage 6 done (12). |
 | 0.9 | 2026-11-08 | Plan 007 (#21): the app icon, the mark and the splash, with the launch colour and the splash's rules (10); the plan noted beside the stages (12); folders (7.3). Checked on the iPhone 14 Pro: the icon in the three appearances, the splash on a cold launch only, no visual refresh asked for. |

@@ -87,7 +87,7 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
    - At upload the `.p8` is decoded into a file in a `mktemp -d` directory made with `umask 077`, passed to xcodebuild by path, and removed by a trap on exit, success or failure. No value is echoed, logged or passed on a command line other than xcodebuild's key ID and issuer ID, and the script never runs with `set -x`.
    - Claude runs the script only with Andy's yes for each upload, and never reads, prints or handles a value. macOS may ask once whether `security` may read the items; Andy answers it.
 
-10. **The App Store Connect record**, made by Andy on the website before the first upload (Claude cannot):
+10. **The App Store Connect record**, made by Andy on the website before the first upload (Claude cannot). Made on 2026-11-09: **Earwig** was taken, so the store name is **Earwig Ear Prompter** (the name under the icon stays Earwig); the bundle ID was registered by hand as an explicit App ID with no capabilities; the key is the team's existing one, PhysiMate's.
     - **New App**: iOS; name **Earwig** if it is free, or a placeholder such as "Earwig Prompter" (the store name is #37's to decide, and it can change before submission); primary language English (U.K.); bundle ID `com.bowerhaus.Earwig` (automatic signing has registered it; if it is not in the list, it is added under Identifiers first); SKU `earwig`.
     - **TestFlight**: an internal testing group with Andy in it. Internal builds need no Beta App Review.
     - **Export compliance** is answered by `ITSAppUsesNonExemptEncryption: false`, already in `project.yml`.

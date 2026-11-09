@@ -27,7 +27,7 @@ Two open issues are seen in the first minute of a take: #30 (a fluff in the last
 
 **In:**
 - the decisions below, confirmed by Andy;
-- Andy's agreements, banking, tax, the Small Business Program and the EU trader status;
+- Andy's agreements, banking, tax and the Small Business Program, as an individual;
 - a privacy page and a support page, on GitHub Pages;
 - the Photos purpose string reworded;
 - `MARKETING_VERSION` 1.0.0, and the store build from the release script;
@@ -40,6 +40,7 @@ Two open issues are seen in the first minute of a take: #30 (a fluff in the last
 - #30 and #33 themselves: each is its own plan (decision 3);
 - an app preview video (decision 9);
 - in-app purchases, subscriptions, a free trial;
+- the EU and mainland China storefronts (decision 2);
 - other languages, and American voices and recognition;
 - a public TestFlight link for external testers;
 - a marketing website beyond the two pages.
@@ -52,23 +53,26 @@ Each is a recommendation until Andy confirms it; his answers replace these in pl
 
 2. **Price and territories.**
    - **Paid up front**, one price, no in-app purchases. The price is Andy's: #37 and plan 011 say low. A price point such as £2.99 / $2.99 is a starting point, not a recommendation.
-   - **Every territory**, with the description saying plainly that Earwig speaks and listens in British English. An American presenter can still use it; a US English voice and recogniser would be their own issue.
-   - The **EU** needs a trader declaration under the Digital Services Act (decision 5). If Andy does not want a trader address shown, the EU territories are left out until he has one he is happy to show.
+   - **Every territory but the EU and mainland China** (Andy, 2026-11-09), with the description saying plainly that Earwig speaks and listens in British English. An American presenter can still use it; a US English voice and recogniser would be their own issue.
+   - **The EU is left out.** Selling an app there makes Andy a trader under the Digital Services Act, and a trader's address, phone number and email are shown on the EU App Store. Andy sells as an individual, with no company, so those would be his own, public and copied by scrapers. Outside the EU none of them is shown. The EU storefronts can be switched on later with the trader declaration and no new build.
+   - **Mainland China is left out**: Apple lists a new app there only with a Chinese government filing number (ICP), which a UK individual cannot readily get. If App Store Connect flags another territory for a similar rule, it is recorded in Results and left out too.
    - **Not on Apple silicon Macs.** App Store Connect offers iPhone apps on Macs by default; it is unticked under Pricing and Availability, since there is no earbud-and-walk use there and the Mac has not been tried. **iPads stay**, since they cannot be unticked for an iPhone app; step 6 checks it runs there.
 
 3. **#30 and #33 go first.** Each is a short plan of its own, merged to `main` and from there into this branch before the store build is uploaded, so the build App Review sees and people buy has neither. The README's known issues then have neither. If Andy would rather ship with them, the listing's promotional text says nothing of them and the README keeps them as known issues.
 
-4. **Category**: Photo & Video primary, Productivity secondary. **Age rating**: the questionnaire answered with nothing, which comes out 4+. **Copyright**: "2026 Andy Bower" (or a business name, if Andy sells under one).
+4. **Category**: Photo & Video primary, Productivity secondary. **Age rating**: the questionnaire answered with nothing, which comes out 4+. **Copyright**: "2026 Andy Bower".
 
-5. **Andy's accounts, on the website** (Claude cannot do these):
-   - the **Paid Apps Agreement** in App Store Connect (Business), with the bank account and the tax forms (UK, and the US form), without which a paid app cannot be submitted;
-   - the **App Store Small Business Program**, so Apple's commission is 15% in place of 30% (on the developer website, enrolment by the account holder);
-   - the **EU trader status** (Business, Digital Services Act). Someone selling an app is a trader, and a trader's address, phone number and email are shown on the EU App Store. A business address, phone and email are better than home ones;
+5. **Andy sells as an individual**, with no company (Andy, 2026-11-09). His developer account is an individual one, so the App Store shows his legal name, Andy Bower, as the developer and seller; a brand name would need an organisation account and a registered company. His accounts, on the website (Claude cannot do these):
+   - the **Paid Apps Agreement** in App Store Connect (Business), with a personal bank account and the tax forms, without which a paid app cannot be submitted. The US form is the **W-8BEN**, for an individual outside the US, claiming the UK–US treaty rate so nothing is withheld in the US. Apple collects and pays the VAT on App Store sales; UK income tax on the proceeds is Andy's, outside this plan;
+   - the **App Store Small Business Program**, open to individuals, so Apple's commission is 15% in place of 30% (on the developer website, enrolment by the account holder);
+   - **no EU trader declaration**, since the EU is left out (decision 2);
    - **App Review contact** details: a name, phone and email, which only Apple sees.
+
+   Outside the EU, what is public is his name (seller and copyright), the support page's email and the two pages. No address or phone number is shown anywhere.
 
 6. **The privacy and support pages**, as Markdown in `docs/` served by GitHub Pages (`main`, `/docs`), so the store links to `https://bowerhaus.github.io/Earwig/privacy` and `…/support`, which read as part of a finished app rather than as files in a repo. Turning Pages on is a repo setting, Andy's yes first.
    - **Privacy** (`docs/privacy.md`): Earwig collects nothing and has no servers or accounts. What it uses and why: the microphone and on-device speech recognition to follow you; the camera when you choose Video; Photos only when you save a video there from the share sheet. Scripts, takes and recordings stay on the phone, in its storage and its Documents folder; deleting the app deletes them. No tracking, no analytics, no third-party code. A contact for questions. Dated.
-   - **Support** (`docs/support.md`): what Earwig needs (iOS 26, a Bluetooth earbud for the voice, an Enhanced voice and how to download one in Settings → Accessibility → Read & Speak → Voices), the questions a first user asks (no voice, the route check, Screen Only without an earbud, where recordings are), and how to get in touch: an email address for buyers, and the issues for those who use GitHub. **Which email is Andy's choice**; it is shown publicly, so a dedicated address is better than a personal one.
+   - **Support** (`docs/support.md`): what Earwig needs (iOS 26, a Bluetooth earbud for the voice, an Enhanced voice and how to download one in Settings → Accessibility → Read & Speak → Voices), the questions a first user asks (no voice, the route check, Screen Only without an earbud, where recordings are), and how to get in touch: a **dedicated email address** (a free mailbox or an alias forwarding to Andy's own, never his personal address), and the issues for those who use GitHub. Apple asks that the support URL give a real way to reach the developer, and the issues alone need a GitHub account, so the email is the contact; the privacy page gives the same one. Andy sets the address up and names it.
    - The pages are written in Andy's voice (warm, benefit first, "earbud"), with no links to the licence from them; the repo links to them, not the other way round (plan 012, decision 7).
 
 7. **Purpose strings.** The Photos string mentions "Save Video", the share sheet's own button, not one of Earwig's. It becomes "Earwig saves a take's video to Photos when you share it and choose Save Video." The others stay: they say what is used and that recognition stays on the phone.
@@ -112,8 +116,8 @@ Each is a recommendation until Andy confirms it; his answers replace these in pl
 
 ## Steps
 
-1. **Andy's decisions** (1 to 12) confirmed or changed, and the plan amended. The email for the support page chosen.
-2. **Andy's accounts** (decision 5), started at once since banking and tax can take days: the Paid Apps Agreement, the Small Business Program, the EU trader status, the App Review contact.
+1. **Andy's decisions** (1 to 12) confirmed or changed, and the plan amended. The dedicated support email set up by Andy.
+2. **Andy's accounts** (decision 5), started at once since banking and tax can take days: the Paid Apps Agreement with the bank account and the W-8BEN, the Small Business Program, the App Review contact.
 3. **The pages.** `docs/privacy.md` and `docs/support.md`, read by Andy; GitHub Pages turned on for `/docs` (Andy's yes, or Andy in the repo's settings); both URLs checked to load.
 4. **The build's changes.** The Photos string; `MARKETING_VERSION: "1.0.0"`; the Release configuration built in the simulator with no warnings; tests and SwiftLint.
 5. **First-launch checks in the simulator**, as a reviewer meets the app (results recorded, not assumed):
@@ -126,7 +130,7 @@ Each is a recommendation until Andy confirms it; his answers replace these in pl
 8. **Screenshots.** `make_screenshots.py`; the raw captures from the iPhone 17 Pro Max simulator with the status bar overridden; the captions agreed with Andy; the finished images checked at 1320 × 2868.
 9. **#30 and #33** (decision 3), each its own plan, merged to `main`; `main` merged into this branch.
 10. **The store build**, run by Claude with Andy's yes: `scripts/release/testflight.sh`, giving 1.0.0 (3); the commit and tag pushed with Andy's yes; installed from TestFlight on the phone and checked (Verification).
-11. **App Store Connect**, by Andy on the website, from the files in `docs/app-store/`: the 1.0.0 version page (screenshots, text, URLs, build 3), App Privacy (**Data Not Collected**), the age rating, the category, the price and territories, Macs unticked, the review notes and contact, manual release. Andy presses **Submit for Review**. The PR opened (Andy's yes), saying the app is in review.
+11. **App Store Connect**, by Andy on the website, from the files in `docs/app-store/`: the 1.0.0 version page (screenshots, text, URLs, build 3), App Privacy (**Data Not Collected**), the age rating, the category, the price and territories (the EU and mainland China unticked), Macs unticked, the review notes and contact, manual release. Andy presses **Submit for Review**. The PR opened (Andy's yes), saying the app is in review.
 12. **App Review.** Its verdict and any questions recorded in Results; a rejection fixed on this branch and a new build uploaded.
 13. **After approval**, with Andy's yes at each push:
     - Andy releases it in App Store Connect;

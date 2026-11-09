@@ -179,7 +179,7 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 - No take details line and no switch (decision 5).
 - Cue Voice offers only the other gender (decision 2).
 - The paste hint has no "on your Mac".
-- The Listening check's Say Test reads the same whole first line as Preview, not "Morning!" alone (after the PR was opened).
+- The Listening check's Say Test reads the same whole first line as Preview, not "Morning!" alone (after the PR was opened). On the phone, Andy: "Yes, it does" read the whole line.
 
 **TestFlight.** The App Store Connect record was made by Andy: Earwig was taken, so the store name is **Earwig Ear Prompter**; the bundle ID was registered by hand as an explicit App ID with no capabilities (Earwig has no entitlements); the key is the team's existing one, PhysiMate's, in the Keychain under `bowerhaus.appstoreconnect`. `testflight.sh` archived, uploaded ("Upload succeeded"), committed `TestFlight 0.2.0 (2)` and tagged `testflight/0.2.0-2`.
 

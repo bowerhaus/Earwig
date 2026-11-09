@@ -16,6 +16,7 @@ struct SettingsView: View {
     @AppStorage(TakeSettings.videoQualityKey) private var videoQuality: VideoQuality = .hd1080
     @AppStorage(TakeSettings.keepsRecordingsKey) private var keepsRecordings = false
     @AppStorage(TakeSettings.cameraBehindTextKey) private var cameraBehindText = TakeSettings.defaultCameraBehindText
+    @AppStorage(TakeSettings.textOverCameraKey) private var textOverCamera = TakeSettings.defaultTextOverCamera
     @Environment(\.modelContext) private var context
     @State private var recordingsSize: Int64 = 0
     @State private var confirmingDeleteAll = false
@@ -91,6 +92,15 @@ struct SettingsView: View {
                         ForEach(VideoQuality.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
                     Toggle("Camera Behind the Text", isOn: $cameraBehindText)
+                    if cameraBehindText {
+                        VStack(alignment: .leading, spacing: 8) {
+                            LabeledContent("Text over the camera") {
+                                Text("\(Int((textOverCamera * 100).rounded()))%").monospacedDigit()
+                            }
+                            Slider(value: $textOverCamera, in: TakeSettings.textOverCameraRange, step: 0.05)
+                                .accessibilityLabel("Text over the camera")
+                        }
+                    }
                     Toggle("Keep Recordings", isOn: $keepsRecordings)
                     LabeledContent("Recordings") {
                         Text(ByteCountFormatter.string(fromByteCount: recordingsSize, countStyle: .file)).monospacedDigit()
@@ -100,7 +110,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Recording")
                 } footer: {
-                    Text("Sound records what you say on the iPhone's mic; Video adds the front camera, framed before the take starts and, with Camera Behind the Text, shown behind the words while you read. Also beside Start on the Script screen. 1080p is about 80 MB a minute, 4K about 280 MB. With Keep Recordings off, each take's recording replaces the last. Recordings are in the Files app, under On My iPhone › Earwig.")
+                    Text("Sound records what you say on the iPhone's mic; Video adds the front camera, framed before the take starts and, with Camera Behind the Text, shown behind the words while you read, the words as bright as Text over the camera says. Also beside Start on the Script screen. 1080p is about 80 MB a minute, 4K about 280 MB. With Keep Recordings off, each take's recording replaces the last. Recordings are in the Files app, under On My iPhone › Earwig.")
                         .foregroundStyle(EarwigTheme.secondaryText)
                 }
                 .listRowBackground(EarwigTheme.surface)

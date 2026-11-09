@@ -126,6 +126,10 @@ struct TakeSettings {
     static let cameraBehindTextKey = "cameraBehindText"
     /// The camera behind the text during a video take, on unless set (Andy, check 3).
     static let defaultCameraBehindText = true
+    static let textOverCameraKey = "textOverCamera"
+    /// How bright the scrolling text is over the camera, as an opacity (Andy, check 4b).
+    static let textOverCameraRange = 0.1...1.0
+    static let defaultTextOverCamera = 0.35
 
     let defaults: UserDefaults
 
@@ -182,6 +186,19 @@ struct TakeSettings {
     var cameraBehindText: Bool {
         get { defaults.object(forKey: Self.cameraBehindTextKey) as? Bool ?? Self.defaultCameraBehindText }
         nonmutating set { defaults.set(newValue, forKey: Self.cameraBehindTextKey) }
+    }
+
+    /// The scrolling text's opacity over the camera, kept within `textOverCameraRange`.
+    var textOverCamera: Double {
+        get {
+            guard defaults.object(forKey: Self.textOverCameraKey) != nil else { return Self.defaultTextOverCamera }
+            return Self.clampTextOverCamera(defaults.double(forKey: Self.textOverCameraKey))
+        }
+        nonmutating set { defaults.set(Self.clampTextOverCamera(newValue), forKey: Self.textOverCameraKey) }
+    }
+
+    static func clampTextOverCamera(_ opacity: Double) -> Double {
+        min(max(opacity, textOverCameraRange.lowerBound), textOverCameraRange.upperBound)
     }
 
     /// The Prompt screen's text size, kept within `textSizeRange`.

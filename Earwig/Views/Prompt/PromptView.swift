@@ -164,17 +164,14 @@ struct PromptView: View {
         .padding(.vertical, 8)
     }
 
-    /// The camera's preview, one for the whole take: behind framing, then behind the text under
-    /// a scrim if Settings says so. Never a second preview layer on the running session, which
+    /// The camera's preview, one for the whole take: behind framing, then behind the text if
+    /// Settings says so, at its own brightness, with the text faded over it. Never a second preview layer on the running session, which
     /// held the main thread for seven seconds (check 4b, 2026-11-09).
     @ViewBuilder
     private func camera(_ model: PromptViewModel) -> some View {
         if model.showsCamera, let camera = host.camera, camera.device != nil {
-            ZStack {
-                CameraPreview(camera: camera)
-                EarwigTheme.cameraScrim.opacity(model.isFraming ? 0 : 1)
-            }
-            .ignoresSafeArea()
+            CameraPreview(camera: camera)
+                .ignoresSafeArea()
             .accessibilityHidden(true)
         }
     }

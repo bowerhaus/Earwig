@@ -24,6 +24,14 @@ struct AppSettingsTests {
         #expect(settings.videoQuality == .hd1080)
         #expect(!settings.keepsRecordings)
         #expect(settings.cameraBehindText)
+        #expect(settings.textOverCamera == TakeSettings.defaultTextOverCamera)
+    }
+
+    @Test func theTextOverTheCameraStaysInItsRange() {
+        settings.textOverCamera = 0
+        #expect(settings.textOverCamera == TakeSettings.textOverCameraRange.lowerBound)
+        settings.defaults.set(3.0, forKey: TakeSettings.textOverCameraKey)
+        #expect(settings.textOverCamera == 1)
     }
 
     @Test func anUnknownStoredRecordingReadsAsTheDefault() {

@@ -143,6 +143,7 @@ final class ScriptDetailViewModel {
         setup.recording = recording.mode
         setup.videoQuality = AppSettings.take.videoQuality
         setup.cameraBehindText = AppSettings.take.cameraBehindText
+        setup.textOverCamera = AppSettings.take.textOverCamera
         setup.recordingNote = recording.note
         take = TakeHost(
             setup: setup,

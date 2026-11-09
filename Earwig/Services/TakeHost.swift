@@ -100,6 +100,8 @@ struct TakeSetup {
     var videoQuality = VideoQuality.hd1080
     /// Whether a video take shows the camera behind the scrolling text.
     var cameraBehindText = false
+    /// The scrolling text's opacity over the camera.
+    var textOverCamera = TakeSettings.defaultTextOverCamera
     /// Said on Finished when the recording is not what was chosen (too little room for video).
     var recordingNote: String?
 

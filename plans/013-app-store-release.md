@@ -2,7 +2,7 @@
 
 **GitHub Issue:** [#37](https://github.com/bowerhaus/Earwig/issues/37) (PR must include "Closes #37")
 **Branch:** `app-store-release` (from `main` at `2294bc0`, after plan 012 merged and v0.2.0 was cut)
-**Status:** Draft, for Andy's review.
+**Status:** Approved (2026-11-09), with decisions 2, 4, 5 and 6 as amended by Andy; in progress.
 **Manual test:** device, on Andy's iPhone 14 Pro with the SK18: the store build installed from TestFlight and a take run on it; then App Review, whose verdict is Apple's.
 **Goal:** Earwig on the App Store at a low price, for people who would rather not build it from source (plan 011, decision 17). Everything between the TestFlight build plan 012 made and a store version: the agreements, the privacy and support pages, the listing, the screenshots, the review notes, the submission and the release. Afterwards the README sends visitors to the App Store.
 
@@ -47,7 +47,7 @@ Two open issues are seen in the first minute of a take: #30 (a fluff in the last
 
 ## Design decisions
 
-Each is a recommendation until Andy confirms it; his answers replace these in place.
+Approved by Andy on 2026-11-09; decisions 2, 4, 5 and 6 carry his amendments.
 
 1. **Version 1.0.0.** The store version is the first one people pay for, and the README says pre-release until 1.0. `MARKETING_VERSION` goes to 1.0.0 on this branch; the build number carries on from 2, so the first store build is 1.0.0 (3) and its tag `testflight/1.0.0-3`. After it, the GitHub release is `v1.0.0`, not marked pre-release, and the README's "Pre-release" goes.
 

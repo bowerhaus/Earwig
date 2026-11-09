@@ -39,7 +39,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Following")
                 } footer: {
-                    Text("Hybrid speeds the voice up or down to keep the lead; Phrase-gated only waits.")
+                    Text("Both wait at phrase ends; Hybrid also speeds the voice up or down to keep the lead.")
                         .foregroundStyle(EarwigTheme.secondaryText)
                 }
                 .listRowBackground(EarwigTheme.surface)

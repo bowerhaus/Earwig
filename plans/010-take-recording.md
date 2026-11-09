@@ -27,9 +27,9 @@
 **Out:**
 - **What the earpiece played.** Andy (2026-11-08): only what was said, not what was played. The issue's first criterion asked for both; it is dropped.
 - the rear camera (Andy chose the front; it can be added later as a setting);
-- a preview during the take, or the text over the camera (Andy chose framing before the take only);
+- a preview during the take, or the text over the camera (Andy chose framing before the take only). *Moved in after check 3, at Andy's asking: decision 4, amended.*
 - a list of past recordings on the Script screen, or playing an older take's recording. A take records where its file is (decision 6), so a later plan can add it;
-- Earwig saving to Photos itself. The share sheet's Save Video does it, with no Photos permission of Earwig's own;
+- Earwig saving to Photos itself. The share sheet's Save Video does it. *Check 4 found the share sheet offers Save Video only with `NSPhotoLibraryAddUsageDescription`, so Earwig has that add-only permission (decision 7).*
 - filming the Osmo takes. They stay sound only, in the pocket;
 - the take record for Cutaway (Phase 2), framing aids and a camera mode of its own (Phase 3's remainder).
 
@@ -74,7 +74,7 @@ Two other ways were weighed and not chosen (2026-11-08):
    - Share is the share sheet with the file: AirDrop to the Mac, Save Video to Photos, Save to Files.
    - Only what was said is in the file (Out). Mixed or one-ear playback of the earpiece is not needed.
 
-8. **Quality: 1080p30 by default, 4K30 as a setting (Andy, 2026-11-08).** *Measured in check 4 (2026-11-09): about 80 MB a minute at 1080p (take 55, 38.6 MB for 29.3 s) and about 280 MB at 4K (step 2 take 15, 128.5 MB for 27.2 s), against the estimates below; Settings says the measured figures.* 1080p is enough for checking a performance (about 60 MB a minute in HEVC); 4K30 is for a take meant for use (about 170 MB a minute), matching the Osmo. A **Video Quality** picker in the Recording group. The front camera of the iPhone 14 Pro does both.
+8. **Quality: 1080p30 by default, 4K30 as a setting (Andy, 2026-11-08).** *Measured in check 4 (2026-11-09): about 80 MB a minute at 1080p (take 55, 38.6 MB for 29.3 s) and about 280 MB at 4K (step 2 take 15, 128.5 MB for 27.2 s), against the estimates below. Settings said the measured figures until its footers were cut to one line (Results, beside the checks), and now states none.* 1080p is enough for checking a performance (about 60 MB a minute in HEVC); 4K30 is for a take meant for use (about 170 MB a minute), matching the Osmo. A **Video Quality** picker in the Recording group. The front camera of the iPhone 14 Pro does both.
 
 9. **Orientation, locking and leaving the screen (Andy, 2026-11-08: as proposed).**
    - **Orientation** is the phone's at Start (from `AVCaptureDevice.RotationCoordinator`), fixed for the take, written as the file's rotation.
@@ -168,7 +168,8 @@ Two other ways were weighed and not chosen (2026-11-08):
 - The first three: the tones ended 9.2 s after Start against 1.8 s, and Andy "thought it had hung". The console line added for it read `player: tone of 1.80 s rendered in 1.79 s, its end handled 7.40 s later`: the main thread was held. Cause: the Prompt screen's content was a `Group`, whose modifiers go to each child, so the camera behind it was built again at Start, and a preview layer added to the running capture session held the main thread for about seven seconds. Fixed with one preview for the whole take, in a `ZStack`.
 - The picture: a blue scrim at 60% made the picture "too faint"; at 30% better; Andy then asked why there was a layer at all, and for the picture near normal with the text faded instead, by a slider he can set on the preview. Built so.
 - The fourth try, takes 60 to 64: "the screen appeared at once"; the tones ended 1.8 s after Start in every take, no frames dropped. "The text in the take matches what we set, and the picture looks right without the blue layer … Everything looked good."
-- Each video take's end holds the main thread about 0.7 s at 1080p and 1.1 s at 4K as the preview goes, a short delay before Finished: a follow-up.
+- Each video take's end holds the main thread about 0.7 s at 1080p and 1.1 s at 4K as the preview goes, a short delay before Finished. Andy: not worth an issue.
+- Not reported: the Off leg (a video take with Camera Behind the Text off, after the `ZStack` change), and Andy's verdict on whether seeing himself draws his eye off the line. With the toggle off, the preview goes at Start, as in check 3, where the tones ended 1.8 s after Start (takes 54, 55).
 
 **5. Locked mid-take.** Take 65: Andy: "The voice kept going in the [ear]piece while the phone was locked"; on waking, the voice was running and the camera gone from behind the text; Finished said "Video stopped at 0:07: the phone was locked or Earwig left the screen."; "The video is cut short at the point the phone locked. To be honest, I don't see this as much of a problem." The listener followed to the last word, and the sound ran the whole 28.4 s.
 
@@ -176,8 +177,8 @@ Two other ways were weighed and not chosen (2026-11-08):
 
 **Beside the checks.**
 - Settings' footers cut to one line where a choice does something its name does not say, or none, at Andy's asking ("They tend to let you work things out yourself"), all of them in this plan.
-- Andy saw the Script screen open twice ("the page slide twice"; Back went to a second Script screen). Not this plan: most likely the Debug `-EarwigDemo` flag, whose `.task` pastes the sample and sets the navigation path at launch, so a tap pushes a second copy. A follow-up.
-- Andy: the route icons never look green on the take screen (the theme's pale mint on sky blue). A follow-up.
+- Andy saw the Script screen open twice ("the page slide twice"; Back went to a second Script screen). Not this plan: most likely the Debug `-EarwigDemo` flag, whose `.task` pastes the sample and sets the navigation path at launch, so a tap pushes a second copy. Andy chose no issue for it, since the flag is Debug only; CLAUDE.md says to launch the phone without it.
+- Andy: the route icons never look green on the take screen (the theme's pale mint on sky blue), and they show only once the take has begun, too late to act on: #33.
 
 ## Review pass — 2026-11-08
 
@@ -422,3 +423,15 @@ The 7-expectation truth table in `theCameraShowsBehindTheTextWhileAVideoTakeRuns
 - T2 — FIX: with T1, cut that test to the framing expectations (setting off, and camera not ready); its running cases repeat the test above.
 - T3 — SKIP: as C4. The clamp test stays with its accessor, like `textSize`'s.
 - T4 — FIX: add `#expect(setup.cameraBehindText == AppSettings.take.cameraBehindText)` in `onTheScreenAloneATakeStartsWithNothingRendered` (`ScriptDetailViewModelTests.swift`), so a lost copy line fails a test.
+
+### Outcome — 2026-11-09
+
+- C1 — fixed (part): Results 4b says the Off leg and the eye-line verdict were not reported.
+- C2 — fixed: the Scope's Out list notes the preview moved in and the Photos add permission; decision 8 notes Settings no longer states the sizes.
+- C3 — fixed: the Following footer reads "Both wait at phrase ends; Hybrid also speeds the voice up or down to keep the lead."
+- C4 — not done: the same unused accessor and clamp as `textSize`; the Slider bounds the value.
+- C5 — not done: 0.3 s on the phone; fading only with a picture would flash the text.
+- T1 — fixed: `framingShowsTheCameraWhateverTheSettingSays` checks framing with the setting off.
+- T2 — fixed: that test keeps only the framing expectations.
+- T3 — not done: as C4.
+- T4 — fixed: the Screen Only take test checks the setting reaches the take's setup.

@@ -58,11 +58,9 @@ struct PromptViewModelTests {
         #expect(!model(.running, .speaking, recording: .video, recorded: stopped).showsCameraBehindText)
     }
 
-    @Test func onePreviewCarriesOnFromFramingToTheTake() {
+    @Test func framingShowsTheCameraWhateverTheSettingSays() {
         let ready = PromptViewModel.Recording(cameraReady: true)
-        #expect(model(.gettingReady, .idle, recording: .video, recorded: ready).showsCamera)
-        #expect(model(.running, .speaking, recording: .video, recorded: ready).showsCamera)
-        #expect(!model(.running, .speaking, recording: .video, cameraBehind: false, recorded: ready).showsCamera)
+        #expect(model(.gettingReady, .idle, recording: .video, cameraBehind: false, recorded: ready).showsCamera)
         #expect(!model(.gettingReady, .idle, recording: .video).showsCamera)
     }
 

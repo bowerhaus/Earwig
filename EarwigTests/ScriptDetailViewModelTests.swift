@@ -76,6 +76,7 @@ struct ScriptDetailViewModelTests {
         let setup = try #require(model.take?.setup)
         #expect(setup.mode == .screen)
         #expect(setup.recording == .sound)
+        #expect(setup.cameraBehindText == AppSettings.take.cameraBehindText)
         #expect(!setup.engineSettings.voiced)
         #expect(setup.audio.phrases.isEmpty)
         #expect(setup.script.phrases.count == setup.phraseList.phrases.count)

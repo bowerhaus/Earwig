@@ -20,6 +20,25 @@ struct AppSettingsTests {
         #expect(settings.mode == .voice)
         #expect(settings.textSize == 40)
         #expect(!settings.lightsVoice)
+        #expect(settings.recording == .off)
+        #expect(settings.videoQuality == .hd1080)
+        #expect(!settings.keepsRecordings)
+        #expect(settings.cameraBehindText)
+        #expect(settings.textOverCamera == TakeSettings.defaultTextOverCamera)
+    }
+
+    @Test func theTextOverTheCameraStaysInItsRange() {
+        settings.textOverCamera = 0
+        #expect(settings.textOverCamera == TakeSettings.textOverCameraRange.lowerBound)
+        settings.defaults.set(3.0, forKey: TakeSettings.textOverCameraKey)
+        #expect(settings.textOverCamera == 1)
+    }
+
+    @Test func anUnknownStoredRecordingReadsAsTheDefault() {
+        settings.defaults.set("film", forKey: TakeSettings.recordingKey)
+        settings.defaults.set("8K", forKey: TakeSettings.videoQualityKey)
+        #expect(settings.recording == .off)
+        #expect(settings.videoQuality == .hd1080)
     }
 
     @Test func theFollowSettingsCarryThem() {

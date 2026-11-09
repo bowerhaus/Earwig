@@ -21,7 +21,8 @@ struct PromptViewModelTests {
 
     private func model(_ phase: TakeHost.Phase = .running, _ status: FollowStatus = .speaking, voicePhrase: Int? = 0, voiceWord: Int? = nil,
                        route: AudioRoute? = nil, start: StartMode = .slateWithReply, download: Double? = nil,
-                       mode: TakeMode = .voice) -> PromptViewModel {
+                       mode: TakeMode = .voice, recording: TakeRecordingMode = .off, cameraBehind: Bool = true,
+                       recorded: PromptViewModel.Recording = PromptViewModel.Recording()) -> PromptViewModel {
         var snapshot = FollowSnapshot()
         snapshot.status = status
         snapshot.voicePhrase = voicePhrase
@@ -29,7 +30,85 @@ struct PromptViewModelTests {
         var setup = setup
         setup.start = start
         setup.mode = mode
-        return PromptViewModel(phase: phase, snapshot: snapshot, route: route ?? self.route(out: .bluetoothA2DP), setup: setup, downloadProgress: download)
+        setup.recording = recording
+        setup.cameraBehindText = cameraBehind
+        return PromptViewModel(phase: phase, snapshot: snapshot, route: route ?? self.route(out: .bluetoothA2DP), setup: setup,
+                               downloadProgress: download, recording: recorded)
+    }
+
+    // MARK: - Recording (plan 010)
+
+    private static let file = RecordingResult(url: URL(filePath: "/tmp/Step 3 Take 2.mov"), video: true, duration: 30)
+
+    @Test func aVideoTakeFramesWhileGettingReady() {
+        #expect(model(.gettingReady, .idle, recording: .video).isFraming)
+        #expect(!model(.gettingReady, .idle, recording: .sound).isFraming)
+        #expect(!model(.running, .speaking, recording: .video).isFraming)
+    }
+
+    @Test func theCameraShowsBehindTheTextWhileAVideoTakeRuns() {
+        let ready = PromptViewModel.Recording(since: 100, cameraReady: true)
+        #expect(model(.running, .speaking, recording: .video, recorded: ready).showsCameraBehindText)
+        #expect(!model(.running, .speaking, recording: .video, cameraBehind: false, recorded: ready).showsCameraBehindText)
+        #expect(!model(.running, .speaking, recording: .sound, recorded: ready).showsCameraBehindText)
+        #expect(!model(.gettingReady, .idle, recording: .video, recorded: ready).showsCameraBehindText)
+        #expect(!model(.finished(.completed), .finished, recording: .video, recorded: ready).showsCameraBehindText)
+        #expect(!model(.running, .speaking, recording: .video, recorded: PromptViewModel.Recording(since: 100)).showsCameraBehindText)
+        let stopped = PromptViewModel.Recording(since: 100, cameraReady: true, videoStopped: true)
+        #expect(!model(.running, .speaking, recording: .video, recorded: stopped).showsCameraBehindText)
+    }
+
+    @Test func framingShowsTheCameraWhateverTheSettingSays() {
+        let ready = PromptViewModel.Recording(cameraReady: true)
+        #expect(model(.gettingReady, .idle, recording: .video, cameraBehind: false, recorded: ready).showsCamera)
+        #expect(!model(.gettingReady, .idle, recording: .video).showsCamera)
+    }
+
+    @Test func theDotShowsWhileRecordingAndTurnsToSoundWhenTheVideoStops() {
+        let recorded = PromptViewModel.Recording(since: 100)
+        #expect(model(.running, .speaking, recording: .video, recorded: recorded).showsRecordingDot)
+        #expect(!model(.running, .speaking, recording: .video).showsRecordingDot)
+        #expect(!model(.finished(.completed), .finished, recording: .video, recorded: recorded).showsRecordingDot)
+        let stopped = PromptViewModel.Recording(since: 100, videoStopped: true)
+        #expect(model(.running, .speaking, recording: .video, recorded: stopped).recordingSoundOnly)
+        #expect(!model(.running, .speaking, recording: .video, recorded: recorded).recordingSoundOnly)
+    }
+
+    @Test func nextTakeWaitsForTheRecordingToBeSaved() {
+        let saving = model(.finished(.completed), .finished, recording: .video, recorded: PromptViewModel.Recording(since: 100))
+        #expect(saving.isSavingRecording)
+        #expect(!saving.canTakeAgain)
+        let saved = model(.finished(.completed), .finished, recording: .video,
+                          recorded: PromptViewModel.Recording(since: 100, result: Self.file, isTornDown: true))
+        #expect(!saved.isSavingRecording)
+        #expect(saved.canTakeAgain)
+        #expect(model(.finished(.completed), .finished).canTakeAgain)
+    }
+
+    @Test func playVideoAndPlaySoundForAVideoAndPlayBackForSound() {
+        let video = model(.finished(.completed), .finished, recording: .video,
+                          recorded: PromptViewModel.Recording(result: Self.file, isTornDown: true))
+        #expect(video.canPlayVideo)
+        #expect(video.canPlaySound)
+        var sound = Self.file
+        sound.video = false
+        let soundOnly = model(.finished(.completed), .finished, recording: .sound,
+                              recorded: PromptViewModel.Recording(result: sound, isTornDown: true))
+        #expect(!soundOnly.canPlayVideo)
+        #expect(soundOnly.canPlaySound)
+        var stoppedAtOnce = Self.file
+        stoppedAtOnce.videoStoppedAt = 0
+        #expect(!model(.finished(.completed), .finished, recording: .video,
+                       recorded: PromptViewModel.Recording(result: stoppedAtOnce, isTornDown: true)).canPlayVideo)
+    }
+
+    @Test func theRecordingsNoteShowsOnceTheTakeIsOver() {
+        let note = PromptViewModel.Recording(note: "Video stopped at 1:23: the phone was locked.")
+        #expect(model(.finished(.stopped), .finished, recording: .video, recorded: note).recordingText == note.note)
+        #expect(model(.running, .speaking, recording: .video, recorded: note).recordingText == nil)
+        let nothing = PromptViewModel.Recording(since: 100, isTornDown: true)
+        #expect(model(.finished(.stopped), .finished, recording: .sound, recorded: nothing).recordingText == "Nothing was recorded.")
+        #expect(model(.finished(.stopped), .finished, recorded: nothing).recordingText == nil)
     }
 
     @Test func theStatusWords() {

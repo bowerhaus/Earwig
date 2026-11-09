@@ -66,6 +66,12 @@ protocol TakeRecorder: AnyObject {
     /// The slate is about to play: the take exists from now, as stopped (decision 6).
     func started(at date: Date)
     func finished(duration: TimeInterval, outcome: TakeOutcome)
+    /// The take's recording is finished; `nil` when it came to nothing (plan 010).
+    func recordingFinished(_ result: RecordingResult?)
+}
+
+extension TakeRecorder {
+    func recordingFinished(_ result: RecordingResult?) {}
 }
 
 /// Everything one take is built from, gathered on the Script screen.
@@ -87,6 +93,27 @@ struct TakeSetup {
     var mode = TakeMode.voice
     /// Whether, with the voice, its phrase is lit in the scrolling text.
     var lightsVoice = false
+    /// Whether the take is recorded, and how: what will be recorded, after any fallback (plan 010).
+    var recording = TakeRecordingMode.off
+    /// What was chosen, before any fallback, for Next Take to keep.
+    var chosenRecording = TakeRecordingMode.off
+    var videoQuality = VideoQuality.hd1080
+    /// Whether a video take shows the camera behind the scrolling text.
+    var cameraBehindText = false
+    /// Said on Finished when the recording is not what was chosen (too little room for video).
+    var recordingNote: String?
+
+    /// A video take waits on the camera's preview for Start (plan 010, decision 4).
+    var waitsForGo: Bool { recording == .video }
+
+    /// The recording on the take summary's line (decision 10).
+    var recordingLogName: String {
+        switch recording {
+        case .off: "off"
+        case .sound: "sound"
+        case .video: "video \(videoQuality.label)"
+        }
+    }
 
     /// The engine's settings: voiced exactly when the take has the ear, so the engine and the
     /// host cannot disagree about it (review C3).
@@ -131,6 +158,24 @@ final class TakeHost: Identifiable {
     private(set) var snapshot = FollowSnapshot()
     /// Why the take stopped, when it was not the presenter or a call: listening gave up (#18).
     private(set) var stopReason: String?
+    /// The take's recording once its file is finished; `nil` when not recorded (plan 010).
+    private(set) var recording: RecordingResult?
+    /// What went wrong with the recording, for Finished: the video stopping early, or a failure.
+    private(set) var recordingNote: String?
+    /// Host time at which recording started, for the time shown while recording.
+    private(set) var recordingSince: TimeInterval?
+    /// A video take is ready and waits on the camera's preview for `go()` (plan 010, decision 4).
+    private(set) var readyToGo = false
+    /// Everything is let go, the recording's file finished: Next Take may start another.
+    private(set) var isTornDown = false
+    /// The camera is running, so the framing preview can show (review C5).
+    private(set) var cameraReady = false
+    /// The video stopped early; the sound carries on (decision 9).
+    private(set) var videoStopped = false
+    /// The camera, for the framing preview.
+    var camera: CameraCapture? { capture?.camera }
+    /// The recording chosen for this take, which Next Take keeps (plan 010, decision 1).
+    var chosenRecording: TakeRecordingMode { setup.chosenRecording }
 
     var route: AudioRoute { session.route }
     var downloadProgress: Double? { heard.downloadProgress }
@@ -139,6 +184,7 @@ final class TakeHost: Identifiable {
     @ObservationIgnored private let output: TakeOutput
     @ObservationIgnored private let heard: HeardSource
     @ObservationIgnored private let recorder: TakeRecorder
+    @ObservationIgnored private let capture: TakeCapture?
     @ObservationIgnored private let renderSlate: (String) async throws -> AVAudioPCMBuffer
     @ObservationIgnored private let clock: () -> TimeInterval
     @ObservationIgnored private let ticks: Bool
@@ -152,8 +198,10 @@ final class TakeHost: Identifiable {
     /// The engine's clock never goes backwards.
     @ObservationIgnored private var lastTime = -TimeInterval.infinity
     @ObservationIgnored private var ended = false
+    @ObservationIgnored private var heldSlate: AVAudioPCMBuffer?
 
     init(setup: TakeSetup, session: TakeSession, output: TakeOutput, heard: HeardSource, recorder: TakeRecorder,
+         capture: TakeCapture? = nil,
          renderSlate: @escaping (String) async throws -> AVAudioPCMBuffer,
          clock: @escaping () -> TimeInterval = { HostClock.now }, ticks: Bool = true, log: @escaping (String) -> Void = Log.event) {
         self.setup = setup
@@ -161,10 +209,12 @@ final class TakeHost: Identifiable {
         self.output = output
         self.heard = heard
         self.recorder = recorder
+        self.capture = capture
         self.renderSlate = renderSlate
         self.clock = clock
         self.ticks = ticks
         self.log = log
+        recordingNote = setup.recordingNote
         engine = FollowEngine(script: setup.script, settings: setup.engineSettings, slateWords: setup.slateWords)
         summary = TakeSummary(wordCount: setup.script.words.count)
     }
@@ -185,10 +235,7 @@ final class TakeHost: Identifiable {
         } catch {
             return await fail("The audio could not start: \(error.localizedDescription)")
         }
-        if let problem = await heard.listen(contextWords: setup.contextWords) {
-            return await fail("Listening could not start: \(problem)")
-        }
-        guard !ended else { return await tearDown() }
+        guard await readyListeningAndCamera() else { return }
         // With tones only no slate is played, so none is rendered (review C3).
         var slate: AVAudioPCMBuffer?
         if setup.settings.start != .tonesOnly {
@@ -199,7 +246,44 @@ final class TakeHost: Identifiable {
             }
             guard !ended else { return await tearDown() }
         }
+        guard setup.waitsForGo else { return begin(slate: slate) }
+        heldSlate = slate
+        readyToGo = true
+        log("take: ready; waiting on the preview for Start")
+    }
+
+    /// Start on the framing preview: the take begins (plan 010, decision 4).
+    func go() {
+        guard readyToGo, phase == .gettingReady, !ended else { return }
+        readyToGo = false
+        let slate = heldSlate
+        heldSlate = nil
         begin(slate: slate)
+    }
+
+    /// The camera for a video take, first so the preview shows while the rest gets ready
+    /// (review C5), then listening; `false` once failed or torn down.
+    private func readyListeningAndCamera() async -> Bool {
+        if let capture {
+            if let problem = await capture.prepare() {
+                await fail(problem)
+                return false
+            }
+            cameraReady = true
+            guard !ended else {
+                await tearDown()
+                return false
+            }
+        }
+        if let problem = await heard.listen(contextWords: setup.contextWords) {
+            await fail("Listening could not start: \(problem)")
+            return false
+        }
+        guard !ended else {
+            await tearDown()
+            return false
+        }
+        return true
     }
 
     private func begin(slate: AVAudioPCMBuffer?) {
@@ -225,6 +309,7 @@ final class TakeHost: Identifiable {
 
         recorder.started(at: Date())
         startedAt = clock()
+        startRecording()
         phase = .running
         log("take: started, \(slate == nil ? "no slate" : "slate “\(setup.slateText)”"), route \(session.route.summary)")
         send(.start)
@@ -334,6 +419,34 @@ final class TakeHost: Identifiable {
         }
     }
 
+    // MARK: - Recording
+
+    /// Recording starts as the take is recorded, at its slate (plan 010, decision 3).
+    private func startRecording() {
+        guard let capture else { return }
+        capture.onVideoStopped = { [weak self] reason in
+            guard let self else { return }
+            let at = self.recordingSince.map { self.clock() - $0 } ?? 0
+            self.recordingNote = "Video stopped at \(Self.minutesAndSeconds(at)): \(reason)."
+            self.videoStopped = true
+            self.log("take: video stopped: \(reason)")
+        }
+        capture.onFailed = { [weak self] reason in
+            self?.recordingNote = "Recording stopped: \(reason)."
+            // Nothing is being recorded now: the dot goes (review C6).
+            self?.recordingSince = nil
+            self?.log("take: recording failed: \(reason)")
+        }
+        let now = clock()
+        recordingSince = now
+        capture.start(at: now)
+    }
+
+    static func minutesAndSeconds(_ seconds: TimeInterval) -> String {
+        let whole = max(0, Int(seconds))
+        return String(format: "%d:%02d", whole / 60, whole % 60)
+    }
+
     // MARK: - The end
 
     private func finish(_ outcome: FollowOutcome) {
@@ -344,7 +457,8 @@ final class TakeHost: Identifiable {
         snapshot = engine.snapshot
         phase = .finished(outcome)
         recorder.finished(duration: duration, outcome: TakeOutcome(rawValue: outcome.rawValue) ?? .stopped)
-        log(summary.line(duration: duration, outcome: outcome, mode: setup.mode, note: stopReason == nil ? nil : "not listening"))
+        log(summary.line(duration: duration, outcome: outcome, mode: setup.mode, note: stopReason == nil ? nil : "not listening",
+                         recording: setup.recordingLogName))
         Task { await tearDown() }
     }
 
@@ -355,9 +469,21 @@ final class TakeHost: Identifiable {
         if phase == .running { control(.stop) }
         ended = true
         if phase == .gettingReady { log("take: closed while getting ready") }
+        // Ready on the preview, getting ready has returned: nothing else will tear down.
+        if readyToGo {
+            readyToGo = false
+            Task { await tearDown() }
+        }
     }
 
     private func tearDown() async {
+        if let capture {
+            capture.onVideoStopped = nil
+            capture.onFailed = nil
+            let result = await capture.finish()
+            recording = result
+            if startedAt != nil { recorder.recordingFinished(result) }
+        }
         ticker?.cancel()
         ticker = nil
         player?.stopAll()
@@ -371,13 +497,19 @@ final class TakeHost: Identifiable {
         await heard.stopListening()
         output.stop()
         session.deactivate()
+        isTornDown = true
     }
 
     private func startTicking() {
         ticker?.cancel()
         ticker = Task { [weak self] in
+            var last = HostClock.now
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(Int(Self.tickInterval * 1000)))
+                // A tick this late means the main thread was held: said, for the console.
+                let now = HostClock.now
+                if now - last > 0.5 { self?.log(String(format: "take: main thread held %.2f s", now - last - Self.tickInterval)) }
+                last = now
                 self?.tick()
             }
         }

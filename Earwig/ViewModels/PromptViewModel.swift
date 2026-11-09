@@ -40,21 +40,79 @@ struct PromptViewModel: Equatable {
     let downloadProgress: Double?
     /// Why the take stopped, when listening gave up (#18).
     let stopReason: String?
+    /// The take's recording (plan 010): what it is, since when, what went wrong, and once the
+    /// take is let go, its file.
+    let recording: Recording
+
+    struct Recording: Equatable {
+        var since: TimeInterval?
+        var note: String?
+        var result: RecordingResult?
+        var readyToGo = false
+        var isTornDown = false
+        var cameraReady = false
+        var videoStopped = false
+    }
 
     init(phase: TakeHost.Phase, snapshot: FollowSnapshot, route: AudioRoute, setup: TakeSetup.Summary,
-         downloadProgress: Double? = nil, stopReason: String? = nil) {
+         downloadProgress: Double? = nil, stopReason: String? = nil, recording: Recording = Recording()) {
         self.phase = phase
         self.snapshot = snapshot
         self.route = route
         self.setup = setup
         self.downloadProgress = downloadProgress
         self.stopReason = stopReason
+        self.recording = recording
     }
 
     @MainActor
     init(host: TakeHost) {
         self.init(phase: host.phase, snapshot: host.snapshot, route: host.route, setup: host.summaryForScreen,
-                  downloadProgress: host.downloadProgress, stopReason: host.stopReason)
+                  downloadProgress: host.downloadProgress, stopReason: host.stopReason,
+                  recording: Recording(since: host.recordingSince, note: host.recordingNote, result: host.recording,
+                                       readyToGo: host.readyToGo, isTornDown: host.isTornDown,
+                                       cameraReady: host.cameraReady, videoStopped: host.videoStopped))
+    }
+
+    // MARK: - Recording
+
+    /// A video take frames on the camera's preview until Start (decision 4).
+    var isFraming: Bool { setup.recording == .video && phase == .gettingReady }
+
+    /// The camera behind the scrolling text while a video take runs, if Settings says so, and
+    /// until the video stops, when the preview would freeze (Andy, check 3).
+    var showsCameraBehindText: Bool {
+        setup.recording == .video && setup.cameraBehindText && phase == .running
+            && recording.cameraReady && !recording.videoStopped
+    }
+
+    /// The camera's preview on the screen at all: while framing, and behind the text after.
+    var showsCamera: Bool { (isFraming && recording.cameraReady) || showsCameraBehindText }
+
+    /// The dot and the time while the take is recorded (decision 5).
+    var showsRecordingDot: Bool { recording.since != nil && phase == .running }
+
+    /// Video stopped early: the dot shows sound only.
+    var recordingSoundOnly: Bool { setup.recording == .sound || recording.videoStopped }
+
+    /// The take was recorded and its file is still being finished.
+    var isSavingRecording: Bool {
+        guard case .finished = phase, setup.recording != .off else { return false }
+        return !recording.isTornDown
+    }
+
+    /// Play Video, when there is a picture to play (decision 7).
+    var canPlayVideo: Bool { recording.result?.video == true && (recording.result?.videoStoppedAt ?? 1) > 0 }
+
+    /// Play Sound or Play Back: there is a file.
+    var canPlaySound: Bool { recording.result != nil }
+
+    /// Said on Finished about the recording, when it is not what was chosen.
+    var recordingText: String? {
+        guard isOver else { return nil }
+        if let note = recording.note { return note }
+        guard case .finished = phase, setup.recording != .off, recording.isTornDown, recording.result == nil else { return nil }
+        return "Nothing was recorded."
     }
 
     // MARK: - Top
@@ -185,8 +243,9 @@ struct PromptViewModel: Equatable {
         }
     }
 
+    /// Not while the recording's file is being finished: the next take would want the mic.
     var canTakeAgain: Bool {
-        if case .finished = phase { return true }
+        if case .finished = phase { return !isSavingRecording }
         return false
     }
 }
@@ -202,10 +261,13 @@ extension TakeSetup {
         var screenWords: [ScreenWord]
         var mode = TakeMode.voice
         var lightsVoice = false
+        var recording = TakeRecordingMode.off
+        var cameraBehindText = false
     }
 
     var summary: Summary {
         Summary(number: stepNumber, title: stepTitle, take: take, start: settings.start,
-                screenWords: ScreenText.words(phraseList: phraseList, firstWord: script.firstWord), mode: mode, lightsVoice: lightsVoice)
+                screenWords: ScreenText.words(phraseList: phraseList, firstWord: script.firstWord), mode: mode, lightsVoice: lightsVoice,
+                recording: recording, cameraBehindText: cameraBehindText)
     }
 }

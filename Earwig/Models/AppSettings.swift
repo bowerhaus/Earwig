@@ -55,6 +55,44 @@ enum TakeMode: String, CaseIterable, Sendable {
     var logName: String { rawValue }
 }
 
+/// Whether a take is recorded, and how (plan 010, decision 1). Chosen before the take, fixed
+/// for it, kept by Next Take.
+enum TakeRecordingMode: String, CaseIterable, Sendable {
+    case off
+    case sound
+    case video
+
+    var label: String {
+        switch self {
+        case .off: "Off"
+        case .sound: "Sound"
+        case .video: "Video"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .off: "circle.slash"
+        case .sound: "waveform"
+        case .video: "video"
+        }
+    }
+}
+
+/// A video take's size, at 30 frames a second (plan 010, decision 8): 1080p for checking a
+/// performance, 4K for a take meant for use.
+enum VideoQuality: String, CaseIterable, Sendable {
+    case hd1080
+    case uhd4K
+
+    var label: String {
+        switch self {
+        case .hd1080: "1080p"
+        case .uhd4K: "4K"
+        }
+    }
+}
+
 /// What a take is followed by, judged by ear in stage 5 (plan 005, decision 11): the lead, the
 /// pacing and the start mode, kept in `UserDefaults` and read into `FollowSettings` for a take.
 struct TakeSettings {
@@ -82,6 +120,16 @@ struct TakeSettings {
     /// The Prompt screen's text size in points (plan 008, decision 8).
     static let textSizeRange = 24.0...72.0
     static let defaultTextSize = 40.0
+    static let recordingKey = "recording"
+    static let videoQualityKey = "videoQuality"
+    static let keepsRecordingsKey = "keepsRecordings"
+    static let cameraBehindTextKey = "cameraBehindText"
+    /// The camera behind the text during a video take, on unless set (Andy, check 3).
+    static let defaultCameraBehindText = true
+    static let textOverCameraKey = "textOverCamera"
+    /// How bright the scrolling text is over the camera, as an opacity (Andy, check 4b).
+    static let textOverCameraRange = 0.1...1.0
+    static let defaultTextOverCamera = 0.35
 
     let defaults: UserDefaults
 
@@ -114,6 +162,43 @@ struct TakeSettings {
     var lightsVoice: Bool {
         get { defaults.bool(forKey: Self.lightsVoiceKey) }
         nonmutating set { defaults.set(newValue, forKey: Self.lightsVoiceKey) }
+    }
+
+    /// Whether a take is recorded, and how; off unless set (plan 010, decision 1).
+    var recording: TakeRecordingMode {
+        get { defaults.string(forKey: Self.recordingKey).flatMap(TakeRecordingMode.init) ?? .off }
+        nonmutating set { defaults.set(newValue.rawValue, forKey: Self.recordingKey) }
+    }
+
+    /// A video take's size; 1080p unless set (decision 8).
+    var videoQuality: VideoQuality {
+        get { defaults.string(forKey: Self.videoQualityKey).flatMap(VideoQuality.init) ?? .hd1080 }
+        nonmutating set { defaults.set(newValue.rawValue, forKey: Self.videoQualityKey) }
+    }
+
+    /// Whether every recording is kept; off unless set, when only the last is (decision 6).
+    var keepsRecordings: Bool {
+        get { defaults.bool(forKey: Self.keepsRecordingsKey) }
+        nonmutating set { defaults.set(newValue, forKey: Self.keepsRecordingsKey) }
+    }
+
+    /// Whether a video take shows the camera behind the scrolling text; on unless set.
+    var cameraBehindText: Bool {
+        get { defaults.object(forKey: Self.cameraBehindTextKey) as? Bool ?? Self.defaultCameraBehindText }
+        nonmutating set { defaults.set(newValue, forKey: Self.cameraBehindTextKey) }
+    }
+
+    /// The scrolling text's opacity over the camera, kept within `textOverCameraRange`.
+    var textOverCamera: Double {
+        get {
+            guard defaults.object(forKey: Self.textOverCameraKey) != nil else { return Self.defaultTextOverCamera }
+            return Self.clampTextOverCamera(defaults.double(forKey: Self.textOverCameraKey))
+        }
+        nonmutating set { defaults.set(Self.clampTextOverCamera(newValue), forKey: Self.textOverCameraKey) }
+    }
+
+    static func clampTextOverCamera(_ opacity: Double) -> Double {
+        min(max(opacity, textOverCameraRange.lowerBound), textOverCameraRange.upperBound)
     }
 
     /// The Prompt screen's text size, kept within `textSizeRange`.

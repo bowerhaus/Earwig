@@ -8,10 +8,14 @@ import Observation
 @MainActor
 @Observable
 final class ListeningCheck {
-    /// The sample's first spoken phrase: made up, so it can be quoted (the repo is public).
+    /// The sample's first line, every phrase of it: made up, so it can be quoted (the repo is
+    /// public). Its first phrase alone is "Morning!", one word (plan 012, device check 1). Settings'
+    /// Preview reads it too.
     static let testPhrase: String = {
         let steps = ScriptParser.parse(SampleScript.harbourWalk).steps
-        return steps.first.flatMap { PhraseList(lines: $0.lines).spoken.first?.phrase.text } ?? "Welcome to the harbour."
+        let phrases = steps.first.map { PhraseList(lines: $0.lines).phrases } ?? []
+        let line = phrases.filter { $0.line == 0 && $0.kind == .spoken }.map(\.phrase.text)
+        return line.isEmpty ? "Morning! We're starting at the old harbour, just as the tide turns." : line.joined(separator: " ")
     }()
 
     let session = AudioSessionManager()

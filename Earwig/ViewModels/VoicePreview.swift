@@ -7,14 +7,8 @@ import Observation
 @MainActor
 @Observable
 final class VoicePreview {
-    /// The Harbour Walk's first line, every phrase of it: its first phrase alone, which the
-    /// Listening check says, is "Morning!", one word (device check 1).
-    static let text: String = {
-        let steps = ScriptParser.parse(SampleScript.harbourWalk).steps
-        let phrases = steps.first.map { PhraseList(lines: $0.lines).phrases } ?? []
-        let line = phrases.filter { $0.line == 0 && $0.kind == .spoken }.map(\.phrase.text)
-        return line.isEmpty ? "Morning! We're starting at the old harbour, just as the tide turns." : line.joined(separator: " ")
-    }()
+    /// The Harbour Walk's first line, as the Listening check's Say Test reads it.
+    static var text: String { ListeningCheck.testPhrase }
 
     private(set) var isPlaying = false
     private(set) var problem: String?

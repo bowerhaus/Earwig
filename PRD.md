@@ -1,6 +1,6 @@
 # Earwig - Product Requirements Document (PRD)
 
-**Status:** Draft v0.12, 2026-11-09. Changes by version are in the Document History at the end.
+**Status:** Draft v0.13, 2026-11-09. Changes by version are in the Document History at the end.
 **Name:** Earwig (decided 2026-11-05: UK slang for listening in). Bundle identifier `com.bowerhaus.Earwig`.
 
 ## Executive Summary
@@ -19,8 +19,10 @@ scrolls the script on the phone at the presenter's pace, with the voice in the e
 in Screen Only, without it (plan 008).
 
 Earwig is for the author's own video work (the Cutaway toolkit's videos, filmed on an
-Osmo Pocket 3 or the iPhone itself). It is distributed to the author through TestFlight,
-in the mould of Brollee, Reclaim and PhysiMate, and will never be sold.
+Osmo Pocket 3 or the iPhone itself), and the author's builds reach his phone through
+TestFlight, in the mould of Brollee, Reclaim and PhysiMate. Its source is public and
+source-available (section 2, Licence), and an App Store version at a low price is planned,
+for people who would rather not build it (plan 011).
 
 ---
 
@@ -52,7 +54,8 @@ take sounds like you talking, not reading.
 - The author, presenting to an Osmo Pocket 3 (and sometimes the iPhone's own camera) with
   a small in-ear Bluetooth earpiece and the iPhone either on a mount beside the lens or
   in a pocket.
-- Nobody else in v1. TestFlight is the install path, not a distribution channel.
+- Others later, through the planned App Store version, or by building the public source
+  (plan 011). In v1 TestFlight is the author's install path, not a distribution channel.
 
 ### 1.4 Non-Goals
 
@@ -82,7 +85,8 @@ take sounds like you talking, not reading.
 | Tests | Swift Testing (`import Testing`). The follow engine and the script parser are pure Swift and fully unit-tested with fixture word streams. |
 | Lint | SwiftLint, with an `engine_purity` custom rule as PhysiMate's: `Engine/` imports no UI, audio, persistence or Combine framework. |
 | Dependencies | None. Apple frameworks only: AVFoundation (`AVSpeechSynthesizer`, `AVAudioEngine`, `AVAudioSession`), Speech (`SpeechAnalyzer`, `SpeechTranscriber`), SwiftData. |
-| Distribution | TestFlight, uploaded by `scripts/release/testflight.sh`; cloud-managed distribution signing; the script refuses a dirty tree, a stale project or a build number already tagged, and tags `testflight/<version>-<build>`. Builds expire after 90 days. |
+| Distribution | TestFlight, uploaded by `scripts/release/testflight.sh`; cloud-managed distribution signing; the script refuses a dirty tree, a stale project or a build number already tagged, and tags `testflight/<version>-<build>`. Builds expire after 90 days. A release on GitHub is an annotated tag `vX.Y.Z` on `main` with notes, marked pre-release until 1.0, with no binary, since an app installs only when signed for the device (plan 011). An App Store version is planned, as a later stage. |
+| Licence | PolyForm Noncommercial 1.0.0, with an additional permission to use the app to make videos, recordings and other works for any purpose, commercial ones included (`LICENSE`). |
 | Keys | The app has none: no cloud, no accounts. The only key is the App Store Connect API key (a team key with the Admin role, which cloud-managed signing needs) and only the release script uses it. It lives in the macOS Keychain, not in a file: service `bowerhaus.appstoreconnect`, items for the key ID, the issuer ID and the base64 `.p8`, stored once by running the command the script prints, in the author's own terminal (Claude never handles a key's value). At upload the script writes the key to an owner-only temporary file for xcodebuild and deletes it on exit, success or failure. Named for the team, not the app, so PhysiMate's script can read the same item when it is upgraded to this. |
 | Background | `UIBackgroundModes: audio`. A take runs with the screen locked and the phone in a pocket. |
 | Privacy strings | Microphone ("Earwig listens to you so the prompt keeps pace with what you say") and speech recognition. Personal Voice needs its own authorisation request. |
@@ -126,7 +130,8 @@ Priorities: P0 is v1, P1 should follow soon, P2 is nice to have.
 | Directions inside a line | P0 | Square brackets only, in both formats: `[Gesture to the boats]` is a direction at that point, read in the cue voice. Round brackets are spoken. |
 | Show a script as its steps with each step's lines and directions | P0 | Read-only. The start-from-step picker lives here. |
 | Re-paste replaces a script's text, keeping its takes | P0 | The same text (line endings and trailing spaces aside) opens the stored script. A paste whose stated title (a `# ` line, or a plain script's lone title line) matches a stored script's, ignoring case, replaces that script's text and keeps its takes, renderings, cues setting and start step; a title taken from a first line or first step never replaces another script. The Script screen has Paste new version for a script whose title changed. Unchanged phrases are not rendered again while the app runs (plan 004). |
-| Delete a script | P0 | |
+| Delete a script | P0 | Swipe on the Scripts screen, or Delete Script at the foot of the Script screen, which asks first. Samples cannot be deleted. |
+| Built-in samples | P0 | Four made-up scripts, *The Harbour Walk*, *The Weekend Loaf* and *The Old Watermill* (Markdown) and *The Seaside Pier* (plain text), always in a Samples section below the presenter's own scripts (plan 011). Seeded at launch as stored scripts with a `sampleID`, so their takes are kept; a later build's new text replaces a sample's, keeping its takes; a script of the presenter's own with a sample's exact text becomes that sample. A paste titled like a sample is a new script, never a replacement. The format is labelled Markdown, not Cutaway, wherever the presenter sees it. |
 | Import from the share sheet and Files, and a pasted file | P1 | After paste proves the flow. Includes a `script.md` copied as a file in Finder, which today pastes only its name. |
 | Watch an iCloud Drive folder so a Cutaway project's script appears by itself | P2 | Roadmap, section 13. |
 
@@ -269,11 +274,13 @@ slate) is a roadmap item (section 13): cheap once the microphone is open, but sc
 
 Plan 005 built the first Settings screen, from a gear on the Scripts screen, with what it
 judged: Following (lead, pacing, voice speed), Start, and Diagnostics (the Listening check).
-The voice and the directions setting stay in the Script screen's menu until stage 7. Plan
+Plan
 008 added the Screen group: Mode, Light the Voice's Phrase, and Text size. Plan 010 added
 the Recording group, and cut every footer to one line where a choice does something its
 name does not say, or none (the author: other iPhone apps "tend to let you work things out
-yourself").
+yourself"). Plan 011 moved the voice, Allow Personal Voice and the directions setting
+(renamed Stage Directions) out of the Script screen's menu into a Voice group at the top,
+and Read Cues, which is per script, to the start card; the Script screen has no menu.
 
 ---
 
@@ -545,9 +552,11 @@ docs/            development.md (gotchas), this PRD stays at the root
 
 ### 8.1 Scripts
 
-A list of imported scripts (title, step count, format, last take). Paste button in the
-toolbar. Swipe to delete. Tap for the script. When empty: a Paste button and Try the
-sample (a made-up harbour walk in Cutaway's layout).
+The presenter's own scripts at the top (title, step count, format, last take), swipe to
+delete, and the four samples below them under **Samples**, which cannot be deleted (plan
+011). Tap for the script. The Paste pill is in the toolbar once there are scripts of the
+presenter's own; until then the top section is one row, "Copy a script on your Mac, in
+Markdown or plain text, then paste it here", with the pill. The Settings gear is top left.
 
 ### 8.2 Script
 
@@ -560,9 +569,10 @@ it failed, with a Render button. **Start Take N** is at the foot of the start st
 card, once it can start (rendered, or at once in Screen Only). Tap a step to make it the
 start step. A tap on the card itself never starts a take, so one is not started by accident
 while scrolling (plan 005). The takes so far for each step, and the next take's number, are
-shown on it. Each step shows its number large, as the slate says it. A menu holds the cues
-switch, the voice and the directions setting (until Settings) and Delete; Paste new version
-is a button at the foot of the screen.
+shown on it. Each step shows its number large, as the slate says it. The start card also
+has the Record chips and the Read Cues toggle. Paste new version and Delete Script are
+buttons at the foot of the screen, for the presenter's own scripts; the toolbar has only the
+back button (plan 011).
 
 ### 8.3 Prompt
 
@@ -595,7 +605,8 @@ The take screen, usable at arm's length and glanceable from a mount (plan 008):
 
 As 4.8, grouped: Voice, Following, Start, Screen, Recording, Diagnostics. From plan 005,
 Following, Start and Diagnostics, opened from a gear on the Scripts screen; from plan 008,
-Screen; from plan 010, Recording. A footer only where a choice does something its name does
+Screen; from plan 010, Recording; from plan 011, Voice (the voice, Allow Personal Voice and
+Stage Directions). A footer only where a choice does something its name does
 not say, in one line.
 
 ### 8.5 Listening check
@@ -658,6 +669,13 @@ the name ("Earwig" in SF Rounded, bold, white) in and out over the Scripts scree
 second; it shows once per process, so a return from the background or an unlock mid-take
 shows nothing, and Reduce Motion changes nothing, since fades are not motion.
 
+**System chrome** (plan 011). The app runs in the light scheme, so iOS draws its own menus,
+confirmations, alerts and sheets pale and frosted, never near-black; Earwig's colours are its
+own all the same. Navigation titles and the status bar are white, and lists set white labels
+with pale headers and values. Toolbar buttons hide iOS's glass and draw their own: an icon in
+a mid-blue circle (the gear, Back) or a word in a mid-blue capsule (Done). The back button is
+Earwig's own, and the edge swipe still goes back. Lead's − and + are Earwig's own too.
+
 ---
 
 ## 11. Risks and Mitigations
@@ -706,10 +724,11 @@ Each stage is one plan, one branch, one issue and one PR.
 6. **Screen mode** (plan 008, done: see its Results). The scrolling text driven by the
    same engine in every take, With Voice or Screen Only, the start card, font size. The
    fixed-pace scroll is its own issue.
-7. **Settings and TestFlight.** The settings in 4.8, the release script, the first
-   TestFlight build.
+7. **Settings and TestFlight** (plan 012). The settings in 4.8, the release script, the
+   first TestFlight build.
 
-Beside the stages, plan 007 (app icon, logo and splash, #21) gave the app its mark (10).
+Beside the stages, plan 007 (app icon, logo and splash, #21) gave the app its mark (10), and
+plan 011 (#22) the built-in samples, the README and the first pre-release, v0.1.0.
 
 ### Excluded from MVP
 
@@ -798,6 +817,7 @@ directly, and filming with the phone locked, which iOS does not allow.
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.13 | 2026-11-09 | Plan 011 (#22): four built-in samples in their own section of the Scripts screen, seeded at launch and adopted from pasted copies, never deleted or replaced by a paste (4.1, 8.1); the format labelled Markdown where users see it; the README; version 0.1.0 and the release scheme, tags on `main` with no binary; the licence, PolyForm Noncommercial with a permission to make videos commercially; an App Store version planned (1, 1.3, 2). No More menu: the voice, Personal Voice and Stage Directions in a Voice group in Settings, Read Cues on the start card, Delete Script at the foot of the Script screen (4.8, 8.2, 8.4). The light scheme, mid-blue toolbar buttons and Earwig's own back button and Lead stepper (10). Stage 7 is plan 012. |
 | 0.12 | 2026-11-09 | Plan 010 (#16): recording a take, Off, Sound or Video, as built and checked on the iPhone 14 Pro with the SK18 (4.7). The front camera at 1080p30 (default) or 4K30, the sound from the built-in mic, never the earpiece; the audio session, route and engine untouched, and the follow the same filmed as not. Framing on the preview before Start; the camera behind the text while the take runs, the text's brightness set on the preview (8.3). Locking stops the video while the sound and the take go on. Finished saves, then Play Video, Play Sound or Play Back, and Share with Save Video. Files in Earwig's folder in Files, the last kept or every one, and Delete All (4.8, 8.4). Settings' footers cut to one line or none (4.8). The new services (7.2); heat (11); Phase 3 is what is left (12, 13). Non-goals (1.4). |
 | 0.11 | 2026-11-08 | Plan 009, longer phrases: a clause with no break is cut only past twenty words, after the voice stopped mid-clause on the phone ("…that ground flour for"); stored scripts are split again (3, "Phrase"). After a final, the presenter is taken to have begun the voice's phrase only if heard within three words of it, after silence let two phrases through once Andy had stopped mid-phrase (5.4). Stopping the voice for a fluff, and the text going back to the phrase's start after one, were tried on the phone and dropped: the recogniser mishears some words every time, and each looked like a fluff (recorded in the plan). |
 | 0.10 | 2026-11-08 | Plan 008 (#25), stage 6: Screen mode as built and judged on the phone. Every take scrolls the script, With Voice or Screen Only, chosen on the start card or in Settings and fixed for the take; Ear alone dropped (Executive Summary, 4.6, 4.8, 8.3, Flow 2, Flow 3). The eyeline with the heard words dimmed, no word marker; the voice's phrase lit as a setting, off by default (4.6). Following with no voice, the screen's place as the word after the last one heard, and what was said before Back or Forward not followed (5.4a). The start card, Start Take on the step's card (8.2). The Prompt screen's one layout (8.3). ScreenText and the screen's view models (7.2, 7.3). Stage 6 done (12). |
@@ -808,5 +828,5 @@ directly, and filming with the phone locked, which iOS does not allow.
 | 0.5 | 2026-11-06 | Plan 003 results: the lead is the felt head start, default 3 (3, 4.4); the gate counted to the phrase boundary (4.4, 5.4); re-anchoring in place of the three targets for stepping back, picking up and jumping, and a lost search over the take's step only (4.4, 5.3, 5.4); the manual controls as built (4.4); three start modes in Settings (4.5, 4.8, 5.5, question 1); the engine's inputs and outputs as built, with time passed in (5.1, 5.2); matching with its folds, confidence and a 12-word window behind (5.3); the presenter estimate as built and the hybrid speed's sign fixed to 1 − k·e (5.4); completion (5.4); folders (7.3); the numbers risk (11); stage 3 done (12). |
 | 0.4 | 2026-11-06 | Plan 002 results: paste import confirmed on the iPhone with no Allow Paste prompt, and a file copied in Finder pastes only its name (4.1, P1 row); the Cutaway and plain parsing rules as built, square brackets as the only inline directions, re-paste by stated title (4.1); script words read at parse time, a number run never crossing punctuation (5.1); the entities as built, with the phrase list's parser version (6.1); folders (7.3); screens (8.1, 8.2); the theme, one sky-blue look not split into light and dark (10); stage 2 done (12). |
 | 0.3 | 2026-11-05 | Plan 001 results (spike on the iPhone 14 Pro with the SK18 earpiece): Stephanie (Enhanced) is the default voice until Personal Voice is judged; the default lead is 5 words; the earpiece holds A2DP with the mic open and recognition runs locked, so those risks are retired; recognition is about 0.9 s behind, untimed in its interim results, and fed untimed audio (4.3); the engine estimates the presenter's place and adds the delay (5.4) and treats numbers, compounds and contractions as said (5.1); render and rate details (4.2); fluffs (4.4); open question 6. |
-| 0.2 | 2026-11-05 | The App Store Connect key lives in the Keychain under a team-level name, not in a file; the app itself has no keys (section 2). MIT licence; repo public. |
+| 0.2 | 2026-11-05 | The App Store Connect key lives in the Keychain under a team-level name, not in a file; the app itself has no keys (section 2). Repo public. |
 | 0.1 | 2026-11-05 | First draft from the author's answers: Osmo as camera with the iPhone in a pocket or on a mount; in-ear Bluetooth earpieces as output only; Personal Voice first with downloaded voices as fallback; on-device recognition; hybrid pacing with phrase gating as the fallback; configurable lead with the default from the spike; paste import first; cues in a second voice; no mirror, pedals or remotes; name Earwig. |

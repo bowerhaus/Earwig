@@ -2,7 +2,7 @@
 
 **GitHub Issue:** [#22](https://github.com/bowerhaus/Earwig/issues/22) (PR must include "Closes #22")
 **Branch:** `first-release` (from `main` at `9c2a4aa`, after plan 010 merged)
-**Status:** Approved (2026-11-09, under `/plan_autopilot`). A plan outside PRD §12's stages, as plan 007 was. Stage 7 (Settings and TestFlight) moves to plan 012.
+**Status:** Complete (2026-11-09, under `/plan_autopilot`; device checks and the README review by Andy the same day). A plan outside PRD §12's stages, as plan 007 was. Stage 7 (Settings and TestFlight) moves to plan 012.
 **Manual test:** device and README review, on Andy's iPhone 14 Pro: the existing store opens with its scripts and takes, the three scripts already pasted become the samples without duplicates, and a take on a sample runs as before (Verification).
 **Goal:** Earwig's first public pre-release, v0.1.0. A visitor who finds the repo learns what the app is, how to use it and how to build it, from a README with screenshots. Anyone who installs it finds four made-up scripts ready on the Scripts screen, with nothing to paste. A release is an annotated tag on `main` and a GitHub Release marked pre-release; the scheme is written down so the next one is cut the same way. It is published under PolyForm Noncommercial 1.0.0, with a permission to use the app to make videos commercially.
 
@@ -196,7 +196,38 @@ On 2026-11-09 Andy asked what was left before a "0 point release" on GitHub, whe
 
 ## Results
 
-_To be filled in when the plan completes._
+Built and checked on 2026-11-09. **PASS**: Andy reported every device check passed and approved the README on GitHub.
+
+- **What was built.**
+  - **Samples.** `SampleScript` holds the four samples (the Loaf and the Watermill exactly as read off the phone's store) and `all`, with stable IDs. `SampleSeeder` adds, updates and adopts them at launch, in `EarwigApp.init`. `Script.sampleID` marks them; paste matches titles against the presenter's own scripts only; samples cannot be deleted. The Scripts screen has the two sections and the paste row, and `-EarwigDemo` opens the Harbour Walk sample, after a short wait, since a path set in the first instant after launch can be dropped.
+  - **Version and licence.** `MARKETING_VERSION` is 0.1.0. `LICENSE` holds the PolyForm Noncommercial 1.0.0 text, checked word for word against the project's own copy, with the notice and the additional permission.
+  - **Decisions added on the phone.** 13, the format labelled Markdown; 14, mid-blue toolbar buttons; 15, no More menu; 16, the light scheme; 17, an App Store version planned. The directions setting is renamed Stage Directions, and the app's download hint names iOS's current path, Settings › Accessibility › Read & Speak › Voices.
+  - **README.** It is written for visitors in Andy's voice: his own What it's for, the ear prompter and the standard teleprompter, a section on getting a good voice, a first take, every feature (checked against an inventory of the views), tips, building from source, releases and known issues, and the licence. `scripts/readme/make_readme_images.py` draws the banner and the following diagram. Six screenshots: three from the simulator (Scripts, a Screen Only take, Finished) and three from the phone with `devicectl device capture screenshot` (the Old Watermill's Script screen, Settings, a take With Voice).
+- **Simulator:** a fresh install shows the four samples and the paste row, and a relaunch shows four, not eight. Every toolbar button, the Settings menus, the Listening Check and Listen were checked in the light scheme. 366 tests pass with no warnings, and SwiftLint is clean.
+- **Device (iPhone 14 Pro), Andy's verdicts, all passed:**
+  1. **The store migrated:** the three pasted scripts became samples with their takes, nothing was doubled, and the Pier was added.
+  2. **A Screen Only take on the Pier** followed and completed.
+  3. **Samples stay:** a swipe does nothing, and a force-quit and relaunch shows the same list.
+  4. **The look check:** mid-blue buttons, no black menus, white titles, Done in full, the edge swipe going back.
+
+  The version on the phone read 0.1.0.
+- **README review:** Andy read it on GitHub and asked for:
+  - the teleprompter and the term "ear prompter" in the opening;
+  - his own What it's for, and the rest in that voice;
+  - "earbud";
+  - a section on getting a good voice, early on;
+  - a note that the ear prompter takes practice;
+  - no Status section, its parts moved, with the App Store version mentioned;
+  - the free account's seven-day limit.
+
+  All are in, and he approved it.
+- **Review pass:** two agents' findings, recorded above with their outcomes.
+- **Follow-ups proposed, not opened:**
+  - the always-visible diagnostics line during a take;
+  - swipe to delete on the Scripts screen not asking first;
+  - the mixed capitalisation of Settings' labels.
+
+  The inventory's "Save Video is not built" was wrong: the Photos permission is for the share sheet's Save Video (plan 010).
 
 ## Review pass — 2026-11-09
 

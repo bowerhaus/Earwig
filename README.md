@@ -2,15 +2,15 @@
 
 # Earwig
 
-**An iPhone app that reads your script into one earpiece a few words ahead of you, and follows what you actually say.**
+**An iPhone app that reads your script into one earpiece a few words ahead of you, and follows what you actually say. It is also a teleprompter that scrolls the script on the phone's screen as you speak.**
 
 Pre-release · iOS 26 or later · everything happens on the phone · [source-available](#licence)
 
 ## What it's for
 
-You film yourself talking to camera: walking a footpath with the camera on a gimbal, or sitting at a desk. You can't look at a teleprompter, and you don't want to learn the script.
+You film yourself talking to camera: walking a footpath with the camera on a gimbal, or sitting at a desk. Often you can't look at a teleprompter, and you don't want to learn the script.
 
-Earwig reads the script into one Bluetooth earpiece, a few words ahead of you, in a natural Apple voice. You hear the line and say it. Earwig listens to you on the iPhone's own microphone while you do:
+That is what Earwig was designed for. It reads the script into one Bluetooth earpiece, a few words ahead of you, in a natural Apple voice. You hear the line and say it. Earwig listens to you on the iPhone's own microphone while you do:
 
 - it waits at the end of a phrase when you pause;
 - it keeps pace when you speed up or slow down;
@@ -18,7 +18,9 @@ Earwig reads the script into one Bluetooth earpiece, a few words ahead of you, i
 
 The phone can stay locked in your pocket.
 
-When you can see the phone, the same engine scrolls the script on screen, keeping your line at eye level and fading the words you have said. You can also record each take, sound or video, to check it afterwards.
+When you can see the phone, Earwig is also a teleprompter (an autocue). Choose **Screen Only** and it scrolls the script on the screen as you speak, with no earpiece and no voice. It uses the same engine that follows you by ear, so it waits when you pause and moves when you go on. Your line sits at eye level and the words you have said fade. Prop the phone by the camera, or use it on a mount.
+
+Or have both, the voice in your ear and the script on screen. You can also record each take, sound or video, to check it afterwards.
 
 ## How it works
 
@@ -51,7 +53,7 @@ Earwig comes with four made-up sample scripts, so you can try it before you have
 
 1. Open **The Harbour Walk** under **Samples**.
 2. On the start card at the top, tap **Listen to Step 1**. You hear what a take sounds like: the slate, the tones, then the step read straight through. Tap **Done**.
-3. Choose **Screen Only** on the start card, then tap **Start Take 1** on step 1's card. With no voice to render, the take starts straight away.
+3. Choose **Screen Only** on the start card, then tap **Start Take 1** on step 1's card. This is Earwig as a teleprompter. With no voice to render, the take starts straight away.
 4. Read the step aloud at your own pace. The text rises to keep your line a third of the way down, and the words you have said fade.
 5. Stop in the middle of a sentence. The text waits for you. Go on, and it follows again. At the end of the step the take finishes by itself. Tap **Done**.
 
@@ -110,6 +112,10 @@ Then paste a script of your own.
   - **Listen to Step N**.
   Mode and Record are remembered, and they are the same settings as in Settings.
 - **Listen** plays the step straight through: the slate, the tones and every line, at 0.85×, 1× or 1.2×, with the words lit as they are spoken. Nothing is recorded.
+
+### As a teleprompter
+
+**Screen Only** makes Earwig a teleprompter. It follows your voice: the script scrolls as you read, waits when you stop, and keeps your line a third of the way down. There is no earpiece, no voice and nothing to render, so a take starts at once. Everything else works as in a take With Voice: the controls, the text size, recording, and the camera behind the text. Choose it on the start card or under **Mode** in Settings. A scroll at a fixed pace, for when Earwig can't hear you, is not built yet ([#31](https://github.com/bowerhaus/Earwig/issues/31)).
 
 ### Starting a take
 

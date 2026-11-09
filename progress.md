@@ -21,7 +21,8 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 ## Notes
 
-- **Next: recheck Save Video (check 4), then 4b** (the camera behind the text, added after check 3), then 5, 6 (Keep on half only), then 1d. Build `b008810` installed; console to the scratchpad `console-4.log`.
+- **Next: check 4b again** (one preview for the take, scrim 30%) and Save Video, then 5, 6 (Keep on half: Andy to confirm Keep is on, since takes 55 and step 2 12-15 were all kept), then 1d. Console to the scratchpad `console-4b.log`; tones should take about 1.8 s after Start.
+- Check 4b, first try, 2026-11-09 (step 1 take 56, 4K): Andy: "It took quite a long time to set up the scene with the video behind it. I thought it had hung for a moment. Also, the video is too faint." Console: the tones took 9.2 s against 1.8 s in every earlier take, and 12 frames dropped. Fixed: one preview for the whole take (no second layer at Start), scrim 60% to 30%.
 - Check 4, 2026-11-09: takes step 2 14 and 15 at 4K, 3840x2160, 0 drops, thermal nominal, battery 100% to 95%. Andy: AirDrop works; the dot and time "are fine, they're small, but they're not really that essential". Save Video was missing from Share: `NSPhotoLibraryAddUsageDescription` added. The file's size is still to be read.
 - Check 3, 2026-11-09: takes 54 (With Voice) and 55 (Screen Only), 1080p, rotation 90°, 0 drops, frames 1.6 s late (covered by the tail and wait). Andy: the preview "worked, and it was easy to frame the shot"; "the picture and sound are good quality and in sync". Waits with video (take 54: 3, longest 1.9 s) the same as sound only (take 53: 3, longest 1.9 s). Dot and time: Andy didn't notice them; to look again in check 4.
 - Andy asked for the preview kept on during the take, perhaps with the words over it. A product change beyond decision 3; offered as a follow-up issue ("Show the camera behind the text during a video take").

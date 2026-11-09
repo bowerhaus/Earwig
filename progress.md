@@ -21,7 +21,9 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 ## Notes
 
-- **Next: check 3** (video on the mount, With Voice then Screen Only), then 4, 5, 6 (Keep on half only), then 1d. Earwig is running on the phone (`-EarwigDemo YES`), console to the scratchpad `console-2.log`; relaunch the same way if it was closed.
+- **Next: check 4** (4K30, file size, AirDrop, Save Video to Photos), with Andy looking for the dot and time this time; then 5, 6 (Keep on half only), then 1d. Earwig is running on the phone (`-EarwigDemo YES`), console to the scratchpad `console-2.log`; relaunch the same way if it was closed.
+- Check 3, 2026-11-09: takes 54 (With Voice) and 55 (Screen Only), 1080p, rotation 90°, 0 drops, frames 1.6 s late (covered by the tail and wait). Andy: the preview "worked, and it was easy to frame the shot"; "the picture and sound are good quality and in sync". Waits with video (take 54: 3, longest 1.9 s) the same as sound only (take 53: 3, longest 1.9 s). Dot and time: Andy didn't notice them; to look again in check 4.
+- Andy asked for the preview kept on during the take, perhaps with the words over it. A product change beyond decision 3; offered as a follow-up issue ("Show the camera behind the text during a video take").
 - Check 2 passed, 2026-11-09: takes 52 and 53, sound, 0 drops, thermal nominal. Andy: "The recording is clear to hear back", the file is in Files. Check 6's Keep-off half passed with it: the two takes left one file (take 53 replaced take 52).
 
 - Step 1's build is on the phone. Next: Andy unlocks it; launch with `xcrun devicectl device process launch --console --terminate-existing --device 00008120-000471EE14E0201E com.bowerhaus.Earwig -- -EarwigDemo YES -EarwigRecordVideo YES` (in the background, console to the scratchpad), then check 1a: a filmed take, route and recogniser. Then 1b (the same take not filmed, to compare), 1c (sync, the file pulled to the Mac with `devicectl device copy from`), 1d (ten minutes of takes for heat).

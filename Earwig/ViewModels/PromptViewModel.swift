@@ -86,6 +86,9 @@ struct PromptViewModel: Equatable {
             && recording.cameraReady && !recording.videoStopped
     }
 
+    /// The camera's preview on the screen at all: while framing, and behind the text after.
+    var showsCamera: Bool { (isFraming && recording.cameraReady) || showsCameraBehindText }
+
     /// The dot and the time while the take is recorded (decision 5).
     var showsRecordingDot: Bool { recording.since != nil && phase == .running }
 

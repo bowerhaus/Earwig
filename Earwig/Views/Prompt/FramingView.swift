@@ -1,8 +1,8 @@
 import AVFoundation
 import SwiftUI
 
-/// A video take's framing (plan 010, decision 4): the front camera's preview, full screen and
-/// mirrored, with the step and take at the top and Start at the foot. The take gets ready behind
+/// A video take's framing (plan 010, decision 4): over the front camera's preview, full screen
+/// and mirrored, the step and take at the top and Start at the foot. The take gets ready behind
 /// it; Start is enabled once it is ready, and begins it.
 struct FramingView: View {
     let model: PromptViewModel
@@ -12,10 +12,9 @@ struct FramingView: View {
 
     var body: some View {
         ZStack {
-            if model.recording.cameraReady, let camera, camera.device != nil {
-                CameraPreview(camera: camera)
-                    .ignoresSafeArea()
-            } else {
+            // The preview itself is behind this, drawn by the Prompt screen, so the same one
+            // carries on behind the text once the take starts.
+            if !model.recording.cameraReady || camera?.device == nil {
                 Image(systemName: "video.slash")
                     .font(.system(size: 64, weight: .semibold))
                     .foregroundStyle(EarwigTheme.secondaryText)

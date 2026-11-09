@@ -34,6 +34,7 @@ struct PromptView: View {
                 .padding(.vertical, 12)
             }
         }
+        .background { camera(model) }
         .background(EarwigTheme.background.ignoresSafeArea())
         .task(id: ObjectIdentifier(host)) { await host.start() }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
@@ -158,16 +159,17 @@ struct PromptView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 8)
-        .background { cameraBehind(model) }
     }
 
-    /// The camera behind the text during a video take, under a scrim so the text reads.
+    /// The camera's preview, one for the whole take: behind framing, then behind the text under
+    /// a scrim if Settings says so. Never a second preview layer on the running session, which
+    /// held the screen and the tones for seven seconds at 4K (check 4b, 2026-11-09).
     @ViewBuilder
-    private func cameraBehind(_ model: PromptViewModel) -> some View {
-        if model.showsCameraBehindText, let camera = host.camera, camera.device != nil {
+    private func camera(_ model: PromptViewModel) -> some View {
+        if model.showsCamera, let camera = host.camera, camera.device != nil {
             ZStack {
                 CameraPreview(camera: camera)
-                EarwigTheme.cameraScrim
+                EarwigTheme.cameraScrim.opacity(model.isFraming ? 0 : 1)
             }
             .ignoresSafeArea()
             .accessibilityHidden(true)

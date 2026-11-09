@@ -83,7 +83,7 @@ enum VoiceCatalogue {
     /// The base speaking rate, an `AVSpeechUtterance` rate (PRD §4.2).
     static let rate: Float = 0.5
     /// Where a voice is downloaded, for a message.
-    static let downloadHint = "Download voices in Settings › Accessibility › Spoken Content › Voices › English."
+    static let downloadHint = "Download voices in Settings › Accessibility › Read & Speak › Voices › English."
 
     /// The installed voices Earwig would use, no novelty voices. Personal Voices are listed only
     /// once the app is allowed to use them.

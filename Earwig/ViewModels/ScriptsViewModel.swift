@@ -30,7 +30,7 @@ final class ScriptsViewModel {
     }
 
     /// The script a swipe asked to delete, waiting for the question to be answered (#35).
-    var pendingDeletion: Script?
+    private(set) var pendingDeletion: Script?
 
     /// A swipe asks first, as Delete Script does (plan 012, decision 14). A sample is never
     /// asked about, since it is never deleted (plan 011, decision 5).
@@ -39,9 +39,9 @@ final class ScriptsViewModel {
         pendingDeletion = script
     }
 
-    /// Deletes the script waiting, with its takes.
-    func confirmDeletion(in context: ModelContext) {
-        guard let script = pendingDeletion else { return }
+    /// Deletes the script the question was about, with its takes. The script is passed in, not
+    /// read from `pendingDeletion`, which the dialog's binding may clear first (review C1).
+    func confirmDeletion(of script: Script, in context: ModelContext) {
         pendingDeletion = nil
         guard !script.isSample else { return }
         context.delete(script)

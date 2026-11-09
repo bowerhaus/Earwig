@@ -29,7 +29,7 @@ struct ScriptsViewModelTests {
         #expect(model.pendingDeletion == script)
         #expect(scripts.count == 1)
         #expect(takes.count == 1)
-        model.confirmDeletion(in: context)
+        model.confirmDeletion(of: script, in: context)
         #expect(model.pendingDeletion == nil)
         #expect(scripts.isEmpty)
         #expect(takes.isEmpty)
@@ -41,20 +41,7 @@ struct ScriptsViewModelTests {
         model.askToDelete(script)
         model.cancelDeletion()
         #expect(model.pendingDeletion == nil)
-        // Nothing waiting, so a confirmation now deletes nothing.
-        model.confirmDeletion(in: context)
         #expect(scripts.count == 1)
         #expect(takes.count == 1)
-    }
-
-    @Test func aSampleIsNeverAskedAboutOrDeleted() throws {
-        try SampleSeeder(context: context).seed()
-        let sample = try #require(scripts.first { $0.isSample })
-        let model = ScriptsViewModel()
-        model.askToDelete(sample)
-        #expect(model.pendingDeletion == nil)
-        model.pendingDeletion = sample
-        model.confirmDeletion(in: context)
-        #expect(scripts.count == SampleScript.all.count)
     }
 }

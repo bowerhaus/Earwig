@@ -33,8 +33,15 @@ final class VoicePreview {
             audio.speed = speed
             Log.event("preview: \(renderer.voices?.presenter.displayName ?? "no voice") at \(speed)x on \(session.route.summary)")
             try audio.play(rendered.buffer, on: .voice, delay: 0) { [weak self] in
+                // `.dataRendered` is before the earpiece has played the end: wait out the output
+                // latency before stopping the engine, or the last word is clipped (review C2).
                 guard let self, generation == self.generation else { return }
-                self.stop()
+                let tail = self.audio.outputLatency + 0.2
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .seconds(tail))
+                    guard let self, generation == self.generation else { return }
+                    self.stop()
+                }
             }
         } catch {
             guard generation == self.generation else { return }

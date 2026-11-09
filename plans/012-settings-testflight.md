@@ -163,3 +163,95 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 ## Results
 
 To be filled in when the plan is built and checked.
+
+## Review pass — 2026-11-09
+
+Findings from `/review-branch` on branch `settings-testflight`, **unresolved as written**. Each is a claim
+from a review on that date, not an established fact, and each verdict under *Assessment* is a
+recommendation, not a decision. Work through them and annotate each with what was done — fixed,
+or rejected and why. A finding that turns out to be wrong should say so here rather than be
+deleted.
+
+### Code
+
+**C1. WARNING: swipe-to-delete's Delete Script may delete nothing.**
+`Earwig/Views/Scripts/ScriptsView.swift:52-60`. The dialog's `isPresented` is a computed binding whose setter calls `model.cancelDeletion()`, and the button calls `model.confirmDeletion(in: context)`, which reads `pendingDeletion`. When a dialog or alert button is tapped, SwiftUI sets `isPresented` to false, and I believe on current iOS it often does so before running the button's action. If so, `pendingDeletion` is already nil when `confirmDeletion` runs, and the script is never deleted. Cancel works either way.
+- The view-model tests cannot catch this, since they call the methods directly.
+- progress.md says the simulator did not check the swipe, and device check 4 only exercises Cancel.
+- `ScriptDetailView`'s own Delete Script avoids the problem because its action does not depend on state the binding clears.
+- Fix: use `confirmationDialog(_:isPresented:titleVisibility:presenting:)` with `presenting: model.pendingDeletion`, and pass that script into a `confirmDeletion(of:in:)`. Or have the setter not clear the pending script.
+
+**C2. WARNING: Preview probably cuts off its own last word in the earpiece.**
+`Earwig/ViewModels/VoicePreview.swift:35-38, 47-53`.
+- The completion passed to `audio.play` fires at `.dataRendered`, which `AudioEngineHost` says is when the last sample has gone to the output, not when it is heard. That is about 356 ms early on the SK18.
+- In that completion, `stop()` calls `audio.stop()` (which stops the engine) and `session.deactivate()`. That probably clips the tail of the sentence over Bluetooth.
+- `StepPreview` (Listen) and `ListeningCheck.sayTest` leave the engine and session running at the end of the audio; only an explicit Stop tears them down.
+- Fix: at the end, only clear `isPlaying`, perhaps after `audio.outputLatency`, and leave the engine and session until the next play, Stop or `onDisappear`. This is a device check, not something I can confirm here.
+
+**C3. WARNING: in the release script, a failure after a successful upload undoes the build bump.**
+`scripts/release/testflight.sh:780-788`.
+- `succeeded=true` is only set after `git commit` and `git tag`. If the upload succeeds but the commit fails (a hook, signing, `user.email`), or `git tag` fails, the EXIT trap still runs `git checkout -- project.yml`.
+- It then prints "Not uploaded. project.yml is as it was." That is false: App Store Connect has the build.
+- The next run would bump to the same number again, and App Store Connect refuses it.
+- If the tag fails after the commit, there is a commit with no tag.
+- Fix: set a flag once `-exportArchive` returns, and after that point the trap should keep `project.yml` and say the upload went through but the commit or tag needs doing by hand.
+
+**C4. SUGGESTION: plan step 11 is not done yet.**
+None of these files has changed on the branch:
+- `PRD.md`: §4.8 rewritten with what was struck (decision 4), §2 Distribution amended, §12 stage 7 done, v0.14 and a Document History row.
+- `CLAUDE.md`: the status (plan 012, next #37 as plan 013), how a TestFlight build is uploaded, and the Show Take Details note.
+- The plan's Results, including #14's verdict.
+
+progress.md also notes that `docs/screenshots/settings.png` shows the old Voice group. This is expected before the PR, but it is still owed.
+
+**C5. SUGGESTION: a stale comment in `project.yml:14-15`.**
+It still says "Bump the build before each TestFlight upload and commit it". `testflight.sh` now does both, so the comment should point at the script (decision 8).
+
+### Tests
+
+**T1. SUGGESTION: the sample-protection test now overlaps the new suite, and half of the new test only pokes a defensive guard.**
+- `SampleSeederTests.samplesAreNotDeleted` (`EarwigTests/SampleSeederTests.swift:108-118`) now runs ask then confirm over every script. That checks that samples survive and an own script is deleted, through the public flow.
+- `ScriptsViewModelTests.aSampleIsNeverAskedAboutOrDeleted` (`EarwigTests/ScriptsViewModelTests.swift:50-59`) checks the same thing.
+- Lines 56-57 of the new test then set `model.pendingDeletion = sample` directly. This exists only to reach the second `!script.isSample` guard in `confirmDeletion` (`Earwig/ViewModels/ScriptsViewModel.swift`). The app never reaches that guard, because only `askToDelete` sets `pendingDeletion`.
+- Simpler option: make `pendingDeletion` `private(set)`, drop the redundant guard, and keep only one sample-protection test. A good choice is the `SampleSeederTests` one, which also checks that the own script goes.
+
+**T2. SUGGESTION: `cancellingKeepsTheScriptAndItsTakes` checks the takes a second time for no gain.**
+- `EarwigTests/ScriptsViewModelTests.swift:38-48`.
+- Cancelling never touches the context. Checking `scripts.count == 1` after the extra `confirmDeletion` is enough to show nothing is deleted; `#expect(takes.count == 1)` on line 47 adds nothing.
+- Minor. Keeping it is harmless.
+
+**T3. SUGGESTION: one assertion repeats what an existing test already covers.**
+- `aCueVoiceNoLongerInstalledIsAutomaticAgain`, `EarwigTests/VoiceCatalogueTests.swift:86`: `choose(from: voices, cueID: nil)?.cue.name == "Jamie"` is already covered by `stephanieIsThePresenterWhenSheIsThere` (lines 10-16), where no cue is picked and the cue is Jamie.
+- It can go.
+
+**T4. SUGGESTION: `VoicePreview`'s stop-before-render guard is untested and cannot be tested as written.**
+- `Earwig/ViewModels/VoicePreview.swift:13-14, 25-53`.
+- The `generation` counter stops a render that finishes after Stop from playing, and keeps a late completion from stopping a newer preview. That is real state logic, but it is built on the concrete `AudioSessionManager` and `AudioEngineHost`, so it cannot be faked.
+- `AudioEngineHost` already conforms to `PlayerOutput` (`Earwig/Services/AudioEngineHost.swift:16`). Injecting that, plus a session seam, would allow one small test: Stop during the render, then check that nothing played and `isPlaying == false`.
+- Optional. The preview is in the audio path and needs a check on the phone anyway.
+
+### Assessment
+
+- C1 — FIX: the action reads state the binding's setter clears (`ScriptsView.swift:54-57`); whichever order SwiftUI runs them in, `presenting:` with the script passed to `confirmDeletion(of:in:)` cannot lose it. Device check 4 gains the Delete half.
+- C2 — FIX: `VoicePreview.swift:35-38` tears the engine and session down at `.dataRendered`, before the earpiece has played the last ~356 ms; wait out `audio.outputLatency` (plus a margin) before stopping, as nothing else in the app stops at that callback.
+- C3 — FIX: real (`testflight.sh:84-136`); mark the upload once `-exportArchive` returns, and after that the trap keeps `project.yml` and says what to do by hand.
+- C4 — SKIP: the PRD, CLAUDE.md, Results and the screenshot are the plan's Finish step, after the device checks, as the plan orders them.
+- C5 — FIX: one comment, `project.yml:14-15`, to point at the script.
+- T1 — FIX (part): with C1's `confirmDeletion(of:in:)` the sample guard in it is reachable again, so keep it; make `pendingDeletion` `private(set)`; drop `aSampleIsNeverAskedAboutOrDeleted` and keep `SampleSeederTests.samplesAreNotDeleted`, which goes through ask and confirm for every script.
+- T2 — FIX: drop the redundant `takes.count` line; one line.
+- T3 — FIX: drop the repeated assertion; one line.
+- T4 — SKIP: seams for a two-second sound in Settings cost more than they catch; device check 1 covers Preview and Stop.
+
+### Outcome — 2026-11-09
+
+- C1 — fixed: the dialog uses `presenting: model.pendingDeletion`, and Delete Script passes that script to `confirmDeletion(of:in:)`.
+- C2 — fixed: at the end of Preview the engine and session stop after the route's output latency and 0.2 s more, not at `.dataRendered`.
+- C3 — fixed: `uploaded` is set once `-exportArchive` returns; after that a failed commit or tag keeps `project.yml` and says what to do by hand.
+- C4 — not done here: the Finish step, after the device checks.
+- C5 — fixed: the `project.yml` comment points at the script.
+- T1 — fixed (part): `pendingDeletion` is `private(set)`; the duplicate sample test is gone, and `SampleSeederTests.samplesAreNotDeleted` also checks a sample is never asked about.
+- T2 — fixed: the redundant check is gone.
+- T3 — fixed: the repeated assertion is gone.
+- T4 — not done: seams for Preview cost more than they catch; device check 1 covers it.
+
+371 tests pass with no warnings; SwiftLint clean.

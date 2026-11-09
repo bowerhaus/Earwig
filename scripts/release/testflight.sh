@@ -82,10 +82,15 @@ branch=$(git branch --show-current)
 echo "Earwig $version ($build) from ${branch:-a detached HEAD}$($dry_run && echo ", dry run: no upload")"
 
 succeeded=false
+uploaded=false
 keydir=""
 cleanup() {
     [[ -n "$keydir" ]] && rm -rf "$keydir"
-    if ! $succeeded; then
+    if $uploaded && ! $succeeded; then
+        # App Store Connect has the build: keep the bump, or the next run repeats the number.
+        echo "Uploaded $version ($build), but the commit or the tag failed. project.yml keeps build $build:" >&2
+        echo "commit it (\"TestFlight $version ($build)\") and tag it $tag by hand." >&2
+    elif ! $succeeded; then
         git checkout -- project.yml
         xcodegen generate --quiet >/dev/null 2>&1 || true
         $dry_run || echo "Not uploaded. project.yml is as it was." >&2
@@ -130,6 +135,7 @@ xcodebuild -exportArchive \
     -exportOptionsPlist scripts/release/ExportOptions.plist \
     -exportPath build/export \
     "${auth[@]}"
+uploaded=true
 
 git commit -q -m "TestFlight $version ($build)" -- project.yml
 git tag "$tag"

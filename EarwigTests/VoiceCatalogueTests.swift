@@ -82,8 +82,6 @@ struct VoiceCatalogueTests {
         let voices = [voice("Stephanie"), voice("Jamie", "en-GB", .premium, .male)]
         let choice = try #require(VoiceCatalogue.choose(from: voices, cueID: "Serena.en-GB.premium"))
         #expect(choice.cue.name == "Jamie")
-        // No pick is automatic, as before.
-        #expect(VoiceCatalogue.choose(from: voices, cueID: nil)?.cue.name == "Jamie")
     }
 
     @Test func aPersonalVoiceIsNeverOfferedOrUsedAsTheCueVoice() throws {

@@ -52,10 +52,11 @@ struct ScriptsView: View {
                 .confirmationDialog(
                     "Delete \(model.pendingDeletion?.title ?? "")?",
                     isPresented: Binding(get: { model.pendingDeletion != nil }, set: { if !$0 { model.cancelDeletion() } }),
-                    titleVisibility: .visible
-                ) {
-                    Button("Delete Script", role: .destructive) { model.confirmDeletion(in: context) }
-                } message: {
+                    titleVisibility: .visible,
+                    presenting: model.pendingDeletion
+                ) { script in
+                    Button("Delete Script", role: .destructive) { model.confirmDeletion(of: script, in: context) }
+                } message: { _ in
                     Text("Its takes go with it.")
                 }
                 #if DEBUG

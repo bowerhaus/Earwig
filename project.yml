@@ -14,7 +14,7 @@ settings:
     # The version the app reports. scripts/release/testflight.sh bumps the build, uploads, then
     # commits and tags it; App Store Connect refuses a build number it has already seen.
     MARKETING_VERSION: "0.2.0"
-    CURRENT_PROJECT_VERSION: "1"
+    CURRENT_PROJECT_VERSION: "2"
 targets:
   Earwig:
     type: application

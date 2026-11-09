@@ -1,6 +1,6 @@
 # Plan 012: Settings and TestFlight
 
-**GitHub Issue:** not yet created (`/plan_create_issue`, with Andy's yes); folds in [#36](https://github.com/bowerhaus/Earwig/issues/36) and closes [#14](https://github.com/bowerhaus/Earwig/issues/14) (PR must include "Closes #36" and "Closes #14", and "Closes" the new issue)
+**GitHub Issue:** [#38](https://github.com/bowerhaus/Earwig/issues/38) (PR must include "Closes #38"); folds in [#36](https://github.com/bowerhaus/Earwig/issues/36) and closes [#14](https://github.com/bowerhaus/Earwig/issues/14) (PR must also include "Closes #36" and "Closes #14")
 **Branch:** `settings-testflight` (from `main` at `af23220`, after plan 011 merged and v0.1.0 was cut)
 **Status:** Draft (2026-11-09), for Andy's review.
 **Manual test:** device, on Andy's iPhone 14 Pro with the SK18: the new settings heard and seen, then the first TestFlight build installed from the TestFlight app over the development build, with a take run on it (Verification).

@@ -192,7 +192,7 @@ Tap the gear on the Scripts screen.
 
 ## Building from source
 
-There's no download: you build Earwig yourself. You'll need a Mac with Xcode 27 or later, an Apple developer account (a free one is fine for your own phone), [XcodeGen](https://github.com/yonaskolb/XcodeGen), and [SwiftLint](https://github.com/realm/SwiftLint) if you want to lint:
+There's no download: you build Earwig yourself. You'll need a Mac with Xcode 27 or later, an Apple developer account (a free one works, but an app installed with it stops opening after seven days until you install it again), [XcodeGen](https://github.com/yonaskolb/XcodeGen), and [SwiftLint](https://github.com/realm/SwiftLint) if you want to lint:
 
 ```bash
 brew install xcodegen swiftlint

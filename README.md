@@ -70,6 +70,8 @@ Now put the earbud in.
 9. Stumble on purpose and start the sentence again. The voice waits while you correct yourself and carries on with you. If you lose your place altogether, tap **Back** (⏮) to hear the phrase again.
 10. At the end, **Next Take** gives you take 3 of the same step, and **Done** takes you back to the script.
 
+Speaking just a couple of words behind a voice in your ear feels odd at first, and it takes a little practice to get used to. Don't give up too easily: after a few takes it starts to feel natural, and that's when Earwig really helps.
+
 Then paste in a script of your own.
 
 ## Features
@@ -182,6 +184,7 @@ Tap the gear on the Scripts screen.
 
 ## Tips
 
+- Give the ear prompter a few practice takes before you judge it. Following a voice a couple of words ahead of you is a knack, and it comes quickly once you stop trying to keep up with it.
 - The defaults (a five-word lead, Hybrid pacing, 0.95× voice speed, tones only) were chosen by ear on real takes, so change them one at a time.
 - With the phone in your pocket, lock it. The take carries on and follows you, and the voice waits whenever you stop.
 - The recogniser mishears unusual words: one script's "leat" (a mill stream) kept coming out as "elite". That doesn't throw Earwig, which simply looks for the next words it knows.

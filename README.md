@@ -42,9 +42,19 @@ There are no accounts, no servers and no network, and nothing leaves the phone.
 
 <p align="center"><img src="docs/diagrams/following.png" alt="Three moments in a take. Reading along, the voice is five words ahead of you. When you pause, the voice reaches the end of the phrase and waits. When you go off script after a phrase, the voice holds until you say a line of the script." width="100%"></p>
 
+## Before you start: get a good voice
+
+Your iPhone comes with only the basic, compact voices, and they sound robotic. Before you try Earwig, download a better one, or the first thing you hear will put you off. It takes a couple of minutes:
+
+1. On the iPhone, open **Settings › Accessibility › Spoken Content › Voices › English**.
+2. Find **Stephanie** under English (UK), tap her and download **Stephanie (Enhanced)**. That's the voice Earwig reads your script in.
+3. Download **Jamie (Premium)** as well, from the same list. Earwig uses a second voice for the slate and for stage directions read aloud, and Jamie is its first choice.
+
+The downloads are fairly large, so do them on Wi-Fi. Earwig picks up Stephanie by itself, and if she isn't there it says so on the Script screen and uses the best voice it can find. You can choose any other Enhanced or Premium English voice under **Voice** in Earwig's Settings.
+
 ## Your first take
 
-Earwig comes with four made-up sample scripts, so you can try it out before pasting anything of your own. Start without the earbud.
+Earwig comes with four made-up sample scripts, so you can try it out before pasting anything of your own. Make sure you've [downloaded a good voice](#before-you-start-get-a-good-voice) first, then start without the earbud.
 
 1. Open **The Harbour Walk** under **Samples**.
 2. On the start card at the top, tap **Listen to Step 1**. This plays the step the way a take sounds: the slate, the tones, then the lines read straight through. Tap **Done** when you've heard enough.
@@ -167,7 +177,7 @@ Tap the gear on the Scripts screen.
 
 - An iPhone with iOS 26 or later.
 - A Bluetooth earbud that plays in its normal music mode (A2DP). One is enough, and Earwig never uses its microphone.
-- A good English voice, downloaded in **Settings › Accessibility › Spoken Content › Voices › English**. Earwig uses **Stephanie (Enhanced)** if it's there, and the Script screen tells you if it isn't.
+- A good English voice, downloaded in **Settings › Accessibility › Spoken Content › Voices › English**: **Stephanie (Enhanced)** for the script and **Jamie (Premium)** for cues ([how](#before-you-start-get-a-good-voice)).
 - Apple's British English speech model, which Earwig downloads the first time you need it. The Listening Check shows how it's getting on.
 
 ## Tips

@@ -1,6 +1,6 @@
 # Plan 012: Settings and TestFlight
 
-**GitHub Issue:** [#38](https://github.com/bowerhaus/Earwig/issues/38) (PR must include "Closes #38"); folds in [#36](https://github.com/bowerhaus/Earwig/issues/36) and closes [#14](https://github.com/bowerhaus/Earwig/issues/14) (PR must also include "Closes #36" and "Closes #14")
+**GitHub Issue:** [#38](https://github.com/bowerhaus/Earwig/issues/38) (PR must include "Closes #38"); folds in [#36](https://github.com/bowerhaus/Earwig/issues/36) and [#35](https://github.com/bowerhaus/Earwig/issues/35), and closes [#14](https://github.com/bowerhaus/Earwig/issues/14) (PR must also include "Closes #36", "Closes #35" and "Closes #14")
 **Branch:** `settings-testflight` (from `main` at `af23220`, after plan 011 merged and v0.1.0 was cut)
 **Status:** Draft (2026-11-09), for Andy's review.
 **Manual test:** device, on Andy's iPhone 14 Pro with the SK18: the new settings heard and seen, then the first TestFlight build installed from the TestFlight app over the development build, with a take run on it (Verification).
@@ -22,6 +22,8 @@ Settings has grown stage by stage: plan 005 built it (Following, Start, Diagnost
 
 TestFlight is the other half. PRD §2 already describes the script (`scripts/release/testflight.sh`), cloud-managed signing, the refusals and the `testflight/<version>-<build>` tags, and puts the key in the Keychain under `bowerhaus.appstoreconnect`. PhysiMate's script (`bowerhaus/PhysiMate`, `scripts/release/testflight.sh` and `ExportOptions.plist`, plan 015 there) is the model, with three differences for Earwig: PhysiMate reads the key from `~/.appstoreconnect.env` and a `.p8` file, Earwig from the Keychain; PhysiMate commits its `.xcodeproj` and refuses a stale one, Earwig's is git-ignored; and CLAUDE.md says Earwig's script bumps the build number itself.
 
+#35 joins as well (Andy, 2026-11-09), also found while checking every screen for plan 011: swiping one of the presenter's own scripts on the Scripts screen and tapping Delete removes it and its takes at once, while **Delete Script** at the foot of the Script screen asks first. It is small, and a deletion with no question is worth fixing before a build goes to TestFlight.
+
 The App Store release (#37: name, listing, privacy policy, screenshots, App Review) depends on this plan and is its own plan after it.
 
 ## Scope
@@ -30,6 +32,7 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 - the Voice group finished: Preview, Voice Speed moved in from Following, Cue Voice;
 - Show Take Details and Title Case (#36);
 - an About group: version and build, source code, licence;
+- swipe to delete on the Scripts screen asks first (#35);
 - §4.8 settled: what is built, and what is struck from it and why;
 - `scripts/release/testflight.sh` and `scripts/release/ExportOptions.plist`;
 - `PrivacyInfo.xcprivacy`, which App Store Connect asks for on upload;
@@ -39,7 +42,7 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 **Out:**
 - the App Store release (#37), including a public TestFlight link for external testers, which needs Beta App Review and a privacy policy;
 - the fixed-pace scroll (#31);
-- #30 (a fluff in the last phrase), #33 (the route check's colours) and #35 (swipe to delete doesn't ask), unless Andy wants #35 folded in (it is small, and in a screen this plan does not touch);
+- #30 (a fluff in the last phrase) and #33 (the route check's colours);
 - a Reset to Defaults button.
 
 ## Design decisions
@@ -101,6 +104,10 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 
 13. **The Release build.** TestFlight builds are Release, which no take has run in yet. The Debug-only launch flags are inside `#if DEBUG`; the Release configuration is built in the simulator first, with no warnings, and the device check runs a take With Voice on the TestFlight build, locked in a pocket.
 
+14. **Swipe to delete asks first** (#35). The swipe on one of the presenter's own scripts opens the same confirmation as Delete Script on the Script screen: "Delete" and the script's title, "Its takes go with it.", and a red **Delete Script**. Nothing is deleted until that is tapped; Cancel, or a tap outside, leaves the script and its takes as they were.
+    - The view model holds the script waiting to be confirmed (`ScriptsViewModel.pendingDeletion`), with `askToDelete(_:)`, `confirmDeletion(in:)` and `cancelDeletion()`, so a test can show nothing goes before the confirmation. Samples are still never deleted, either way.
+    - `.onDelete` deletes at once by design, so the row's swipe becomes `.swipeActions` with one Delete button. It has no full swipe (`allowsFullSwipe: false`), and no destructive role, since a destructive swipe button slides the row away before the question is answered; it is tinted `EarwigTheme.warning` instead. The phone shows whether the row stays put while the question is up.
+
 ## Files
 
 - `Earwig/Views/Settings/SettingsView.swift` (edited: the Voice group, Cue Voice, Preview, Show Take Details, About, Title Case).
@@ -109,6 +116,8 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 - `Earwig/Services/VoiceCatalogue.swift` (edited: `choose` takes a cue voice; the cue options).
 - `Earwig/Services/ScriptRenderer.swift` (edited, if the cue voice is passed through it).
 - `Earwig/Views/Prompt/PromptView.swift`, `Earwig/ViewModels/PromptViewModel.swift` (edited: the line only when Show Take Details is on).
+- `Earwig/Views/Scripts/ScriptsView.swift`, `Earwig/ViewModels/ScriptsViewModel.swift` (edited: the swipe asks first, #35).
+- `EarwigTests/ScriptsViewModelTests.swift` (new or edited: nothing deleted until confirmed; cancel keeps it; a sample never deleted).
 - `Earwig/Resources/PrivacyInfo.xcprivacy` (new).
 - `EarwigTests/VoiceCatalogueTests.swift` (edited: a chosen cue voice, a deleted one, Personal Voice never a cue).
 - `scripts/release/testflight.sh`, `scripts/release/ExportOptions.plist` (new).
@@ -122,32 +131,34 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 2. **The Voice group.** Voice Speed moved in, Cue Voice, Preview with Stop. Simulator: the group lays out, Preview's Stop works (the simulator has no Stephanie, so what it sounds like waits for the phone).
 3. **Show Take Details and Title Case** (#36). Simulator: a Screen Only take (`-EarwigDemo YES -EarwigScreen YES -EarwigReads YES`) with the switch off shows no line, and on shows it.
 4. **About.** Version and build from the bundle; the two links.
-5. **Privacy manifest.** The required-reason APIs searched for again across `Earwig/`; the manifest written; the built app checked to contain `PrivacyInfo.xcprivacy`.
-6. **Release build.** `MARKETING_VERSION: "0.2.0"`; the Release configuration built in the simulator, no warnings; the Debug flags checked to be compiled out.
-7. **The script.** `testflight.sh` and `ExportOptions.plist`; `bash -n` and, if installed, `shellcheck`; its refusals tried without uploading (a dirty tree, a missing Keychain item, an existing tag), and a failure after the bump checked to leave `project.yml` as it was.
-8. **Andy's part.** The Keychain items stored with the commands the script prints, and the App Store Connect record and internal group made (decision 10).
-9. **The first upload,** run by Claude with Andy's yes: the script, the build in App Store Connect, any mail about the manifest, then the install from TestFlight on the phone and the device checks (Verification). The commit and the tag pushed with Andy's yes.
-10. **Finish.**
+5. **Swipe to delete asks first** (#35, decision 14). The view model's tests first, on an in-memory container held for the test's length: a script asked to be deleted is still there; confirmed, it and its takes are gone; cancelled, both stay; a sample is never deleted. Then the swipe. Simulator: a pasted script swiped, Cancel, still there; swiped again, Delete Script, gone.
+6. **Privacy manifest.** The required-reason APIs searched for again across `Earwig/`; the manifest written; the built app checked to contain `PrivacyInfo.xcprivacy`.
+7. **Release build.** `MARKETING_VERSION: "0.2.0"`; the Release configuration built in the simulator, no warnings; the Debug flags checked to be compiled out.
+8. **The script.** `testflight.sh` and `ExportOptions.plist`; `bash -n` and, if installed, `shellcheck`; its refusals tried without uploading (a dirty tree, a missing Keychain item, an existing tag), and a failure after the bump checked to leave `project.yml` as it was.
+9. **Andy's part.** The Keychain items stored with the commands the script prints, and the App Store Connect record and internal group made (decision 10).
+10. **The first upload,** run by Claude with Andy's yes: the script, the build in App Store Connect, any mail about the manifest, then the install from TestFlight on the phone and the device checks (Verification). The commit and the tag pushed with Andy's yes.
+11. **Finish.**
     - SwiftLint clean, no warnings, all tests pass.
     - Results filled in, with #14's verdict.
     - README's Settings section and Title Case.
     - PRD as v0.14: §4.8 and §8.4 as built, with what was struck (decision 4); §2's Distribution (the project generated, the build bumped by the script, the Keychain items); §12 with stage 7 done, the MVP stages complete; a Document History row.
     - CLAUDE.md: the status (plan 012 complete, next #37 as plan 013), how a TestFlight build is uploaded, and the Show Take Details note for device checks.
     - `progress.md` emptied to its stub.
-11. **The release, after the PR merges** (each push needs Andy's yes): the annotated tag `v0.2.0` on `main` at the merge commit, pushed, and the GitHub Release marked pre-release, notes from the Document History since v0.1.0 and the known issues.
+12. **The release, after the PR merges** (each push needs Andy's yes): the annotated tag `v0.2.0` on `main` at the merge commit, pushed, and the GitHub Release marked pre-release, notes from the Document History since v0.1.0 and the known issues.
 
 ## Verification
 
 - `xcodebuild test` passes in the simulator with no warnings; SwiftLint clean; the Release configuration builds with no warnings.
-- Simulator: Settings in its seven groups; Show Take Details hides and shows the line; About shows 0.2.0 and the build.
-- The script's refusals, without an upload (step 7).
+- Simulator: Settings in its seven groups; Show Take Details hides and shows the line; About shows 0.2.0 and the build; a swipe to delete asks first, and Cancel keeps the script (step 5).
+- The script's refusals, without an upload (step 8).
 - On the iPhone 14 Pro with the SK18, one check at a time, the verdicts Andy's:
   1. **Preview** reads the sentence in Stephanie at 0.95x through the earpiece, and Stop stops it. At another voice speed it sounds that speed.
   2. **Cue Voice**: a voice chosen by hand reads the cues in a take on a sample with Read Cues on; Automatic reads them as before.
   3. **Show Take Details** off: a take has no engine line. On: it has.
-  4. **The TestFlight build**: it appears in the TestFlight app and installs over the development build. The Scripts screen keeps its scripts and takes. About shows 0.2.0 (2).
-  5. **A take on the TestFlight build**: With Voice on The Old Watermill, the earpiece in, the phone locked in a pocket. It follows and completes as the development build did.
-  6. **Back to a development build**: `devicectl` installs over the TestFlight build and the scripts and takes are still there, so development carries on as before.
+  4. **Swipe to delete** on a script of Andy's own: the question comes up with the script's title and the row stays put; Cancel keeps it and its takes. (A throwaway pasted script for the Delete Script half.)
+  5. **The TestFlight build**: it appears in the TestFlight app and installs over the development build. The Scripts screen keeps its scripts and takes. About shows 0.2.0 (2).
+  6. **A take on the TestFlight build**: With Voice on The Old Watermill, the earpiece in, the phone locked in a pocket. It follows and completes as the development build did.
+  7. **Back to a development build**: `devicectl` installs over the TestFlight build and the scripts and takes are still there, so development carries on as before.
 
 ## Results
 

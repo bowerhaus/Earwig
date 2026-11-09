@@ -73,7 +73,7 @@ Two other ways were weighed and not chosen (2026-11-08):
    - Share is the share sheet with the file: AirDrop to the Mac, Save Video to Photos, Save to Files.
    - Only what was said is in the file (Out). Mixed or one-ear playback of the earpiece is not needed.
 
-8. **Quality: 1080p30 by default, 4K30 as a setting (Andy, 2026-11-08).** 1080p is enough for checking a performance (about 60 MB a minute in HEVC); 4K30 is for a take meant for use (about 170 MB a minute), matching the Osmo. A **Video Quality** picker in the Recording group. The front camera of the iPhone 14 Pro does both.
+8. **Quality: 1080p30 by default, 4K30 as a setting (Andy, 2026-11-08).** *Measured in check 4 (2026-11-09): about 80 MB a minute at 1080p (take 55, 38.6 MB for 29.3 s) and about 280 MB at 4K (step 2 take 15, 128.5 MB for 27.2 s), against the estimates below; Settings says the measured figures.* 1080p is enough for checking a performance (about 60 MB a minute in HEVC); 4K30 is for a take meant for use (about 170 MB a minute), matching the Osmo. A **Video Quality** picker in the Recording group. The front camera of the iPhone 14 Pro does both.
 
 9. **Orientation, locking and leaving the screen (Andy, 2026-11-08: as proposed).**
    - **Orientation** is the phone's at Start (from `AVCaptureDevice.RotationCoordinator`), fixed for the take, written as the file's rotation.

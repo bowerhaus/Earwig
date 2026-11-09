@@ -100,7 +100,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Recording")
                 } footer: {
-                    Text("Sound records what you say on the iPhone's mic; Video adds the front camera, framed before the take starts and, with Camera Behind the Text, shown behind the words while you read. Also beside Start on the Script screen. 1080p is about 60 MB a minute, 4K about 170 MB. With Keep Recordings off, each take's recording replaces the last. Recordings are in the Files app, under On My iPhone › Earwig.")
+                    Text("Sound records what you say on the iPhone's mic; Video adds the front camera, framed before the take starts and, with Camera Behind the Text, shown behind the words while you read. Also beside Start on the Script screen. 1080p is about 80 MB a minute, 4K about 280 MB. With Keep Recordings off, each take's recording replaces the last. Recordings are in the Files app, under On My iPhone › Earwig.")
                         .foregroundStyle(EarwigTheme.secondaryText)
                 }
                 .listRowBackground(EarwigTheme.surface)

@@ -555,8 +555,8 @@ docs/            development.md (gotchas), this PRD stays at the root
 The presenter's own scripts at the top (title, step count, format, last take), swipe to
 delete, and the four samples below them under **Samples**, which cannot be deleted (plan
 011). Tap for the script. The Paste pill is in the toolbar once there are scripts of the
-presenter's own; until then the top section is one row, "Copy a script on your Mac, in
-Markdown or plain text, then paste it here", with the pill. The Settings gear is top left.
+presenter's own; until then the top section is one row, "Copy a script in Markdown or
+plain text, then paste it here", with the pill. The Settings gear is top left.
 
 ### 8.2 Script
 

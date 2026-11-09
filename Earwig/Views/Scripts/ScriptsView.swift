@@ -115,7 +115,7 @@ struct ScriptsView: View {
     /// In place of the presenter's own scripts while there are none.
     private var pasteHint: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Copy a script on your Mac, in Markdown or plain text, then paste it here.")
+            Text("Copy a script in Markdown or plain text, then paste it here.")
                 .font(.body)
                 .foregroundStyle(EarwigTheme.text)
             pasteButton

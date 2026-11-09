@@ -155,7 +155,7 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
   1. **Preview** reads the sentence in Stephanie at 0.95x through the earpiece, and Stop stops it. At another voice speed it sounds that speed.
   2. **Cue Voice**: a voice chosen by hand reads the cues in a take on a sample with Read Cues on; Automatic reads them as before.
   3. **Show Take Details** off: a take has no engine line. On: it has.
-  4. **Swipe to delete** on a script of Andy's own: the question comes up with the script's title and the row stays put; Cancel keeps it and its takes. (A throwaway pasted script for the Delete Script half.)
+  4. **Swipe to delete** on a script of Andy's own: the question comes up with the script's title and the row stays put; Cancel keeps it and its takes. Then a throwaway pasted script, swiped, **Delete Script**: it goes (review C1).
   5. **The TestFlight build**: it appears in the TestFlight app and installs over the development build. The Scripts screen keeps its scripts and takes. About shows 0.2.0 (2).
   6. **A take on the TestFlight build**: With Voice on The Old Watermill, the earpiece in, the phone locked in a pocket. It follows and completes as the development build did.
   7. **Back to a development build**: `devicectl` installs over the TestFlight build and the scripts and takes are still there, so development carries on as before.

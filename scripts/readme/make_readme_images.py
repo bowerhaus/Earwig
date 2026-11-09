@@ -78,7 +78,7 @@ def banner() -> None:
     <div class="words">
       <img class="mark" src="{MARK.as_uri()}">
       <h1>Earwig</h1>
-      <p>Your script in one earpiece, <b>a few words ahead</b>. It follows what you actually say.</p>
+      <p>Your script in one earbud, <b>a few words ahead</b>. It follows what you actually say.</p>
     </div>
     <img class="phone a" src="{left}"><img class="phone b" src="{middle}"><img class="phone c" src="{right}">
     </body></html>"""

@@ -72,10 +72,21 @@ struct VoiceCatalogueTests {
     }
 
     @Test func aCueVoicePickedByHandReadsTheCues() throws {
-        let voices = [voice("Stephanie"), voice("Jamie", "en-GB", .premium, .male), voice("Serena", "en-GB", .premium)]
-        let choice = try #require(VoiceCatalogue.choose(from: voices, cueID: "Serena.en-GB.premium"))
+        let voices = [voice("Stephanie"), voice("Jamie", "en-GB", .premium, .male), voice("Arthur", "en-GB", .enhanced, .male)]
+        let choice = try #require(VoiceCatalogue.choose(from: voices, cueID: "Arthur.en-GB.enhanced"))
         #expect(choice.presenter.name == "Stephanie")
-        #expect(choice.cue.name == "Serena")
+        #expect(choice.cue.name == "Arthur")
+    }
+
+    @Test func onlyVoicesOfTheOtherGenderAreOfferedForTheCues() throws {
+        let stephanie = voice("Stephanie")
+        let voices = [stephanie, voice("Kate"), voice("Jamie", "en-GB", .premium, .male), voice("Sam", "en-GB", .enhanced, .unspecified)]
+        #expect(VoiceCatalogue.cueOptions(from: voices, presenter: stephanie).map(\.name) == ["Jamie", "Sam"])
+        // A presenter of no stated gender: every voice but the presenter's.
+        #expect(VoiceCatalogue.cueOptions(from: voices, presenter: voices[3]).map(\.name) == ["Jamie", "Kate", "Stephanie"])
+        // Kate picked while Jamie presented, then Stephanie chosen: Automatic again.
+        let choice = try #require(VoiceCatalogue.choose(from: voices, presenterID: "Stephanie.en-GB.enhanced", cueID: "Kate.en-GB.enhanced"))
+        #expect(choice.cue.name == "Jamie")
     }
 
     @Test func aCueVoiceNoLongerInstalledIsAutomaticAgain() throws {
@@ -88,7 +99,7 @@ struct VoiceCatalogueTests {
         let mine = VoiceInfo(identifier: "personal.andy", name: "Andy", language: "en-GB", quality: .premium, gender: .male, isPersonal: true)
         let voices = [mine, voice("Stephanie"), voice("Jamie", "en-GB", .premium, .male), voice("Daniel", "en-GB", .compact, .male),
                       voice("Ava", "en-US", .premium), voice("Thomas", "fr-FR", .premium, .male)]
-        #expect(VoiceCatalogue.cueOptions(from: voices).map(\.name) == ["Jamie", "Stephanie", "Ava"])
+        #expect(VoiceCatalogue.cueOptions(from: voices, presenter: mine).map(\.name) == ["Stephanie", "Ava"])
         let choice = try #require(VoiceCatalogue.choose(from: voices, cueID: "personal.andy"))
         #expect(choice.cue.name == "Jamie")
     }

@@ -207,6 +207,8 @@ struct SettingsView: View {
                 guard !old.isEmpty, !new.isEmpty else { return }
                 preview.stop()
                 AppSettings.presenterVoiceID = new
+                // A cue voice of the new presenter's gender is no longer offered: Automatic again.
+                if !cueOptions.contains(where: { $0.identifier == cueVoiceID }) { cueVoiceID = "" }
                 renderer.use(VoiceCatalogue.chosen())
             }
             .onChange(of: cueVoiceID) { _, new in
@@ -239,8 +241,12 @@ struct SettingsView: View {
     /// Personal Voices first, then English voices of Enhanced quality or better, British first.
     private var presenterOptions: [VoiceInfo] { VoiceCatalogue.presenterOptions(from: VoiceCatalogue.installed()) }
 
-    /// English voices of Enhanced quality or better, never a Personal Voice, beside Automatic.
-    private var cueOptions: [VoiceInfo] { VoiceCatalogue.cueOptions(from: VoiceCatalogue.installed()) }
+    /// English voices of Enhanced quality or better and not of the presenter's gender, never a
+    /// Personal Voice, beside Automatic.
+    private var cueOptions: [VoiceInfo] {
+        let voices = VoiceCatalogue.installed()
+        return VoiceCatalogue.cueOptions(from: voices, presenter: voices.first { $0.identifier == voiceID })
+    }
 
     /// "0.2.0 (2)": the version and the build, so a TestFlight build can be told apart.
     static let version: String = {

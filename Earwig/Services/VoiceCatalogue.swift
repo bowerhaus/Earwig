@@ -95,13 +95,17 @@ enum VoiceCatalogue {
 
     /// The choice from the installed voices, or `nil` when there is no English voice. A presenter
     /// voice picked by hand (`presenterID`) is used while it is installed; else the default. A cue
-    /// voice picked by hand (`cueID`, plan 012) likewise; else Automatic, `cue(from:presenter:)`.
+    /// voice picked by hand (`cueID`, plan 012) likewise while it is one of `cueOptions`; else
+    /// Automatic, `cue(from:presenter:)`.
     /// A Personal Voice is never the default and never the cue voice.
     static func choose(from voices: [VoiceInfo], presenterID: String? = nil, cueID: String? = nil) -> VoiceChoice? {
         let picked = presenterID.flatMap { id in voices.first { $0.identifier == id } }
         let standard = voices.filter { !$0.isPersonal }
         guard let presenter = picked ?? presenter(from: standard) else { return nil }
-        let pickedCue = cueID.flatMap { id in standard.first { $0.identifier == id } }
+        // A pick no longer offered (since uninstalled, or the presenter's gender since the
+        // presenter changed) is Automatic again.
+        let offered = cueOptions(from: voices, presenter: presenter)
+        let pickedCue = cueID.flatMap { id in offered.first { $0.identifier == id } }
         let cue = pickedCue ?? cue(from: standard, presenter: presenter) ?? presenter
         return VoiceChoice(presenter: presenter, cue: cue, presenterIsPreferred: picked != nil || isPreferred(presenter))
     }
@@ -112,9 +116,15 @@ enum VoiceCatalogue {
     }
 
     /// The cue voices worth offering beside Automatic: English voices of Enhanced quality or
-    /// better, British first, never a Personal Voice (plan 012, decision 2).
-    static func cueOptions(from voices: [VoiceInfo]) -> [VoiceInfo] {
-        presenterOptions(from: voices).filter { !$0.isPersonal }
+    /// better, British first, never a Personal Voice (plan 012, decision 2), and never the
+    /// presenter's voice or one of its gender, so a cue is clearly not a line (Andy, device
+    /// check 3). A voice of no stated gender is offered whatever the presenter's.
+    static func cueOptions(from voices: [VoiceInfo], presenter: VoiceInfo?) -> [VoiceInfo] {
+        presenterOptions(from: voices).filter { voice in
+            guard !voice.isPersonal, voice.identifier != presenter?.identifier else { return false }
+            guard let gender = presenter?.gender, gender != .unspecified, voice.gender != .unspecified else { return true }
+            return voice.gender != gender
+        }
     }
 
     /// The presenter voices worth offering: Personal Voices, then English voices of Enhanced

@@ -53,7 +53,7 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
    - **Voice**, as now.
    - **Preview**: a button that reads one sentence in the chosen voice at the chosen voice speed, through whatever the route is (the earpiece if it is in). It renders and plays the way Listen does (`VoiceRenderer`, then the player at the voice speed), so what Preview plays is what a take plays. While it plays the button reads **Stop**. The sentence is the Harbour Walk's first line (its first phrase, which the Listening check quotes, is "Morning!" alone: device check 1).
    - **Voice Speed**, moved from Following: it is how the voice sounds, and Preview plays at it. Following keeps Lead and Pacing.
-   - **Cue Voice**: **Automatic** (default, today's rule: the best en-GB voice of the other gender, so a cue never sounds like the script) or any English voice of Enhanced quality or better, never a Personal Voice. Stored as an identifier in `AppSettings`, nil for Automatic; a voice since deleted falls back to Automatic. `VoiceCatalogue.choose` takes it.
+   - **Cue Voice**: **Automatic** (default, today's rule: the best en-GB voice of the other gender, so a cue never sounds like the script) or an English voice of Enhanced quality or better of the other gender to the presenter's (a voice of no stated gender is offered too), never the presenter's own and never a Personal Voice: Andy, device check 3, found the list offered female voices beside Stephanie. Stored as an identifier in `AppSettings`, nil for Automatic; a voice since deleted, or one of the presenter's gender once the presenter changes, falls back to Automatic. `VoiceCatalogue.choose` takes it.
    - **Allow Personal Voice** and **Stage Directions**, as now.
 
 3. **One voice speed for every voice, not a base rate per voice** (#14). Plan 005 chose 0.95x by ear on Stephanie, in real takes, which is what #14 asked for. A rate per voice is a setting few presenters would understand, and changing the voice and then its speed is two taps with Preview to judge it. #14 closes with this plan, its verdict recorded in Results. If a second voice turns out to want a different speed, that can be its own issue.
@@ -64,7 +64,7 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 
    §4.8 is rewritten to say what Settings has, and these two go into its history line.
 
-5. **Show Take Details** (#36), under Diagnostics with the Listening Check, off by default. Off, the Prompt screen has no engine line; on, it shows it as now. `AppSettings.showsTakeDetails`. Andy turns it on on his phone for device checks. The take's console summary (`TakeSummary`) is unchanged either way.
+5. **Show Take Details** (#36), under Diagnostics with the Listening Check, off by default. Off, the Prompt screen has no engine line; on, it shows it as now, and once the take is over the line stays as it was at the end, so the numbers can still be read (Andy, device check 3). `AppSettings.showsTakeDetails`. Andy turns it on on his phone for device checks. The take's console summary (`TakeSummary`) is unchanged either way.
 
 6. **Title Case** (#36): **Voice Speed** and **Text Size**, here and in the README's Settings section, so every Settings label is in Title Case as Apple's own Settings app writes them.
 
@@ -153,7 +153,7 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 - On the iPhone 14 Pro with the SK18, one check at a time, the verdicts Andy's:
   1. **Preview** reads the sentence in Stephanie at 0.95x through the earpiece, and Stop stops it. At another voice speed it sounds that speed.
   2. **Cue Voice**: a voice chosen by hand reads the cues in a take on a sample with Read Cues on; Automatic reads them as before.
-  3. **Show Take Details** off: a take has no engine line. On: it has.
+  3. **Show Take Details** off: a take has no engine line. On: it has, and it stays once the take is over. The Cue Voice list, with Stephanie presenting, offers only voices that are not female.
   4. **Swipe to delete** on a script of Andy's own: the question comes up with the script's title and the row stays put; Cancel keeps it and its takes. Then a throwaway pasted script, swiped, **Delete Script**: it goes (review C1).
   5. **The TestFlight build**: it appears in the TestFlight app and installs over the development build. The Scripts screen keeps its scripts and takes. About shows 0.2.0 (2).
   6. **A take on the TestFlight build**: With Voice on The Old Watermill, the earpiece in, the phone locked in a pocket. It follows and completes as the development build did.

@@ -215,8 +215,10 @@ struct PromptViewModel: Equatable {
     }
 
     /// The device check's numbers (decision 7): lead error, speed, the measured delay and rate.
+    /// Once the take is over they stay as they were at its end, so they can still be read
+    /// (Andy, plan 012 device check 3); a take that heard nothing has none.
     var diagnostics: String? {
-        guard following else { return nil }
+        guard following || (isOver && snapshot.presenterWord >= 0) else { return nil }
         let error = snapshot.error.map { String(format: "%+.1f", $0) } ?? "–"
         return String(format: "lead error %@ · speed %.2f× · delay %.2f s · rate %.1f w/s", error, snapshot.speed, snapshot.delay, snapshot.rate)
     }

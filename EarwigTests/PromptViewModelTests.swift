@@ -222,6 +222,20 @@ struct PromptViewModelTests {
         #expect(self.model(.running, .slate).diagnostics == nil)
     }
 
+    @Test func diagnosticsStayOnceTheTakeIsOver() {
+        var snapshot = FollowSnapshot()
+        snapshot.status = .finished
+        snapshot.presenterWord = 40
+        snapshot.speed = 1.0
+        snapshot.delay = 0.91
+        snapshot.rate = 2.63
+        let over = PromptViewModel(phase: .finished(.completed), snapshot: snapshot, route: route(out: .bluetoothA2DP), setup: setup)
+        #expect(over.diagnostics == "lead error – · speed 1.00× · delay 0.91 s · rate 2.6 w/s")
+        // A take that heard nothing has none.
+        snapshot.presenterWord = -1
+        #expect(PromptViewModel(phase: .finished(.completed), snapshot: snapshot, route: route(out: .bluetoothA2DP), setup: setup).diagnostics == nil)
+    }
+
     // MARK: - Screen mode
 
     private func screen(_ status: FollowStatus, place: Double = -1, voicePhrase: Int? = nil, voiceWord: Int? = nil,

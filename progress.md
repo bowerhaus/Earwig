@@ -14,13 +14,13 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 ## Steps
 
-1. [ ] Geometry: the icon script writes `EarwigGeometry.swift`.
-2. [ ] The figure and the gait (`EarwigFigure`, `Gait`), with a first look from the simulator.
-3. [ ] Paths and running away (`VisitPath`, `Walk`), with tests.
-4. [ ] Schedule and keep-away (`VisitSchedule`, `EarwigVisits`), with tests.
-5. [ ] On the screens: the modifier on Scripts, Script and Settings, checked in the simulator with `-EarwigVisits YES`.
-6. [ ] The slider: Earwig Visits in Diagnostics.
-7. [ ] Tests + lint.
+1. [x] Geometry: the icon script writes `EarwigGeometry.swift`.
+2. [x] The figure and the gait (`EarwigFigure`, `Gait`), with a first look from the simulator.
+3. [x] Paths and running away (`VisitPath`, `Walk`), with tests.
+4. [x] Schedule and keep-away (`VisitSchedule`, `EarwigVisits`), with tests.
+5. [x] On the screens: the modifier on Scripts, Script and Settings, checked in the simulator with `-EarwigVisits YES`.
+6. [x] The slider: Earwig Visits in Diagnostics.
+7. [x] Tests + lint: 372 tests pass, SwiftLint clean (commit `2401a34`).
 8. [ ] Review + fixes.
 9. [ ] Manual test: device.
 10. [ ] Complete (commit + PR).

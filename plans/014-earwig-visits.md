@@ -64,10 +64,10 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
 
 2. **The gait.** Insects walk on two alternating sets of three legs: front and back on one side with the middle leg on the other. Each leg swings forward and back about its pivot, through an angle tuned on the phone (start at ±12°). The legs' phase follows the distance walked, not the clock, so they stop when it pauses and never slide. The body sways slightly with each step, the antennae twitch on their own slow rhythm, and the forceps stay still. A pure `Gait` struct gives every part's angle for a distance walked, and it is tested.
 
-3. **Size and speed.** About 70 pt long, close to a real earwig on the 14 Pro's screen. It walks at about 60 pt a second, so a crossing takes 6–10 seconds with its pauses. Both are constants, tuned on the phone.
+3. **Size and speed.** About 70 pt long, close to a real earwig on the 14 Pro's screen. It walks at 90 pt a second (raised from the drafted 60 in the simulator, where crossings took up to 17 s; 90 is about 1.5 cm a second on the 14 Pro, near a real earwig's pace), so a crossing takes 6–11 seconds with its pauses. Both are constants, tuned on the phone.
 
 4. **The path.** A pure `VisitPath`, made from the screen's size and a random source (seeded in tests):
-   - It enters off one edge and leaves off another, or sometimes the same one, along a gentle curve. It always faces the way it's going.
+   - It enters off one edge and leaves off another, or sometimes the same one, along a gentle curve that bends at most a quarter of its length either side of the straight line. A walk that enters at the top or the foot leaves at a side, so none is the phone's whole height. It always faces the way it's going.
    - It pauses once or twice for 0.5–1.5 s, with the antennae still twitching.
    - Now and then it turns back halfway and leaves the way it came.
    - It never pauses under the top bar or the home indicator, so it never seems to hide there.
@@ -133,7 +133,7 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
 - `Earwig/Views/Visitor/EarwigGeometry.swift` (new, generated).
 - `Earwig/Views/Visitor/EarwigFigure.swift` (new: the `Canvas` drawing for a gait pose).
 - `Earwig/Views/Visitor/EarwigVisitorLayer.swift` (new: the two layers and the `.earwigVisits(on:)` modifier).
-- `Earwig/Services/EarwigVisits.swift` (new: `EarwigVisits`, `VisitSchedule`, `VisitPath`, `Gait`).
+- `Earwig/Services/EarwigWalk.swift` (new: `VisitPath`, `Walk`, `WalkPlanner`, `Gait`) and `Earwig/Services/EarwigVisits.swift` (new: `VisitFrequency`, `VisitSchedule`, `EarwigVisits`).
 - `Earwig/Views/Scripts/ScriptsView.swift`, `Earwig/Views/ScriptDetail/ScriptDetailView.swift`, `Earwig/Views/Settings/SettingsView.swift` (edited: the modifier, the keep-away conditions and the slider).
 - `Earwig/App/EarwigApp.swift` (edited: `EarwigVisits` in the environment, and no visit before the splash ends).
 - `EarwigTests/EarwigVisitsTests.swift` (new).

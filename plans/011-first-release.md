@@ -222,6 +222,7 @@ Built and checked on 2026-11-09. **PASS**: Andy reported every device check pass
 
   All are in, and he approved it.
 - **Review pass:** two agents' findings, recorded above with their outcomes.
+- **The release:** [Earwig 0.1.0](https://github.com/bowerhaus/Earwig/releases/tag/v0.1.0), published 2026-11-09 as a pre-release with no binary. It has the annotated tag `v0.1.0` on `main` at the merge commit `dd9961c`, and its notes were approved by Andy.
 - **Follow-ups opened** (Andy, 2026-11-09):
   - [#35](https://github.com/bowerhaus/Earwig/issues/35): swipe to delete on the Scripts screen doesn't ask first.
   - [#36](https://github.com/bowerhaus/Earwig/issues/36), for plan 012: a Show Take Details switch for the diagnostics line, off by default, and Voice Speed and Text Size in Title Case.

@@ -212,18 +212,18 @@ xcrun devicectl device install app --device <UDID> build/DerivedData/Build/Produ
 
 Earwig uses only Apple's frameworks, with no third-party dependencies. `Earwig.xcodeproj` is generated, so run `xcodegen generate` again whenever you add or remove files. The follow engine (`Earwig/Engine/`) is plain Swift, tested with simulated takes in `EarwigTests/Simulation/`.
 
-## Status
+Earwig is built in stages. The [product requirements](PRD.md) describe what it's meant to do, with the stages in §12, and [`plans/`](plans/) holds the plan for each one.
 
-Earwig is a personal app, built in stages for my own videos and shared as it goes. The [product requirements](PRD.md) describe what it's meant to do, with the stages in §12, and [`plans/`](plans/) holds the plan for each one. This is a pre-release, with a couple of known issues:
+## Releases and known issues
+
+Each release is a tag on `main` (`v0.1.0`, …) with notes on the [Releases](https://github.com/bowerhaus/Earwig/releases) page, marked as a pre-release until 1.0. A release has no app to download, because an iPhone app only installs when it's signed for your device, so build it from source as above. An App Store version is planned, for anyone who'd rather not build it themselves.
+
+Known issues in this pre-release:
 
 - [#30](https://github.com/bowerhaus/Earwig/issues/30): a stumble in the last phrase of a step can end the take a few words short.
 - [#33](https://github.com/bowerhaus/Earwig/issues/33): the route check's green is pale, and its icons appear late.
 
 Other ideas and bugs are in the [issues](https://github.com/bowerhaus/Earwig/issues).
-
-### Releases
-
-Each release is a tag on `main` (`v0.1.0`, …) with notes on the [Releases](https://github.com/bowerhaus/Earwig/releases) page, marked as a pre-release until 1.0. There's no app to download with a release, because an iPhone app only installs when it's signed for your device, so build it from source as above.
 
 ## Licence
 

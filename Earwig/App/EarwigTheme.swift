@@ -7,8 +7,10 @@ import SwiftUI
 /// buttercup accent for the slate numerals and the voice's phrase, and peach for cues and
 /// directions, which the presenter never says. Andy's pick from nine candidates.
 enum EarwigTheme {
-    /// The system scheme that suits the palette, so system controls read on it.
-    static let scheme: ColorScheme = .dark
+    /// The system scheme. Light, so iOS draws its menus, dialogs, alerts, steppers and sheets
+    /// frosted, not near-black (plan 011, decision 16); every colour of Earwig's own is set
+    /// here, and the navigation bars and the status bar stay white.
+    static let scheme: ColorScheme = .light
 
     static let background = Color(hex: 0x5CB8F3)
     /// Rows and cards.

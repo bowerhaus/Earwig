@@ -50,8 +50,12 @@ struct ListeningCheckView: View {
             .listRowBackground(EarwigTheme.surface)
         }
         .scrollContentBackground(.hidden)
+        // White labels, pale headers and values, in the light scheme (plan 011, decision 16).
+        .foregroundStyle(EarwigTheme.text, EarwigTheme.secondaryText)
         .background(EarwigTheme.background)
         .navigationTitle("Listening Check")
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .earwigBackButton()
         .navigationBarTitleDisplayMode(.inline)
         .task { await check.start() }
         .onDisappear { Task { await check.stop() } }

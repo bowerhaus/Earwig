@@ -2,7 +2,7 @@ import Foundation
 import Observation
 import SwiftData
 
-/// The Scripts screen (PRD §8.1): paste, the sample, delete, and which script is open.
+/// The Scripts screen (PRD §8.1): paste, delete, and which script is open.
 @MainActor
 @Observable
 final class ScriptsViewModel {
@@ -25,12 +25,13 @@ final class ScriptsViewModel {
         }
     }
 
-    func addSample(in context: ModelContext) {
-        paste(SampleScript.harbourWalk, in: context)
+    func open(_ script: Script?) {
+        if let script { path = [script] }
     }
 
+    /// Samples are never deleted (plan 011, decision 5).
     func delete(_ scripts: [Script], in context: ModelContext) {
-        for script in scripts { context.delete(script) }
+        for script in scripts where !script.isSample { context.delete(script) }
         try? context.save()
     }
 }

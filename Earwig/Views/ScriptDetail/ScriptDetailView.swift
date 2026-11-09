@@ -8,7 +8,6 @@ struct ScriptDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(ScriptRenderer.self) private var renderer
-    @AppStorage(AppSettings.inlineDirectionsKey) private var inlineDirections: InlineDirections = .chime
     @AppStorage(TakeSettings.modeKey) private var mode: TakeMode = TakeSettings.defaultMode
     @AppStorage(TakeSettings.recordingKey) private var recording: TakeRecordingMode = .off
     @State private var model: ScriptDetailViewModel
@@ -71,26 +70,40 @@ struct ScriptDetailView: View {
                 .listRowBackground(rowBackground(isStart: index == script.lastStep))
             }
 
-            Section {
-                // Our own button, as on the Scripts screen, so it is the accent yellow.
-                Button { model.pasteNewVersion(UIPasteboard.general.string, in: context, renderer: renderer) } label: {
-                    AccentPill(title: "Paste New Version", systemImage: "doc.on.clipboard")
+            // A sample's text is the app's, not the presenter's, and a sample is never deleted
+            // (plan 011, decisions 5, 6 and 15).
+            if !script.isSample {
+                Section {
+                    // Our own button, as on the Scripts screen, so it is the accent yellow.
+                    Button { model.pasteNewVersion(UIPasteboard.general.string, in: context, renderer: renderer) } label: {
+                        AccentPill(title: "Paste New Version", systemImage: "doc.on.clipboard")
+                    }
+                    .buttonStyle(.plain)
+                } footer: {
+                    Text("Paste a new version of this script. Its takes are kept.")
+                        .foregroundStyle(EarwigTheme.secondaryText)
                 }
-                .buttonStyle(.plain)
-            } footer: {
-                Text("Paste a new version of this script. Its takes are kept.")
-                    .foregroundStyle(EarwigTheme.secondaryText)
+                .listRowBackground(EarwigTheme.surface)
+                Section {
+                    Button(role: .destructive) { confirmingDelete = true } label: {
+                        Label("Delete Script", systemImage: "trash")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(EarwigTheme.warning)
+                    }
+                }
+                .listRowBackground(EarwigTheme.surface)
             }
-            .listRowBackground(EarwigTheme.surface)
         }
         .scrollContentBackground(.hidden)
+        // White labels, pale headers and values, in the light scheme (plan 011, decision 16).
+        .foregroundStyle(EarwigTheme.text, EarwigTheme.secondaryText)
         .background(EarwigTheme.background)
         .navigationTitle(script.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(EarwigTheme.background, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) { menu }
-        }
+        // White titles on the sky blue in the light scheme (plan 011, decision 16).
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .earwigBackButton()
         .onAppear { model.appeared(in: context, renderer: renderer) }
         #if DEBUG
         .task {
@@ -184,6 +197,14 @@ struct ScriptDetailView: View {
                     }
                 }
             }
+            // Per script, so here by Start rather than in Settings (plan 011, decision 15): the
+            // step's name and Shows in the slate, and its directions in the take.
+            Toggle(isOn: Binding(get: { script.cuesOn }, set: { model.setCues($0, in: context) })) {
+                Text("Read Cues")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(EarwigTheme.secondaryText)
+            }
+            .tint(EarwigTheme.accent)
             renderStatus(state, step: stepNumber)
             if isReady {
                 Button { model.listen(with: renderer) } label: {
@@ -235,34 +256,6 @@ struct ScriptDetailView: View {
                 AccentPill(title: "Render", systemImage: "waveform")
             }
             .buttonStyle(.borderless)
-        }
-    }
-
-    private var menu: some View {
-        Menu {
-            Toggle("Read Cues", isOn: Binding(get: { script.cuesOn }, set: { model.setCues($0, in: context) }))
-            // App settings, here until the Settings screen (stage 7).
-            Picker("Voice", systemImage: "person.wave.2", selection: Binding(
-                get: { renderer.voices?.presenter.identifier ?? "" },
-                set: { model.usePresenter($0, renderer: renderer) }
-            )) {
-                ForEach(model.presenterOptions, id: \.identifier) { Text($0.displayName).tag($0.identifier) }
-            }
-            .pickerStyle(.menu)
-            // Listed again once Personal Voice has been allowed.
-            .id(model.personalVoiceAsked)
-            if model.canAskForPersonalVoice {
-                Button("Allow Personal Voice", systemImage: "person.crop.circle.badge.checkmark") {
-                    Task { await model.askForPersonalVoice() }
-                }
-            }
-            Picker("Directions in a Line", systemImage: "bell", selection: $inlineDirections) {
-                ForEach(InlineDirections.allCases, id: \.self) { Text($0.label).tag($0) }
-            }
-            .pickerStyle(.menu)
-            Button("Delete Script", systemImage: "trash", role: .destructive) { confirmingDelete = true }
-        } label: {
-            Label("More", systemImage: "ellipsis.circle")
         }
     }
 }

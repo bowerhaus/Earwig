@@ -18,6 +18,9 @@ final class Script {
     var cuesOn: Bool = true
     /// The step a take starts from, as an index into `orderedSteps`.
     var lastStep: Int = 0
+    /// The built-in sample this is (`SampleScript.Sample.id`), or nil for the presenter's own
+    /// (plan 011, decision 3).
+    var sampleID: String?
 
     @Relationship(deleteRule: .cascade, inverse: \Step.script)
     var steps: [Step]? = []
@@ -37,6 +40,8 @@ final class Script {
         get { ScriptFormat(rawValue: formatRaw) ?? .plain }
         set { formatRaw = newValue.rawValue }
     }
+
+    var isSample: Bool { sampleID != nil }
 
     var orderedSteps: [Step] { (steps ?? []).sorted { $0.sortOrder < $1.sortOrder } }
 

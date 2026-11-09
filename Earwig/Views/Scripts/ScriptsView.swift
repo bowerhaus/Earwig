@@ -2,90 +2,108 @@ import SwiftData
 import SwiftUI
 import UIKit
 
-/// The imported scripts (PRD §8.1). Paste from the clipboard, swipe to delete, tap to open.
+/// The scripts (PRD §8.1): the presenter's own at the top, swipe to delete, and the built-in
+/// samples below them, which cannot be deleted (plan 011). Paste from the clipboard; tap to open.
 struct ScriptsView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Script.updatedAt, order: .reverse) private var scripts: [Script]
     @State private var model = ScriptsViewModel()
     @State private var showingSettings = false
+    #if DEBUG
+    @State private var openedDemo = false
+    #endif
+
+    private var own: [Script] { scripts.filter { !$0.isSample } }
+    private var samples: [Script] { SampleSeeder.ordered(scripts) }
 
     var body: some View {
         NavigationStack(path: $model.path) {
-            Group {
-                if scripts.isEmpty {
-                    empty
-                } else {
-                    list
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(EarwigTheme.background)
-            .navigationTitle("Scripts")
-            .toolbarBackground(EarwigTheme.background, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { showingSettings = true } label: {
-                        Label("Settings", systemImage: "gearshape")
+            list
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(EarwigTheme.background)
+                .navigationTitle("Scripts")
+                // No bar background of its own: the screen's sky blue is behind it, and setting one
+                // makes iOS ignore the white large title set in `EarwigApp` (plan 011, decision 16).
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button { showingSettings = true } label: {
+                            Label("Settings", systemImage: "gearshape").toolbarCircle()
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                    // While there are none of their own, the paste row has the button.
+                    if !own.isEmpty {
+                        ToolbarItem(placement: .primaryAction) { pasteButton }
+                            // No glass capsule around the pill (iOS 26 draws one for every item).
+                            .sharedBackgroundVisibility(.hidden)
                     }
                 }
-                if !scripts.isEmpty {
-                    ToolbarItem(placement: .primaryAction) { pasteButton }
-                        // No glass capsule around the pill (iOS 26 draws one for every item).
-                        .sharedBackgroundVisibility(.hidden)
+                .navigationDestination(for: Script.self) { script in
+                    ScriptDetailView(script: script)
                 }
-            }
-            .navigationDestination(for: Script.self) { script in
-                ScriptDetailView(script: script)
-            }
-            .sheet(isPresented: $showingSettings) { SettingsView() }
-            .alert("Can't paste that", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(model.error ?? "")
-            }
-            #if DEBUG
-            .task {
-                // `-EarwigDemo YES` adds the sample and opens it, for simulator screenshots.
-                if UserDefaults.standard.bool(forKey: "EarwigDemo") { model.addSample(in: context) }
-            }
-            #endif
+                .sheet(isPresented: $showingSettings) { SettingsView() }
+                .alert("Can't paste that", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text(model.error ?? "")
+                }
+                #if DEBUG
+                .task(id: samples.count) {
+                    // `-EarwigDemo YES` opens the Harbour Walk sample, for simulator screenshots,
+                    // once the list has loaded it.
+                    guard UserDefaults.standard.bool(forKey: "EarwigDemo"), !openedDemo,
+                          let walk = samples.first(where: { $0.sampleID == "harbour-walk" }) else { return }
+                    openedDemo = true
+                    // A path set in the first instant after launch can be dropped by the stack.
+                    try? await Task.sleep(for: .milliseconds(400))
+                    model.open(walk)
+                }
+                #endif
         }
     }
 
     private var list: some View {
         List {
-            ForEach(scripts) { script in
-                NavigationLink(value: script) {
-                    ScriptRow(script: script)
+            Section {
+                if own.isEmpty {
+                    pasteHint
+                } else {
+                    ForEach(own) { script in
+                        NavigationLink(value: script) {
+                            ScriptRow(script: script)
+                        }
+                    }
+                    .onDelete { offsets in
+                        model.delete(offsets.map { own[$0] }, in: context)
+                    }
                 }
-                .listRowBackground(EarwigTheme.surface)
             }
-            .onDelete { offsets in
-                model.delete(offsets.map { scripts[$0] }, in: context)
+            .listRowBackground(EarwigTheme.surface)
+            Section {
+                ForEach(samples) { script in
+                    NavigationLink(value: script) {
+                        ScriptRow(script: script)
+                    }
+                }
+            } header: {
+                Text("Samples")
+                    .foregroundStyle(EarwigTheme.secondaryText)
             }
+            .listRowBackground(EarwigTheme.surface)
         }
         .scrollContentBackground(.hidden)
     }
 
-    private var empty: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "ear")
-                .font(.system(size: 56, weight: .light))
-                .foregroundStyle(EarwigTheme.accent)
-            Text("No scripts yet")
-                .font(.title2.bold())
-                .foregroundStyle(EarwigTheme.text)
-            Text("Copy a script on your Mac, a Cutaway script.md or plain text, then paste it here.")
+    /// In place of the presenter's own scripts while there are none.
+    private var pasteHint: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Copy a script on your Mac, in Markdown or plain text, then paste it here.")
                 .font(.body)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(EarwigTheme.secondaryText)
+                .foregroundStyle(EarwigTheme.text)
             pasteButton
-                .controlSize(.large)
-            Button("Try the sample") { model.addSample(in: context) }
-                .foregroundStyle(EarwigTheme.accent)
         }
-        .padding(32)
-        .frame(maxWidth: 420)
+        .padding(.vertical, 8)
     }
 
     /// Our own button, not SwiftUI's `PasteButton`: iOS darkens a `PasteButton`'s tint to keep
@@ -124,7 +142,7 @@ private struct ScriptRow: View {
 
 #Preview {
     let container = ModelContainerFactory.inMemory()
-    _ = try? ScriptImporter(context: container.mainContext).paste(SampleScript.harbourWalk)
+    try? SampleSeeder(context: container.mainContext).seed()
     return ScriptsView()
         .modelContainer(container)
         .environment(ScriptRenderer.live())

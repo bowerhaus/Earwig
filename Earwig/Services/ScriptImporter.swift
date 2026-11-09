@@ -30,7 +30,8 @@ struct ScriptImporter {
 
     /// Paste on the Scripts screen: the same text opens its script, the same stated title
     /// replaces that script's text, anything else is a new script. A title taken from a first
-    /// line or first step never replaces another script.
+    /// line or first step never replaces another script, and a sample's text is never replaced
+    /// by a paste (plan 011, decision 6).
     func paste(_ text: String) throws -> Result {
         let cleaned = Self.cleaned(text)
         let parsed = try Self.parsed(cleaned)
@@ -40,7 +41,7 @@ struct ScriptImporter {
             return Result(script: same, outcome: .unchanged)
         }
         if parsed.titleIsStated,
-           let named = scripts.first(where: { $0.title.caseInsensitiveCompare(parsed.title) == .orderedSame }) {
+           let named = scripts.first(where: { !$0.isSample && $0.title.caseInsensitiveCompare(parsed.title) == .orderedSame }) {
             apply(parsed, text: cleaned, hash: hash, to: named)
             return Result(script: named, outcome: .replaced)
         }
@@ -48,6 +49,16 @@ struct ScriptImporter {
         context.insert(script)
         apply(parsed, text: cleaned, hash: hash, to: script)
         return Result(script: script, outcome: .added)
+    }
+
+    /// A new script from the text, matching nothing stored: for the samples' seeder (plan 011).
+    func add(_ text: String) throws -> Script {
+        let cleaned = Self.cleaned(text)
+        let parsed = try Self.parsed(cleaned)
+        let script = Script()
+        context.insert(script)
+        apply(parsed, text: cleaned, hash: Self.hash(cleaned), to: script)
+        return script
     }
 
     /// Paste new version on the Script screen, whatever the new text's title.

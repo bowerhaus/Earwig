@@ -32,10 +32,13 @@ struct PlaybackView: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(EarwigTheme.background, for: .navigationBar)
+            // White titles on the sky blue in the light scheme (plan 011, decision 16).
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    DoneButton { dismiss() }
                 }
+                .sharedBackgroundVisibility(.hidden)
             }
         }
         .task {

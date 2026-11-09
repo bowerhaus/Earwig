@@ -6,9 +6,11 @@ enum ScriptFormat: String, Codable, CaseIterable, Sendable {
     case cutaway
     case plain
 
+    /// Shown to the presenter. The format is Cutaway's, but Cutaway is not published, so the app
+    /// calls it what it is (plan 011, decision 13).
     var label: String {
         switch self {
-        case .cutaway: "Cutaway"
+        case .cutaway: "Markdown"
         case .plain: "Plain text"
         }
     }

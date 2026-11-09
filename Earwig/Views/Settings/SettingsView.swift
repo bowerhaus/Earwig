@@ -39,7 +39,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Following")
                 } footer: {
-                    Text("How far ahead of you the voice runs. Hybrid nudges the voice's speed to keep the lead and waits at every phrase end; phrase-gated keeps it at its voice speed and only waits.")
+                    Text("Hybrid speeds the voice up or down to keep the lead; Phrase-gated only waits.")
                         .foregroundStyle(EarwigTheme.secondaryText)
                 }
                 .listRowBackground(EarwigTheme.surface)
@@ -53,8 +53,10 @@ struct SettingsView: View {
                 } header: {
                     Text("Start")
                 } footer: {
-                    Text(startFooter)
-                        .foregroundStyle(EarwigTheme.secondaryText)
+                    if let startFooter {
+                        Text(startFooter)
+                            .foregroundStyle(EarwigTheme.secondaryText)
+                    }
                 }
                 .listRowBackground(EarwigTheme.surface)
 
@@ -77,9 +79,6 @@ struct SettingsView: View {
                     }
                 } header: {
                     Text("Screen")
-                } footer: {
-                    Text(modeFooter)
-                        .foregroundStyle(EarwigTheme.secondaryText)
                 }
                 .listRowBackground(EarwigTheme.surface)
 
@@ -100,7 +99,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Recording")
                 } footer: {
-                    Text("Sound records what you say on the iPhone's mic; Video adds the front camera, framed before the take starts and, with Camera Behind the Text, shown behind the words while you read; set how bright the words are on the preview. Also beside Start on the Script screen. 1080p is about 80 MB a minute, 4K about 280 MB. With Keep Recordings off, each take's recording replaces the last. Recordings are in the Files app, under On My iPhone › Earwig.")
+                    Text("With Keep Recordings off, each recording replaces the last. They're in Files, under On My iPhone › Earwig.")
                         .foregroundStyle(EarwigTheme.secondaryText)
                 }
                 .listRowBackground(EarwigTheme.surface)
@@ -147,18 +146,13 @@ struct SettingsView: View {
         recordingsSize = RecordingStore.standard.size()
     }
 
-    private var modeFooter: String {
-        switch mode {
-        case .voice: "The voice reads the script into your ear while it scrolls on the screen with you. Lit, its phrase shows on the screen ahead of you. Also beside Start on the Script screen. Pinch the text during a take to size it."
-        case .screen: "The script scrolls on the screen with you, and no voice reads it. Also beside Start on the Script screen. Pinch the text during a take to size it."
-        }
-    }
-
-    private var startFooter: String {
+    /// One line where the choice does something its name does not say (Andy, 2026-11-09:
+    /// short footers, or none).
+    private var startFooter: String? {
         switch start {
-        case .slateWithReply: "The slate is read in your ear; say it back to the camera and the tones follow. Or tap the screen."
-        case .slate: "The slate is read in your ear, then a pause to say it to the camera, then the tones."
-        case .tonesOnly: "Just the tones, then the first line."
+        case .slateWithReply: "Say the slate back, or tap the screen, and the tones follow."
+        case .slate: "A pause after the slate to say it, then the tones."
+        case .tonesOnly: nil
         }
     }
 }

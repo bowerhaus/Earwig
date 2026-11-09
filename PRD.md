@@ -1,6 +1,6 @@
 # Earwig - Product Requirements Document (PRD)
 
-**Status:** Draft v0.13, 2026-11-09. Changes by version are in the Document History at the end.
+**Status:** Draft v0.14, 2026-11-09. Changes by version are in the Document History at the end.
 **Name:** Earwig (decided 2026-11-05: UK slang for listening in). Bundle identifier `com.bowerhaus.Earwig`.
 
 ## Executive Summary
@@ -85,7 +85,7 @@ take sounds like you talking, not reading.
 | Tests | Swift Testing (`import Testing`). The follow engine and the script parser are pure Swift and fully unit-tested with fixture word streams. |
 | Lint | SwiftLint, with an `engine_purity` custom rule as PhysiMate's: `Engine/` imports no UI, audio, persistence or Combine framework. |
 | Dependencies | None. Apple frameworks only: AVFoundation (`AVSpeechSynthesizer`, `AVAudioEngine`, `AVAudioSession`), Speech (`SpeechAnalyzer`, `SpeechTranscriber`), SwiftData. |
-| Distribution | TestFlight, uploaded by `scripts/release/testflight.sh`; cloud-managed distribution signing; the script refuses a dirty tree, a stale project or a build number already tagged, and tags `testflight/<version>-<build>`. Builds expire after 90 days. A release on GitHub is an annotated tag `vX.Y.Z` on `main` with notes, marked pre-release until 1.0, with no binary, since an app installs only when signed for the device (plan 011). An App Store version is planned, as a later stage. |
+| Distribution | TestFlight, uploaded by `scripts/release/testflight.sh` (plan 012); cloud-managed distribution signing; the app record is **Earwig Ear Prompter** (Earwig was taken; the name under the icon is Earwig), internal testing only. The script refuses a dirty tree, a missing Keychain item or a build number already tagged; bumps `CURRENT_PROJECT_VERSION` in `project.yml` and regenerates the project (which is git-ignored); archives, uploads, then commits the bump and tags `testflight/<version>-<build>`, pushed by hand. A failure before the upload puts `project.yml` back; after it, the bump is kept and the script says what to commit and tag. `--dry-run` archives without uploading. Builds expire after 90 days. A TestFlight build installs over a development build, and a development build back over it, keeping the scripts, takes and settings (plan 012). The privacy manifest (`PrivacyInfo.xcprivacy`) declares no tracking and no data collected, and the reasons for UserDefaults, disk space and the boot-time clock. A release on GitHub is an annotated tag `vX.Y.Z` on `main` with notes, marked pre-release until 1.0, with no binary, since an app installs only when signed for the device (plan 011). An App Store version is planned, as a later stage. |
 | Licence | PolyForm Noncommercial 1.0.0, with an additional permission to use the app to make videos, recordings and other works for any purpose, commercial ones included (`LICENSE`). |
 | Keys | The app has none: no cloud, no accounts. The only key is the App Store Connect API key (a team key with the Admin role, which cloud-managed signing needs) and only the release script uses it. It lives in the macOS Keychain, not in a file: service `bowerhaus.appstoreconnect`, items for the key ID, the issuer ID and the base64 `.p8`, stored once by running the command the script prints, in the author's own terminal (Claude never handles a key's value). At upload the script writes the key to an owner-only temporary file for xcodebuild and deletes it on exit, success or failure. Named for the team, not the app, so PhysiMate's script can read the same item when it is upgraded to this. |
 | Background | `UIBackgroundModes: audio`. A take runs with the screen locked and the phone in a pocket. |
@@ -142,9 +142,9 @@ Priorities: P0 is v1, P1 should follow soon, P2 is nice to have.
 | Render the take's step before it starts, with word timings | P0 | `AVSpeechSynthesizer.write(_:toBufferCallback:toMarkerCallback:)` for the audio; the word boundaries come from word markers, by the marker callback or the `willSpeakMarker` delegate (whichever the voice sends), with `byteSampleOffset` in bytes. The `willSpeakRangeOfSpeechString` delegate is no use for timing during `write`, which runs far ahead of real time (plan 001). Stephanie renders about 20 to 50 times faster than real time on the iPhone 14 Pro (plan 004: a 22 s step in 0.8 to 1.1 s, every word timed), so the start step is rendered, with progress in the Script screen's row, as soon as the script opens or another step is picked, and held in memory while the app runs. Nothing is saved; whether to is reconsidered for a voice that renders slowly. |
 | Presenter's voice: Apple downloaded voices | P0 | Stephanie (Enhanced, en-GB) is the default, the author's pick in plan 001 ("okay, not fantastic"); any English voice of Enhanced quality or better can be picked instead (plan 004, in the Script screen's menu until Settings). iOS 27 puts the quality in a voice's name ("Stephanie (Enhanced)"), which the voice list allows for. A better voice is wanted (section 15). |
 | Personal Voice | Dropped | Tried in plan 004: "the voice quality is actually terrible. It sounds like some cross between me and the built-in voices", and it rendered about 2.3 times faster than real time against Stephanie's 20, though it timed every word. It can still be picked once allowed, but is never the default or the cue voice. The presenter's own recorded reading, or a cloud voice, made on the Mac and imported (section 13), is the route to a better voice. |
-| Cue voice for slates and directions | P0 | An Apple voice, by default the best en-GB voice that is not the presenter's, the other gender first (Jamie, Premium, with Stephanie). The slate reads the step's number and title, then its `Shows:` text, then the slate ("Step 3. Rosie up ahead. Rosie trots far ahead up the long track. Step 3, take 2."); a shot ID is spelled out ("W 3 1"). A per-script switch turns cues off. Cues are never matched. |
+| Cue voice for slates and directions | P0 | An Apple voice, by default (Automatic) the best en-GB voice that is not the presenter's, the other gender first (Jamie, Premium, with Stephanie). Since plan 012 one can be picked in Settings from the English voices of Enhanced quality or better not of the presenter's gender, never the presenter's own or a Personal Voice; a pick that stops being offered is Automatic again. The slate reads the step's number and title, then its `Shows:` text, then the slate ("Step 3. Rosie up ahead. Rosie trots far ahead up the long track. Step 3, take 2."); a shot ID is spelled out ("W 3 1"). A per-script switch turns cues off. Cues are never matched. |
 | Directions inside a line | P0 | A setting (plan 004): **Chime**, the default, plays a low soft pong (0.8 s, about −14 dBFS) at that point, which rings on under the next line while the voice waits only 0.25 s; **Spoken** reads the direction in the cue voice there, and the take waits for it. A spoken direction leaves its own length as a gap in the take (about 1.4 s for "Gesture to the boats"), which is why the chime is the default. Reading the step's inline directions in the slate was tried and dropped: several would be hard to remember. |
-| Rate | P0 | The render uses the synthesiser's default rate (0.5). A **voice speed** in Settings, 0.8x to 1.0x, default 0.95x (plan 005: at 1.0x the voice was "still too quick", phrase-gated as well as hybrid), is the base the player plays the voice at; the engine's pacing speeds multiply it, and cues, the slate and the tones stay at 1.0x. 0.85x to 1.2x through the time-pitch node sounded natural in plan 001. A base rate per voice is for stage 7 (#14). |
+| Rate | P0 | The render uses the synthesiser's default rate (0.5). A **voice speed** in Settings, 0.8x to 1.0x, default 0.95x (plan 005: at 1.0x the voice was "still too quick", phrase-gated as well as hybrid), is the base the player plays the voice at; the engine's pacing speeds multiply it, and cues, the slate and the tones stay at 1.0x. 0.85x to 1.2x through the time-pitch node sounded natural in plan 001. One speed for every voice, not a base rate per voice (plan 012, #14): Preview plays the chosen voice at it. |
 | Import a rendering made elsewhere | P2 | A folder of phrase audio and a timings file, as Cutaway could produce with ElevenLabs or from the presenter's own recording (section 13). |
 
 **Why pre-render.** The synthesiser cannot change speed mid-utterance, a slower voice
@@ -258,19 +258,25 @@ slate) is a roadmap item (section 13): cheap once the microphone is open, but sc
 
 ### 4.8 Settings
 
-- Presenter's voice (a downloaded voice), base rate, and a Preview button. Plan 004 found
-  1.0x a little fast and 0.85x "more normal" in Listen; plan 005's voice speed (4.2) is
-  the base, default 0.95x.
-- Cue voice, cues on or off by default, and directions inside a line chimed or spoken.
-- Lead, in words (2 to 6, default 5), with seconds shown for the chosen voice and rate.
-- Pacing: hybrid (default) or phrase-gated; speed bounds; voice speed.
-- Start ritual: slate with a reply, slate alone, or tones only (default).
-- Screen: the mode (With Voice or Screen Only), whether the voice's phrase is lit, font
-  size; fixed-pace words per minute when that is built.
+- Voice: the presenter's voice (Personal Voice once allowed, or an English voice of
+  Enhanced quality or better, British first); **Preview**, which plays the sample's first
+  line in it at the voice speed through the route, and reads Stop while it plays; **Voice
+  Speed** (0.80x to 1.00x, default 0.95x, one speed for every voice, 4.2); **Cue Voice**,
+  Automatic or a voice of the other gender (4.2); Allow Personal Voice; Stage Directions,
+  chimed or spoken.
+- Following: Lead, in words (2 to 6, default 5), with seconds shown; Pacing, hybrid
+  (default) or phrase-gated.
+- Start: slate with a reply, slate alone, or tones only (default).
+- Screen: the mode (With Voice or Screen Only), Light the Voice's Phrase, Text Size;
+  fixed-pace words per minute when that is built (#31).
 - Recording: Off, Sound or Video; video quality (1080p or 4K); Camera Behind the Text;
   Keep Recordings; the recordings' size and Delete All Recordings (plan 010). The text's
   brightness over the camera is set on the preview, not here.
-- Diagnostics: the Listening check (4.3) and the route check.
+- Diagnostics: the Listening check (4.3).
+- About: the version and build ("0.2.0 (2)"). No links to the source or the licence: a
+  bought app should not look like a hobby project (the author, plan 012).
+
+Labels are in Title Case, as Apple's Settings app writes them.
 
 Plan 005 built the first Settings screen, from a gear on the Scripts screen, with what it
 judged: Following (lead, pacing, voice speed), Start, and Diagnostics (the Listening check).
@@ -281,6 +287,12 @@ name does not say, or none (the author: other iPhone apps "tend to let you work 
 yourself"). Plan 011 moved the voice, Allow Personal Voice and the directions setting
 (renamed Stage Directions) out of the Script screen's menu into a Voice group at the top,
 and Read Cues, which is per script, to the start card; the Script screen has no menu.
+Plan 012 finished the Voice group (Preview, Voice Speed moved in from Following, Cue
+Voice) and added About. It struck the pacer's speed bounds (0.85x to 1.2x, tuned with the
+engine's tests, so they stay in the engine) and cues on or off by default (Read Cues is per
+script, and a new script reads cues). A Show Take Details switch for the engine's line on
+the Prompt screen was built and removed: the take's console summary has the numbers, and
+more.
 
 ---
 
@@ -553,7 +565,7 @@ docs/            development.md (gotchas), this PRD stays at the root
 ### 8.1 Scripts
 
 The presenter's own scripts at the top (title, step count, format, last take), swipe to
-delete, and the four samples below them under **Samples**, which cannot be deleted (plan
+delete, which asks first as Delete Script does ("Delete *title*?", plan 012, #35), and the four samples below them under **Samples**, which cannot be deleted (plan
 011). Tap for the script. The Paste pill is in the toolbar once there are scripts of the
 presenter's own; until then the top section is one row, "Copy a script in Markdown or
 plain text, then paste it here", with the pill. The Settings gear is top left.
@@ -603,10 +615,11 @@ The take screen, usable at arm's length and glanceable from a mount (plan 008):
 
 ### 8.4 Settings
 
-As 4.8, grouped: Voice, Following, Start, Screen, Recording, Diagnostics. From plan 005,
-Following, Start and Diagnostics, opened from a gear on the Scripts screen; from plan 008,
-Screen; from plan 010, Recording; from plan 011, Voice (the voice, Allow Personal Voice and
-Stage Directions). A footer only where a choice does something its name does
+As 4.8, grouped: Voice, Following, Start, Screen, Recording, Diagnostics, About. From plan
+005, Following, Start and Diagnostics, opened from a gear on the Scripts screen; from plan
+008, Screen; from plan 010, Recording; from plan 011, Voice (the voice, Allow Personal Voice
+and Stage Directions); from plan 012, Preview, Voice Speed and Cue Voice in Voice, and
+About. A footer only where a choice does something its name does
 not say, in one line.
 
 ### 8.5 Listening check
@@ -724,8 +737,10 @@ Each stage is one plan, one branch, one issue and one PR.
 6. **Screen mode** (plan 008, done: see its Results). The scrolling text driven by the
    same engine in every take, With Voice or Screen Only, the start card, font size. The
    fixed-pace scroll is its own issue.
-7. **Settings and TestFlight** (plan 012). The settings in 4.8, the release script, the
-   first TestFlight build.
+7. **Settings and TestFlight** (plan 012, done: see its Results). The settings in 4.8,
+   the release script, the privacy manifest, the first TestFlight build (0.2.0 (2)),
+   installed and run on the phone. The MVP stages are complete; the App Store release is
+   #37.
 
 Beside the stages, plan 007 (app icon, logo and splash, #21) gave the app its mark (10), and
 plan 011 (#22) the built-in samples, the README and the first pre-release, v0.1.0.
@@ -817,6 +832,7 @@ directly, and filming with the phone locked, which iOS does not allow.
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.14 | 2026-11-09 | Plan 012 (#38, #36, #35, #14): Settings as built, in seven groups with About (4.8, 8.4); Preview, Voice Speed in the Voice group, one speed for every voice (#14), and a Cue Voice of the other gender or Automatic (4.2, 4.8); speed bounds and cues on by default struck (4.8); the take details line built and removed, the take's console summary having the numbers (4.8, 8.3); swipe to delete asks first (8.1); the paste hint without "on your Mac" (8.1); the release script, the Keychain key, the privacy manifest and the App Store Connect record, Earwig Ear Prompter, with the first TestFlight build, 0.2.0 (2), installed over the development build and back, keeping the data (2); stage 7 done, the MVP stages complete (12). |
 | 0.13 | 2026-11-09 | Plan 011 (#22): four built-in samples in their own section of the Scripts screen, seeded at launch and adopted from pasted copies, never deleted or replaced by a paste (4.1, 8.1); the format labelled Markdown where users see it; the README; version 0.1.0 and the release scheme, tags on `main` with no binary; the licence, PolyForm Noncommercial with a permission to make videos commercially; an App Store version planned (1, 1.3, 2). No More menu: the voice, Personal Voice and Stage Directions in a Voice group in Settings, Read Cues on the start card, Delete Script at the foot of the Script screen (4.8, 8.2, 8.4). The light scheme, mid-blue toolbar buttons and Earwig's own back button and Lead stepper (10). Stage 7 is plan 012. |
 | 0.12 | 2026-11-09 | Plan 010 (#16): recording a take, Off, Sound or Video, as built and checked on the iPhone 14 Pro with the SK18 (4.7). The front camera at 1080p30 (default) or 4K30, the sound from the built-in mic, never the earpiece; the audio session, route and engine untouched, and the follow the same filmed as not. Framing on the preview before Start; the camera behind the text while the take runs, the text's brightness set on the preview (8.3). Locking stops the video while the sound and the take go on. Finished saves, then Play Video, Play Sound or Play Back, and Share with Save Video. Files in Earwig's folder in Files, the last kept or every one, and Delete All (4.8, 8.4). Settings' footers cut to one line or none (4.8). The new services (7.2); heat (11); Phase 3 is what is left (12, 13). Non-goals (1.4). |
 | 0.11 | 2026-11-08 | Plan 009, longer phrases: a clause with no break is cut only past twenty words, after the voice stopped mid-clause on the phone ("…that ground flour for"); stored scripts are split again (3, "Phrase"). After a final, the presenter is taken to have begun the voice's phrase only if heard within three words of it, after silence let two phrases through once Andy had stopped mid-phrase (5.4). Stopping the voice for a fluff, and the text going back to the phrase's start after one, were tried on the phone and dropped: the recogniser mishears some words every time, and each looked like a fluff (recorded in the plan). |

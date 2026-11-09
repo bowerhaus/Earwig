@@ -2,7 +2,7 @@
 
 **GitHub Issue:** [#38](https://github.com/bowerhaus/Earwig/issues/38) (PR must include "Closes #38"); folds in [#36](https://github.com/bowerhaus/Earwig/issues/36) and [#35](https://github.com/bowerhaus/Earwig/issues/35), and closes [#14](https://github.com/bowerhaus/Earwig/issues/14) (PR must also include "Closes #36", "Closes #35" and "Closes #14")
 **Branch:** `settings-testflight` (from `main` at `af23220`, after plan 011 merged and v0.1.0 was cut)
-**Status:** Draft (2026-11-09), for Andy's review.
+**Status:** Complete (2026-11-09). Results below.
 **Manual test:** device, on Andy's iPhone 14 Pro with the SK18: the new settings heard and seen, then the first TestFlight build installed from the TestFlight app over the development build, with a take run on it (Verification).
 **Goal:** PRD §12's stage 7, the last MVP stage. Settings has every setting the presenter needs and nothing they would have to look up, with a way to hear the voice before a take and to see which build is on the phone. Andy's builds reach his phone through TestFlight from one script, with the App Store Connect key kept in the Keychain, so a build no longer needs the Mac and a cable, and lasts 90 days in place of a free account's seven. The first TestFlight build is uploaded and run.
 
@@ -161,7 +161,26 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 
 ## Results
 
-To be filled in when the plan is built and checked.
+**PASS** (2026-11-09): every device check passed on Andy's iPhone 14 Pro with the SK18, and the first TestFlight build, 0.2.0 (2), was uploaded, installed and run. 372 tests pass, no warnings, SwiftLint clean.
+
+**Device checks**, Andy's verdicts:
+1. **Preview.** First try: it said one word, "Morning!", because the Harbour Walk's first phrase is that alone. Preview now reads the sample's whole first line (`VoicePreview.text`, tested). Second try: "Preview sounds fine now." **Pass.**
+2. **Cue Voice**: a voice picked by hand read the cues, and Automatic as before. **Pass.**
+3. **Show Take Details** worked as built, but Andy found the line went with the take's end, so its numbers could not be read afterwards. Keeping it after the take was tried, and then, asked whether the line was needed at all, he had it removed with its switch (decision 5): it was a diagnostic, and the console's take summary has more. He also found Cue Voice offering female voices beside Stephanie; it now offers only voices not of the presenter's gender (decision 2). "The rest of check 3 passes." **Pass.**
+4. **Swipe to delete**: the question with the title, the row in place, Cancel keeps it, Delete Script deletes it, a sample not deletable. **Pass.** During it, Andy had the Scripts screen's paste hint lose "on your Mac": "Copy a script in Markdown or plain text, then paste it here." (PRD §8.1.)
+5. **The TestFlight build** installed over the development build, after iOS's warning that the app's data may be lost; About shows 0.2.0 (2), and the scripts and takes were all still there. **Pass.**
+6. **A take on the TestFlight build**, With Voice on The Old Watermill, locked in a pocket: it followed and completed. **Pass.**
+7. **Back to a development build** with `devicectl`: the scripts, takes and settings (a presenter voice picked by hand) were still there. **Pass.**
+
+**#14's verdict.** One voice speed for every voice, 0.95x, as decision 3. With Preview at 0.95x in Stephanie, Andy: "Preview sounds fine now." No second voice was found to want another speed; #14 closes.
+
+**Changed from the plan during the checks** (Andy):
+- About is the version alone, with no Source Code or Licence links (decision 7): someone who buys the app wants a finished app, and links to the source and the licence make it look like a hobby project. Going from the repo to the app is fine; the README does that.
+- No take details line and no switch (decision 5).
+- Cue Voice offers only the other gender (decision 2).
+- The paste hint has no "on your Mac".
+
+**TestFlight.** The App Store Connect record was made by Andy: Earwig was taken, so the store name is **Earwig Ear Prompter**; the bundle ID was registered by hand as an explicit App ID with no capabilities (Earwig has no entitlements); the key is the team's existing one, PhysiMate's, in the Keychain under `bowerhaus.appstoreconnect`. `testflight.sh` archived, uploaded ("Upload succeeded"), committed `TestFlight 0.2.0 (2)` and tagged `testflight/0.2.0-2`.
 
 ## Review pass — 2026-11-09
 

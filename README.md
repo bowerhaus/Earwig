@@ -168,7 +168,7 @@ Tap the gear on the Scripts screen.
 | Screen | **Mode** (With Voice or Screen Only), **Light the Voice's Phrase**, **Text Size** (24 to 72 pt, default 40) |
 | Recording | **Record** (Off, Sound or Video), **Video Quality**, **Camera Behind the Text**, **Keep Recordings**, the space used, and **Delete All Recordings** |
 | Diagnostics | **Listening Check** shows where the sound is going and where Earwig is listening, and lists the words it hears with how late each one arrived. **Say Test** plays a line through the earbud: with the earbud in, none of it should turn up among the heard words. **Show Take Details** adds a line of the follow engine's numbers under a take's status, off by default. |
-| About | The **Version** and build, and links to the **Source Code** and the **Licence** |
+| About | The **Version** and build |
 
 <p align="center">
   <img src="docs/screenshots/voice-take.png" alt="A take with the voice, its phrase lit just ahead of your line" width="250">&nbsp;&nbsp;

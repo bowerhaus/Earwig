@@ -172,15 +172,9 @@ struct SettingsView: View {
                 .listRowBackground(EarwigTheme.surface)
 
                 Section {
+                    // The version alone: links to the source and the licence would make a bought
+                    // app look like a hobby project (plan 012, decision 7).
                     LabeledContent("Version", value: Self.version)
-                    Link(destination: Self.sourceURL) {
-                        Label("Source Code", systemImage: "chevron.left.forwardslash.chevron.right")
-                    }
-                    .foregroundStyle(EarwigTheme.accent)
-                    Link(destination: Self.licenceURL) {
-                        Label("Licence", systemImage: "doc.text")
-                    }
-                    .foregroundStyle(EarwigTheme.accent)
                 } header: {
                     Text("About")
                 }
@@ -255,10 +249,6 @@ struct SettingsView: View {
         let build = info?["CFBundleVersion"] as? String ?? "?"
         return "\(short) (\(build))"
     }()
-
-    // Literal URLs, known to be valid.
-    static let sourceURL = URL(string: "https://github.com/bowerhaus/Earwig")!
-    static let licenceURL = URL(string: "https://github.com/bowerhaus/Earwig/blob/main/LICENSE")!
 
     private var startFooter: String? {
         switch start {

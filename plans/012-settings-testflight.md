@@ -31,7 +31,7 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 **In:**
 - the Voice group finished: Preview, Voice Speed moved in from Following, Cue Voice;
 - Show Take Details and Title Case (#36);
-- an About group: version and build, source code, licence;
+- an About group: version and build;
 - swipe to delete on the Scripts screen asks first (#35);
 - §4.8 settled: what is built, and what is struck from it and why;
 - `scripts/release/testflight.sh` and `scripts/release/ExportOptions.plist`;
@@ -70,8 +70,7 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 
 7. **About**, the last group:
    - **Version**: "0.2.0 (2)", from the bundle's `CFBundleShortVersionString` and `CFBundleVersion`, so Andy can see which TestFlight build is on the phone.
-   - **Source Code**: opens `https://github.com/bowerhaus/Earwig` in Safari.
-   - **Licence**: opens the repo's `LICENSE` on GitHub.
+   - No **Source Code** or **Licence** links (Andy, during the device checks): someone who buys Earwig on the App Store wants a finished app, and links to the source and the licence would make it look like a hobby project. Going the other way, from the repo to the app, is fine; the README does that.
 
    No privacy page yet; the App Store's privacy policy URL is #37's.
 
@@ -130,7 +129,7 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 1. **Cue voice.** `VoiceCatalogue` takes a chosen cue voice, with tests first: a chosen voice is used; one no longer installed falls back to Automatic; a Personal Voice is never offered or used; Automatic is today's rule.
 2. **The Voice group.** Voice Speed moved in, Cue Voice, Preview with Stop. Simulator: the group lays out, Preview's Stop works (the simulator has no Stephanie, so what it sounds like waits for the phone).
 3. **Show Take Details and Title Case** (#36). Simulator: a Screen Only take (`-EarwigDemo YES -EarwigScreen YES -EarwigReads YES`) with the switch off shows no line, and on shows it.
-4. **About.** Version and build from the bundle; the two links.
+4. **About.** Version and build from the bundle.
 5. **Swipe to delete asks first** (#35, decision 14). The view model's tests first, on an in-memory container held for the test's length: a script asked to be deleted is still there; confirmed, it and its takes are gone; cancelled, both stay; a sample is never deleted. Then the swipe. Simulator: a pasted script swiped, Cancel, still there; swiped again, Delete Script, gone.
 6. **Privacy manifest.** The required-reason APIs searched for again across `Earwig/`; the manifest written; the built app checked to contain `PrivacyInfo.xcprivacy`.
 7. **Release build.** `MARKETING_VERSION: "0.2.0"`; the Release configuration built in the simulator, no warnings; the Debug flags checked to be compiled out.

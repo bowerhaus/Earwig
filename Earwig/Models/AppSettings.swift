@@ -123,6 +123,9 @@ struct TakeSettings {
     static let recordingKey = "recording"
     static let videoQualityKey = "videoQuality"
     static let keepsRecordingsKey = "keepsRecordings"
+    static let cameraBehindTextKey = "cameraBehindText"
+    /// The camera behind the text during a video take, on unless set (Andy, check 3).
+    static let defaultCameraBehindText = true
 
     let defaults: UserDefaults
 
@@ -173,6 +176,12 @@ struct TakeSettings {
     var keepsRecordings: Bool {
         get { defaults.bool(forKey: Self.keepsRecordingsKey) }
         nonmutating set { defaults.set(newValue, forKey: Self.keepsRecordingsKey) }
+    }
+
+    /// Whether a video take shows the camera behind the scrolling text; on unless set.
+    var cameraBehindText: Bool {
+        get { defaults.object(forKey: Self.cameraBehindTextKey) as? Bool ?? Self.defaultCameraBehindText }
+        nonmutating set { defaults.set(newValue, forKey: Self.cameraBehindTextKey) }
     }
 
     /// The Prompt screen's text size, kept within `textSizeRange`.

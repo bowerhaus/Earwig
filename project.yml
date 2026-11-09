@@ -29,6 +29,8 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
         NSCameraUsageDescription: Earwig films your take with the front camera when you choose Video, so you can watch it back.
+        # Without it the share sheet leaves out Save Video (plan 010, check 4).
+        NSPhotoLibraryAddUsageDescription: Earwig saves a take's video to Photos when you choose Save Video.
         # Recordings are kept in Documents/Recordings, shown in the Files app (plan 010).
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true

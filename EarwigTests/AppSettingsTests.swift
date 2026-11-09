@@ -23,6 +23,7 @@ struct AppSettingsTests {
         #expect(settings.recording == .off)
         #expect(settings.videoQuality == .hd1080)
         #expect(!settings.keepsRecordings)
+        #expect(settings.cameraBehindText)
     }
 
     @Test func anUnknownStoredRecordingReadsAsTheDefault() {

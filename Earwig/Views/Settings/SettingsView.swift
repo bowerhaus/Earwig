@@ -15,6 +15,7 @@ struct SettingsView: View {
     @AppStorage(TakeSettings.recordingKey) private var recording: TakeRecordingMode = .off
     @AppStorage(TakeSettings.videoQualityKey) private var videoQuality: VideoQuality = .hd1080
     @AppStorage(TakeSettings.keepsRecordingsKey) private var keepsRecordings = false
+    @AppStorage(TakeSettings.cameraBehindTextKey) private var cameraBehindText = TakeSettings.defaultCameraBehindText
     @Environment(\.modelContext) private var context
     @State private var recordingsSize: Int64 = 0
     @State private var confirmingDeleteAll = false
@@ -89,6 +90,7 @@ struct SettingsView: View {
                     Picker("Video Quality", selection: $videoQuality) {
                         ForEach(VideoQuality.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
+                    Toggle("Camera Behind the Text", isOn: $cameraBehindText)
                     Toggle("Keep Recordings", isOn: $keepsRecordings)
                     LabeledContent("Recordings") {
                         Text(ByteCountFormatter.string(fromByteCount: recordingsSize, countStyle: .file)).monospacedDigit()
@@ -98,7 +100,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Recording")
                 } footer: {
-                    Text("Sound records what you say on the iPhone's mic; Video adds the front camera, framed before the take starts. Also beside Start on the Script screen. 1080p is about 60 MB a minute, 4K about 170 MB. With Keep Recordings off, each take's recording replaces the last. Recordings are in the Files app, under On My iPhone › Earwig.")
+                    Text("Sound records what you say on the iPhone's mic; Video adds the front camera, framed before the take starts and, with Camera Behind the Text, shown behind the words while you read. Also beside Start on the Script screen. 1080p is about 60 MB a minute, 4K about 170 MB. With Keep Recordings off, each take's recording replaces the last. Recordings are in the Files app, under On My iPhone › Earwig.")
                         .foregroundStyle(EarwigTheme.secondaryText)
                 }
                 .listRowBackground(EarwigTheme.surface)

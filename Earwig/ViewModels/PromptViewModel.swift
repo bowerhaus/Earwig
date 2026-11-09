@@ -79,6 +79,13 @@ struct PromptViewModel: Equatable {
     /// A video take frames on the camera's preview until Start (decision 4).
     var isFraming: Bool { setup.recording == .video && phase == .gettingReady }
 
+    /// The camera behind the scrolling text while a video take runs, if Settings says so, and
+    /// until the video stops, when the preview would freeze (Andy, check 3).
+    var showsCameraBehindText: Bool {
+        setup.recording == .video && setup.cameraBehindText && phase == .running
+            && recording.cameraReady && !recording.videoStopped
+    }
+
     /// The dot and the time while the take is recorded (decision 5).
     var showsRecordingDot: Bool { recording.since != nil && phase == .running }
 
@@ -252,11 +259,12 @@ extension TakeSetup {
         var mode = TakeMode.voice
         var lightsVoice = false
         var recording = TakeRecordingMode.off
+        var cameraBehindText = false
     }
 
     var summary: Summary {
         Summary(number: stepNumber, title: stepTitle, take: take, start: settings.start,
                 screenWords: ScreenText.words(phraseList: phraseList, firstWord: script.firstWord), mode: mode, lightsVoice: lightsVoice,
-                recording: recording)
+                recording: recording, cameraBehindText: cameraBehindText)
     }
 }

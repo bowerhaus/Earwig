@@ -60,8 +60,9 @@ struct FramingView: View {
     }
 }
 
-/// The capture session's preview layer, turned with the phone so the horizon stays level.
-private struct CameraPreview: UIViewRepresentable {
+/// The capture session's preview layer, turned with the phone so the horizon stays level. Also
+/// behind the scrolling text during a video take.
+struct CameraPreview: UIViewRepresentable {
     let camera: CameraCapture
 
     func makeUIView(context: Context) -> PreviewView {

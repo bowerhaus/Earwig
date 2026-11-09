@@ -98,6 +98,8 @@ struct TakeSetup {
     /// What was chosen, before any fallback, for Next Take to keep.
     var chosenRecording = TakeRecordingMode.off
     var videoQuality = VideoQuality.hd1080
+    /// Whether a video take shows the camera behind the scrolling text.
+    var cameraBehindText = false
     /// Said on Finished when the recording is not what was chosen (too little room for video).
     var recordingNote: String?
 

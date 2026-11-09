@@ -21,7 +21,7 @@ struct PromptViewModelTests {
 
     private func model(_ phase: TakeHost.Phase = .running, _ status: FollowStatus = .speaking, voicePhrase: Int? = 0, voiceWord: Int? = nil,
                        route: AudioRoute? = nil, start: StartMode = .slateWithReply, download: Double? = nil,
-                       mode: TakeMode = .voice, recording: TakeRecordingMode = .off,
+                       mode: TakeMode = .voice, recording: TakeRecordingMode = .off, cameraBehind: Bool = true,
                        recorded: PromptViewModel.Recording = PromptViewModel.Recording()) -> PromptViewModel {
         var snapshot = FollowSnapshot()
         snapshot.status = status
@@ -31,6 +31,7 @@ struct PromptViewModelTests {
         setup.start = start
         setup.mode = mode
         setup.recording = recording
+        setup.cameraBehindText = cameraBehind
         return PromptViewModel(phase: phase, snapshot: snapshot, route: route ?? self.route(out: .bluetoothA2DP), setup: setup,
                                downloadProgress: download, recording: recorded)
     }
@@ -43,6 +44,18 @@ struct PromptViewModelTests {
         #expect(model(.gettingReady, .idle, recording: .video).isFraming)
         #expect(!model(.gettingReady, .idle, recording: .sound).isFraming)
         #expect(!model(.running, .speaking, recording: .video).isFraming)
+    }
+
+    @Test func theCameraShowsBehindTheTextWhileAVideoTakeRuns() {
+        let ready = PromptViewModel.Recording(since: 100, cameraReady: true)
+        #expect(model(.running, .speaking, recording: .video, recorded: ready).showsCameraBehindText)
+        #expect(!model(.running, .speaking, recording: .video, cameraBehind: false, recorded: ready).showsCameraBehindText)
+        #expect(!model(.running, .speaking, recording: .sound, recorded: ready).showsCameraBehindText)
+        #expect(!model(.gettingReady, .idle, recording: .video, recorded: ready).showsCameraBehindText)
+        #expect(!model(.finished(.completed), .finished, recording: .video, recorded: ready).showsCameraBehindText)
+        #expect(!model(.running, .speaking, recording: .video, recorded: PromptViewModel.Recording(since: 100)).showsCameraBehindText)
+        let stopped = PromptViewModel.Recording(since: 100, cameraReady: true, videoStopped: true)
+        #expect(!model(.running, .speaking, recording: .video, recorded: stopped).showsCameraBehindText)
     }
 
     @Test func theDotShowsWhileRecordingAndTurnsToSoundWhenTheVideoStops() {

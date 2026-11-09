@@ -158,6 +158,20 @@ struct PromptView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 8)
+        .background { cameraBehind(model) }
+    }
+
+    /// The camera behind the text during a video take, under a scrim so the text reads.
+    @ViewBuilder
+    private func cameraBehind(_ model: PromptViewModel) -> some View {
+        if model.showsCameraBehindText, let camera = host.camera, camera.device != nil {
+            ZStack {
+                CameraPreview(camera: camera)
+                EarwigTheme.cameraScrim
+            }
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
+        }
     }
 
     private func screenTop(_ model: PromptViewModel) -> some View {

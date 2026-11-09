@@ -2,7 +2,7 @@
 
 # Earwig
 
-**An iPhone app that reads your script into one earpiece a few words ahead of you, and follows what you actually say. It is also a teleprompter that scrolls the script on the phone's screen as you speak.**
+**Earwig is an ear prompter for the iPhone. It reads your script into one earpiece a few words ahead of you, and follows what you actually say. It can also act as a standard teleprompter that scrolls the script on screen as you speak.**
 
 Pre-release · iOS 26 or later · everything happens on the phone · [source-available](#licence)
 
@@ -10,7 +10,7 @@ Pre-release · iOS 26 or later · everything happens on the phone · [source-ava
 
 You film yourself talking to camera: walking a footpath with the camera on a gimbal, or sitting at a desk. Often you can't look at a teleprompter, and you don't want to learn the script.
 
-That is what Earwig was designed for. It reads the script into one Bluetooth earpiece, a few words ahead of you, in a natural Apple voice. You hear the line and say it. Earwig listens to you on the iPhone's own microphone while you do:
+That is what Earwig was designed for: it is an ear prompter. It reads the script into one Bluetooth earpiece, a few words ahead of you, in a natural Apple voice. You hear the line and say it. Earwig listens to you on the iPhone's own microphone while you do:
 
 - it waits at the end of a phrase when you pause;
 - it keeps pace when you speed up or slow down;

@@ -143,6 +143,8 @@ On 2026-11-09 Andy asked what was left before a "0 point release" on GitHub, whe
 
 16. **The light scheme** (Andy, 2026-11-09). Earwig asked iOS for the dark scheme, so iOS drew every surface of its own near-black: the menus of Settings' pickers, the confirmations and alerts, the stepper, the segmented control, the share sheet. In the light scheme they are pale frosted. Earwig's own colours do not change: the navigation titles stay white (`UINavigationBar` appearance in `EarwigApp`, and the bars' own scheme set dark; the Scripts screen's bar has no background of its own, since setting one makes iOS ignore the white large title), the status bar is white (`UIStatusBarStyleLightContent`), and the lists set white labels with pale headers and values. The Lead stepper is Earwig's own − and +, since iOS's light stepper hid its white symbols.
 
+17. **An App Store version is planned** (Andy, 2026-11-09): a low-cost app for people who would rather not build it, beside the source-available repo. The README's Status section goes: "pre-release" is under the title, the known issues join the releases as **Releases and known issues** with one line on the planned App Store version, and the PRD and `plans/` links close **Building from source**. The PRD (§1, §2 Distribution, the Non-goals) and CLAUDE.md drop "never sold" for this. The App Store work itself (a privacy policy, App Review, the listing) is a later stage, after TestFlight (plan 012).
+
 ## Files
 
 - `Earwig/Services/SampleScript.swift` (edited: the three new texts, `all` with IDs).

@@ -1,8 +1,10 @@
+import AVFoundation
 import SwiftData
 import SwiftUI
 
-/// The first Settings screen (PRD §4.8, §8.4; plan 005, decision 11): what stage 5 judges by ear,
-/// the lead, the pacing and the start mode, and the Listening check. The rest waits for stage 7.
+/// The Settings screen (PRD §4.8, §8.4; plan 005, decision 11): the voice and how directions are
+/// read (plan 011, decision 15), following, the start, the screen, recording, and the Listening
+/// check. The rest waits for stage 7.
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(TakeSettings.leadKey) private var lead = TakeSettings.defaultLead
@@ -16,7 +18,12 @@ struct SettingsView: View {
     @AppStorage(TakeSettings.videoQualityKey) private var videoQuality: VideoQuality = .hd1080
     @AppStorage(TakeSettings.keepsRecordingsKey) private var keepsRecordings = false
     @AppStorage(TakeSettings.cameraBehindTextKey) private var cameraBehindText = TakeSettings.defaultCameraBehindText
+    @AppStorage(AppSettings.inlineDirectionsKey) private var inlineDirections: InlineDirections = .chime
     @Environment(\.modelContext) private var context
+    @Environment(ScriptRenderer.self) private var renderer
+    @State private var voiceID = ""
+    /// Bumped when Personal Voice has been asked for, so the voices are listed again.
+    @State private var personalVoiceAsked = 0
     @State private var recordingsSize: Int64 = 0
     @State private var confirmingDeleteAll = false
 
@@ -24,10 +31,34 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    Stepper(value: $lead, in: TakeSettings.leadRange) {
-                        LabeledContent("Lead") {
+                    Picker("Voice", selection: $voiceID) {
+                        ForEach(presenterOptions, id: \.identifier) { Text($0.displayName).tag($0.identifier) }
+                    }
+                    .id(personalVoiceAsked)
+                    if AVSpeechSynthesizer.personalVoiceAuthorizationStatus == .notDetermined {
+                        Button("Allow Personal Voice") {
+                            Task {
+                                let status = await AVSpeechSynthesizer.requestPersonalVoiceAuthorization()
+                                Log.event("personal voice: \(status == .authorized ? "authorised" : "not authorised (\(status.rawValue))")")
+                                personalVoiceAsked += 1
+                            }
+                        }
+                        .foregroundStyle(EarwigTheme.accent)
+                    }
+                    Picker("Stage Directions", selection: $inlineDirections) {
+                        ForEach(InlineDirections.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
+                } header: {
+                    Text("Voice")
+                }
+                .listRowBackground(EarwigTheme.surface)
+
+                Section {
+                    LabeledContent("Lead") {
+                        HStack(spacing: 12) {
                             Text(String(format: "%d words · %.1f s", lead, TakeSettings.seconds(forLead: lead)))
                                 .monospacedDigit()
+                            LeadStepper(lead: $lead)
                         }
                     }
                     Picker("Pacing", selection: $pacing) {
@@ -46,7 +77,7 @@ struct SettingsView: View {
 
                 Section {
                     Picker("Start", selection: $start) {
-                        ForEach(StartMode.allCases, id: \.self) { Text($0.label).tag($0) }
+                        ForEach(StartMode.allCases, id: \.self) { Text($0.label).foregroundStyle(EarwigTheme.text).tag($0) }
                     }
                     .pickerStyle(.inline)
                     .labelsHidden()
@@ -116,16 +147,31 @@ struct SettingsView: View {
                 .listRowBackground(EarwigTheme.surface)
             }
             .scrollContentBackground(.hidden)
+            // White labels, pale headers and values, in the light scheme (plan 011, decision 16).
+            .foregroundStyle(EarwigTheme.text, EarwigTheme.secondaryText)
             .background(EarwigTheme.background)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(EarwigTheme.background, for: .navigationBar)
+            // White titles on the sky blue in the light scheme (plan 011, decision 16).
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    DoneButton { dismiss() }
                 }
+                .sharedBackgroundVisibility(.hidden)
             }
-            .onAppear { recordingsSize = RecordingStore.standard.size() }
+            .onAppear {
+                recordingsSize = RecordingStore.standard.size()
+                voiceID = renderer.voices?.presenter.identifier
+                    ?? VoiceCatalogue.choose(from: VoiceCatalogue.installed(), presenterID: AppSettings.presenterVoiceID)?.presenter.identifier ?? ""
+            }
+            .onChange(of: voiceID) { old, new in
+                // A pick by hand; the first value is only the voice already in use.
+                guard !old.isEmpty, !new.isEmpty else { return }
+                AppSettings.presenterVoiceID = new
+                renderer.use(VoiceCatalogue.choose(from: VoiceCatalogue.installed(), presenterID: new))
+            }
             .confirmationDialog("Delete every recording?", isPresented: $confirmingDeleteAll, titleVisibility: .visible) {
                 Button("Delete All Recordings", role: .destructive) { deleteAllRecordings() }
             } message: {
@@ -148,12 +194,43 @@ struct SettingsView: View {
 
     /// One line where the choice does something its name does not say (Andy, 2026-11-09:
     /// short footers, or none).
+    /// Personal Voices first, then English voices of Enhanced quality or better, British first.
+    private var presenterOptions: [VoiceInfo] { VoiceCatalogue.presenterOptions(from: VoiceCatalogue.installed()) }
+
     private var startFooter: String? {
         switch start {
         case .slateWithReply: "Say the slate back, or tap the screen, and the tones follow."
         case .slate: "A pause after the slate to say it, then the tones."
         case .tonesOnly: nil
         }
+    }
+}
+
+/// Lead's − and +, in place of iOS's stepper, whose light capsule hid its white symbols (plan 011,
+/// decision 16).
+private struct LeadStepper: View {
+    @Binding var lead: Int
+
+    var body: some View {
+        HStack(spacing: 0) {
+            step("minus", "Shorter lead", by: -1)
+            step("plus", "Longer lead", by: 1)
+        }
+        .background(EarwigTheme.background, in: Capsule())
+    }
+
+    private func step(_ symbol: String, _ label: String, by change: Int) -> some View {
+        let next = lead + change
+        let allowed = TakeSettings.leadRange.contains(next)
+        return Button { if allowed { lead = next } } label: {
+            Image(systemName: symbol)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(allowed ? EarwigTheme.accent : EarwigTheme.secondaryText.opacity(0.5))
+                .frame(width: 44, height: 32)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 }
 

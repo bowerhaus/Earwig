@@ -1,5 +1,7 @@
+import os
 import SwiftData
 import SwiftUI
+import UIKit
 
 @main
 struct EarwigApp: App {
@@ -10,6 +12,19 @@ struct EarwigApp: App {
     /// reset, and not tied to the scene phase, so a return from the background or an unlock
     /// mid-take shows nothing (plan 007, decision 7).
     @State private var showsSplash = true
+
+    init() {
+        // White titles, large and inline, in the light scheme (plan 011, decision 16).
+        let white = UIColor(EarwigTheme.text)
+        UINavigationBar.appearance().largeTitleTextAttributes = [.foregroundColor: white]
+        UINavigationBar.appearance().titleTextAttributes = [.foregroundColor: white]
+        // The samples are in the store before the list first shows (plan 011, decision 3).
+        do {
+            try SampleSeeder(context: container.mainContext).seed()
+        } catch {
+            Logger(subsystem: "com.bowerhaus.Earwig", category: "Samples").error("Could not seed the samples: \(error.localizedDescription)")
+        }
+    }
 
     var body: some Scene {
         WindowGroup {

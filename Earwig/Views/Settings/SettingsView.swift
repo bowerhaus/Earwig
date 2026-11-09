@@ -21,7 +21,6 @@ struct SettingsView: View {
     @AppStorage(AppSettings.inlineDirectionsKey) private var inlineDirections: InlineDirections = .chime
     @Environment(\.modelContext) private var context
     @Environment(ScriptRenderer.self) private var renderer
-    @AppStorage(AppSettings.showsTakeDetailsKey) private var showsTakeDetails = false
     @State private var voiceID = ""
     /// The cue voice picked by hand, "" for Automatic.
     @State private var cueVoiceID = AppSettings.cueVoiceID ?? ""
@@ -165,7 +164,6 @@ struct SettingsView: View {
                     } label: {
                         Label("Listening Check", systemImage: "waveform.and.mic")
                     }
-                    Toggle("Show Take Details", isOn: $showsTakeDetails)
                 } header: {
                     Text("Diagnostics")
                 }

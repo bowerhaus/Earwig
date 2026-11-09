@@ -268,7 +268,6 @@ enum AppSettings {
     static let inlineDirectionsKey = "inlineDirections"
     static let presenterVoiceKey = "presenterVoice"
     static let cueVoiceKey = "cueVoice"
-    static let showsTakeDetailsKey = "showsTakeDetails"
 
     /// The presenter's voice picked by hand, by identifier; `nil` for the default (Stephanie).
     static var presenterVoiceID: String? {
@@ -280,12 +279,6 @@ enum AppSettings {
     static var cueVoiceID: String? {
         get { UserDefaults.standard.string(forKey: cueVoiceKey) }
         set { UserDefaults.standard.set(newValue, forKey: cueVoiceKey) }
-    }
-
-    /// Whether a take shows the engine's line under its status; off unless set (#36).
-    static var showsTakeDetails: Bool {
-        get { UserDefaults.standard.bool(forKey: showsTakeDetailsKey) }
-        set { UserDefaults.standard.set(newValue, forKey: showsTakeDetailsKey) }
     }
 
     static var inlineDirections: InlineDirections {

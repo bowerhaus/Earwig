@@ -582,8 +582,8 @@ The take screen, usable at arm's length and glanceable from a mount (plan 008):
   Slate, Tones, Speaking, Waiting, Reading, Lost, Held), the take's mode, and the route
   check (earpiece and mic icons, red when wrong, the earpiece amber on the speaker; not
   judged in Screen Only), judged only while the take runs. What to do under it (in the
-  slate-with-reply mode "Say the slate, or tap"; a tap on the text skips it), and a small
-  diagnostics line (lead error, speed, delay, rate), kept for now.
+  slate-with-reply mode "Say the slate, or tap"; a tap on the text skips it). No line of the
+  engine's numbers: the take's summary in the console has them (plan 012).
 - Middle: the scrolling text (4.6). A drag moves it by hand; it follows again three seconds
   after, or at once on Back, Forward or Restart. A pinch sizes it, scaled about the eyeline
   while pinching and laid out again when the pinch ends.

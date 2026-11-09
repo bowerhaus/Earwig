@@ -210,32 +210,6 @@ struct PromptViewModelTests {
         #expect(model.takeText == "Take 2")
     }
 
-    @Test func diagnosticsWhileFollowing() {
-        var snapshot = FollowSnapshot()
-        snapshot.status = .speaking
-        snapshot.error = -0.42
-        snapshot.speed = 1.05
-        snapshot.delay = 0.91
-        snapshot.rate = 2.63
-        let model = PromptViewModel(phase: .running, snapshot: snapshot, route: route(out: .bluetoothA2DP), setup: setup)
-        #expect(model.diagnostics == "lead error -0.4 · speed 1.05× · delay 0.91 s · rate 2.6 w/s")
-        #expect(self.model(.running, .slate).diagnostics == nil)
-    }
-
-    @Test func diagnosticsStayOnceTheTakeIsOver() {
-        var snapshot = FollowSnapshot()
-        snapshot.status = .finished
-        snapshot.presenterWord = 40
-        snapshot.speed = 1.0
-        snapshot.delay = 0.91
-        snapshot.rate = 2.63
-        let over = PromptViewModel(phase: .finished(.completed), snapshot: snapshot, route: route(out: .bluetoothA2DP), setup: setup)
-        #expect(over.diagnostics == "lead error – · speed 1.00× · delay 0.91 s · rate 2.6 w/s")
-        // A take that heard nothing has none.
-        snapshot.presenterWord = -1
-        #expect(PromptViewModel(phase: .finished(.completed), snapshot: snapshot, route: route(out: .bluetoothA2DP), setup: setup).diagnostics == nil)
-    }
-
     // MARK: - Screen mode
 
     private func screen(_ status: FollowStatus, place: Double = -1, voicePhrase: Int? = nil, voiceWord: Int? = nil,
@@ -290,11 +264,10 @@ struct PromptViewModelTests {
         #expect(!screen(.reading, place: 1, voicePhrase: 2, voiceWord: 5).screenTokens.contains { $0.inVoicePhrase })
     }
 
-    /// Lost or held, the place and the diagnostics stay live.
+    /// Lost or held, the place stays live.
     @Test func lostAndHeldStillFollow() {
         for status in [FollowStatus.lost, .held] {
             #expect(screen(status, place: 3).place == 3)
-            #expect(screen(status, place: 3).diagnostics != nil)
         }
     }
 }

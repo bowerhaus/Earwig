@@ -30,7 +30,7 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 
 **In:**
 - the Voice group finished: Preview, Voice Speed moved in from Following, Cue Voice;
-- Show Take Details and Title Case (#36);
+- the take details line removed, and Title Case (#36);
 - an About group: version and build;
 - swipe to delete on the Scripts screen asks first (#35);
 - §4.8 settled: what is built, and what is struck from it and why;
@@ -64,7 +64,7 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 
    §4.8 is rewritten to say what Settings has, and these two go into its history line.
 
-5. **Show Take Details** (#36), under Diagnostics with the Listening Check, off by default. Off, the Prompt screen has no engine line; on, it shows it as now, and once the take is over the line stays as it was at the end, so the numbers can still be read (Andy, device check 3). `AppSettings.showsTakeDetails`. Andy turns it on on his phone for device checks. The take's console summary (`TakeSummary`) is unchanged either way.
+5. **No take details line** (#36). #36 asked for a Show Take Details switch for the engine's line under the status. It was built, and in device check 3 Andy found the line went with the take's end, so its numbers could not be read afterwards; asked whether it was needed at all, he had it removed. It was plan 005's diagnostic for the first device checks, and the take's console summary (`TakeSummary`: lead within two words, waits, speed range, delay, rate) has more and is what device checks read. So the Prompt screen has no engine line and Settings no switch; #36 closes with the line gone.
 
 6. **Title Case** (#36): **Voice Speed** and **Text Size**, here and in the README's Settings section, so every Settings label is in Title Case as Apple's own Settings app writes them.
 
@@ -109,26 +109,26 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 
 ## Files
 
-- `Earwig/Views/Settings/SettingsView.swift` (edited: the Voice group, Cue Voice, Preview, Show Take Details, About, Title Case).
+- `Earwig/Views/Settings/SettingsView.swift` (edited: the Voice group, Cue Voice, Preview, About, Title Case; the take details switch, built and then removed, decision 5).
 - `Earwig/Views/Settings/VoicePreview.swift` or a small `@Observable` in `ViewModels/` (new: renders and plays the preview sentence, Stop).
 - `Earwig/Models/AppSettings.swift` (edited: `cueVoiceID`, `showsTakeDetails`).
 - `Earwig/Services/VoiceCatalogue.swift` (edited: `choose` takes a cue voice; the cue options).
 - `Earwig/Services/ScriptRenderer.swift` (edited, if the cue voice is passed through it).
-- `Earwig/Views/Prompt/PromptView.swift`, `Earwig/ViewModels/PromptViewModel.swift` (edited: the line only when Show Take Details is on).
+- `Earwig/Views/Prompt/PromptView.swift`, `Earwig/ViewModels/PromptViewModel.swift` (edited: the engine's line removed, decision 5).
 - `Earwig/Views/Scripts/ScriptsView.swift`, `Earwig/ViewModels/ScriptsViewModel.swift` (edited: the swipe asks first, #35).
 - `EarwigTests/ScriptsViewModelTests.swift` (new or edited: nothing deleted until confirmed; cancel keeps it; a sample never deleted).
 - `Earwig/Resources/PrivacyInfo.xcprivacy` (new).
 - `EarwigTests/VoiceCatalogueTests.swift` (edited: a chosen cue voice, a deleted one, Personal Voice never a cue).
 - `scripts/release/testflight.sh`, `scripts/release/ExportOptions.plist` (new).
 - `project.yml` (`MARKETING_VERSION` 0.2.0; the script bumps `CURRENT_PROJECT_VERSION`).
-- `README.md` (the Settings section: the Voice group, Cue Voice, Show Take Details, About, Title Case).
+- `README.md` (the Settings section: the Voice group, Cue Voice, About, Title Case).
 - `PRD.md`, `CLAUDE.md`, `progress.md`, this plan.
 
 ## Steps
 
 1. **Cue voice.** `VoiceCatalogue` takes a chosen cue voice, with tests first: a chosen voice is used; one no longer installed falls back to Automatic; a Personal Voice is never offered or used; Automatic is today's rule.
 2. **The Voice group.** Voice Speed moved in, Cue Voice, Preview with Stop. Simulator: the group lays out, Preview's Stop works (the simulator has no Stephanie, so what it sounds like waits for the phone).
-3. **Show Take Details and Title Case** (#36). Simulator: a Screen Only take (`-EarwigDemo YES -EarwigScreen YES -EarwigReads YES`) with the switch off shows no line, and on shows it.
+3. **Show Take Details and Title Case** (#36). Simulator: a Screen Only take (`-EarwigDemo YES -EarwigScreen YES -EarwigReads YES`) with the switch off shows no line, and on shows it. (After device check 3 the line and the switch were removed: decision 5.)
 4. **About.** Version and build from the bundle.
 5. **Swipe to delete asks first** (#35, decision 14). The view model's tests first, on an in-memory container held for the test's length: a script asked to be deleted is still there; confirmed, it and its takes are gone; cancelled, both stay; a sample is never deleted. Then the swipe. Simulator: a pasted script swiped, Cancel, still there; swiped again, Delete Script, gone.
 6. **Privacy manifest.** The required-reason APIs searched for again across `Earwig/`; the manifest written; the built app checked to contain `PrivacyInfo.xcprivacy`.
@@ -141,19 +141,19 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
     - Results filled in, with #14's verdict.
     - README's Settings section and Title Case.
     - PRD as v0.14: §4.8 and §8.4 as built, with what was struck (decision 4); §2's Distribution (the project generated, the build bumped by the script, the Keychain items); §12 with stage 7 done, the MVP stages complete; a Document History row.
-    - CLAUDE.md: the status (plan 012 complete, next #37 as plan 013), how a TestFlight build is uploaded, and the Show Take Details note for device checks.
+    - CLAUDE.md: the status (plan 012 complete, next #37 as plan 013), how a TestFlight build is uploaded, and that the take's numbers are in its console summary, with no line on the screen.
     - `progress.md` emptied to its stub.
 12. **The release, after the PR merges** (each push needs Andy's yes): the annotated tag `v0.2.0` on `main` at the merge commit, pushed, and the GitHub Release marked pre-release, notes from the Document History since v0.1.0 and the known issues.
 
 ## Verification
 
 - `xcodebuild test` passes in the simulator with no warnings; SwiftLint clean; the Release configuration builds with no warnings.
-- Simulator: Settings in its seven groups; Show Take Details hides and shows the line; About shows 0.2.0 and the build; a swipe to delete asks first, and Cancel keeps the script (step 5).
+- Simulator: Settings in its seven groups; the take details switch hid and showed the line (since removed, decision 5); About shows 0.2.0 and the build; a swipe to delete asks first, and Cancel keeps the script (step 5).
 - The script's refusals, without an upload (step 8).
 - On the iPhone 14 Pro with the SK18, one check at a time, the verdicts Andy's:
   1. **Preview** reads the sentence in Stephanie at 0.95x through the earpiece, and Stop stops it. At another voice speed it sounds that speed.
   2. **Cue Voice**: a voice chosen by hand reads the cues in a take on a sample with Read Cues on; Automatic reads them as before.
-  3. **Show Take Details** off: a take has no engine line. On: it has, and it stays once the take is over. The Cue Voice list, with Stephanie presenting, offers only voices that are not female.
+  3. **The take details line is gone** (decision 5): a take has no engine line, and Settings no switch. The Cue Voice list, with Stephanie presenting, offers only voices that are not female.
   4. **Swipe to delete** on a script of Andy's own: the question comes up with the script's title and the row stays put; Cancel keeps it and its takes. Then a throwaway pasted script, swiped, **Delete Script**: it goes (review C1).
   5. **The TestFlight build**: it appears in the TestFlight app and installs over the development build. The Scripts screen keeps its scripts and takes. About shows 0.2.0 (2).
   6. **A take on the TestFlight build**: With Voice on The Old Watermill, the earpiece in, the phone locked in a pocket. It follows and completes as the development build did.
@@ -198,7 +198,7 @@ deleted.
 **C4. SUGGESTION: plan step 11 is not done yet.**
 None of these files has changed on the branch:
 - `PRD.md`: §4.8 rewritten with what was struck (decision 4), §2 Distribution amended, §12 stage 7 done, v0.14 and a Document History row.
-- `CLAUDE.md`: the status (plan 012, next #37 as plan 013), how a TestFlight build is uploaded, and the Show Take Details note.
+- `CLAUDE.md`: the status (plan 012, next #37 as plan 013), how a TestFlight build is uploaded, and that the take's numbers are in its console summary, with no line on the screen.
 - The plan's Results, including #14's verdict.
 
 progress.md also notes that `docs/screenshots/settings.png` shows the old Voice group. This is expected before the PR, but it is still owed.

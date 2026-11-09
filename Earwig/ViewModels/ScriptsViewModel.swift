@@ -29,9 +29,26 @@ final class ScriptsViewModel {
         if let script { path = [script] }
     }
 
-    /// Samples are never deleted (plan 011, decision 5).
-    func delete(_ scripts: [Script], in context: ModelContext) {
-        for script in scripts where !script.isSample { context.delete(script) }
+    /// The script a swipe asked to delete, waiting for the question to be answered (#35).
+    var pendingDeletion: Script?
+
+    /// A swipe asks first, as Delete Script does (plan 012, decision 14). A sample is never
+    /// asked about, since it is never deleted (plan 011, decision 5).
+    func askToDelete(_ script: Script) {
+        guard !script.isSample else { return }
+        pendingDeletion = script
+    }
+
+    /// Deletes the script waiting, with its takes.
+    func confirmDeletion(in context: ModelContext) {
+        guard let script = pendingDeletion else { return }
+        pendingDeletion = nil
+        guard !script.isSample else { return }
+        context.delete(script)
         try? context.save()
+    }
+
+    func cancelDeletion() {
+        pendingDeletion = nil
     }
 }

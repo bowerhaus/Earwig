@@ -70,4 +70,28 @@ struct VoiceCatalogueTests {
         let voices = [stephanie, voice("Aaron", "en-US", .premium, .male), voice("Arthur", "en-GB", .compact, .male)]
         #expect(VoiceCatalogue.cue(from: voices, presenter: stephanie)?.name == "Arthur")
     }
+
+    @Test func aCueVoicePickedByHandReadsTheCues() throws {
+        let voices = [voice("Stephanie"), voice("Jamie", "en-GB", .premium, .male), voice("Serena", "en-GB", .premium)]
+        let choice = try #require(VoiceCatalogue.choose(from: voices, cueID: "Serena.en-GB.premium"))
+        #expect(choice.presenter.name == "Stephanie")
+        #expect(choice.cue.name == "Serena")
+    }
+
+    @Test func aCueVoiceNoLongerInstalledIsAutomaticAgain() throws {
+        let voices = [voice("Stephanie"), voice("Jamie", "en-GB", .premium, .male)]
+        let choice = try #require(VoiceCatalogue.choose(from: voices, cueID: "Serena.en-GB.premium"))
+        #expect(choice.cue.name == "Jamie")
+        // No pick is automatic, as before.
+        #expect(VoiceCatalogue.choose(from: voices, cueID: nil)?.cue.name == "Jamie")
+    }
+
+    @Test func aPersonalVoiceIsNeverOfferedOrUsedAsTheCueVoice() throws {
+        let mine = VoiceInfo(identifier: "personal.andy", name: "Andy", language: "en-GB", quality: .premium, gender: .male, isPersonal: true)
+        let voices = [mine, voice("Stephanie"), voice("Jamie", "en-GB", .premium, .male), voice("Daniel", "en-GB", .compact, .male),
+                      voice("Ava", "en-US", .premium), voice("Thomas", "fr-FR", .premium, .male)]
+        #expect(VoiceCatalogue.cueOptions(from: voices).map(\.name) == ["Jamie", "Stephanie", "Ava"])
+        let choice = try #require(VoiceCatalogue.choose(from: voices, cueID: "personal.andy"))
+        #expect(choice.cue.name == "Jamie")
+    }
 }

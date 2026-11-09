@@ -94,14 +94,27 @@ enum VoiceCatalogue {
     }
 
     /// The choice from the installed voices, or `nil` when there is no English voice. A presenter
-    /// voice picked by hand (`presenterID`) is used while it is installed; else the default.
+    /// voice picked by hand (`presenterID`) is used while it is installed; else the default. A cue
+    /// voice picked by hand (`cueID`, plan 012) likewise; else Automatic, `cue(from:presenter:)`.
     /// A Personal Voice is never the default and never the cue voice.
-    static func choose(from voices: [VoiceInfo], presenterID: String? = nil) -> VoiceChoice? {
+    static func choose(from voices: [VoiceInfo], presenterID: String? = nil, cueID: String? = nil) -> VoiceChoice? {
         let picked = presenterID.flatMap { id in voices.first { $0.identifier == id } }
         let standard = voices.filter { !$0.isPersonal }
         guard let presenter = picked ?? presenter(from: standard) else { return nil }
-        let cue = cue(from: standard, presenter: presenter) ?? presenter
+        let pickedCue = cueID.flatMap { id in standard.first { $0.identifier == id } }
+        let cue = pickedCue ?? cue(from: standard, presenter: presenter) ?? presenter
         return VoiceChoice(presenter: presenter, cue: cue, presenterIsPreferred: picked != nil || isPreferred(presenter))
+    }
+
+    /// The choice from the installed voices with the voices picked in Settings.
+    static func chosen(from voices: [VoiceInfo] = installed()) -> VoiceChoice? {
+        choose(from: voices, presenterID: AppSettings.presenterVoiceID, cueID: AppSettings.cueVoiceID)
+    }
+
+    /// The cue voices worth offering beside Automatic: English voices of Enhanced quality or
+    /// better, British first, never a Personal Voice (plan 012, decision 2).
+    static func cueOptions(from voices: [VoiceInfo]) -> [VoiceInfo] {
+        presenterOptions(from: voices).filter { !$0.isPersonal }
     }
 
     /// The presenter voices worth offering: Personal Voices, then English voices of Enhanced

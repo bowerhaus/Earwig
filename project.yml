@@ -13,7 +13,7 @@ settings:
     CODE_SIGN_STYLE: Automatic
     # The version the app reports. Bump the build before each TestFlight upload and commit it;
     # App Store Connect refuses a build number it has already seen.
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "0.2.0"
     CURRENT_PROJECT_VERSION: "1"
 targets:
   Earwig:

@@ -214,13 +214,6 @@ struct PromptViewModel: Equatable {
         }
     }
 
-    /// The device check's numbers (decision 7): lead error, speed, the measured delay and rate.
-    var diagnostics: String? {
-        guard following else { return nil }
-        let error = snapshot.error.map { String(format: "%+.1f", $0) } ?? "–"
-        return String(format: "lead error %@ · speed %.2f× · delay %.2f s · rate %.1f w/s", error, snapshot.speed, snapshot.delay, snapshot.rate)
-    }
-
     // MARK: - Bottom
 
     private var following: Bool { phase == .running && [.speaking, .waiting, .reading, .lost, .held].contains(snapshot.status) }

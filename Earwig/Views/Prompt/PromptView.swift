@@ -13,6 +13,7 @@ struct PromptView: View {
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @AppStorage(TakeSettings.textSizeKey) private var textSize = TakeSettings.defaultTextSize
+    /// The engine's line under the status, off unless Settings shows it (#36).
     /// Set on the preview, where the text is shown over the camera (Andy, check 4b).
     @AppStorage(TakeSettings.textOverCameraKey) private var textOverCamera = TakeSettings.defaultTextOverCamera
     /// Counts Back, Forward and Restart, so the text follows again at once after a drag.
@@ -217,13 +218,6 @@ struct PromptView: View {
             if case .gettingReady = model.phase {
                 ProgressView(value: model.downloadProgress)
                     .tint(EarwigTheme.accent)
-            }
-            if let diagnostics = model.diagnostics {
-                Text(diagnostics)
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(EarwigTheme.secondaryText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
             }
         }
     }

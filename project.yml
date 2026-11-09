@@ -11,10 +11,10 @@ settings:
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: S7K2GRB2RN
     CODE_SIGN_STYLE: Automatic
-    # The version the app reports. Bump the build before each TestFlight upload and commit it;
-    # App Store Connect refuses a build number it has already seen.
-    MARKETING_VERSION: "0.1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    # The version the app reports. scripts/release/testflight.sh bumps the build, uploads, then
+    # commits and tags it; App Store Connect refuses a build number it has already seen.
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: "2"
 targets:
   Earwig:
     type: application

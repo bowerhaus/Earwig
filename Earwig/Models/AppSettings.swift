@@ -260,18 +260,25 @@ extension StartMode {
     }
 }
 
-/// Settings kept in `UserDefaults` (PRD §6.1), until the Settings screen of stage 7 gathers them.
+/// Settings kept in `UserDefaults` (PRD §6.1) that are not the take's.
 enum AppSettings {
     /// The lead, pacing and start mode.
     static var take: TakeSettings { TakeSettings(defaults: .standard) }
 
     static let inlineDirectionsKey = "inlineDirections"
     static let presenterVoiceKey = "presenterVoice"
+    static let cueVoiceKey = "cueVoice"
 
     /// The presenter's voice picked by hand, by identifier; `nil` for the default (Stephanie).
     static var presenterVoiceID: String? {
         get { UserDefaults.standard.string(forKey: presenterVoiceKey) }
         set { UserDefaults.standard.set(newValue, forKey: presenterVoiceKey) }
+    }
+
+    /// The cue voice picked by hand, by identifier; `nil` for Automatic (plan 012, decision 2).
+    static var cueVoiceID: String? {
+        get { UserDefaults.standard.string(forKey: cueVoiceKey) }
+        set { UserDefaults.standard.set(newValue, forKey: cueVoiceKey) }
     }
 
     static var inlineDirections: InlineDirections {

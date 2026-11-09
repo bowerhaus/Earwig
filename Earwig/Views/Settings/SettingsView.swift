@@ -2,9 +2,9 @@ import AVFoundation
 import SwiftData
 import SwiftUI
 
-/// The Settings screen (PRD §4.8, §8.4; plan 005, decision 11): the voice and how directions are
-/// read (plan 011, decision 15), following, the start, the screen, recording, and the Listening
-/// check. The rest waits for stage 7.
+/// The Settings screen (PRD §4.8, §8.4; plan 005, decision 11): the voice, its speed, the cue voice
+/// and how directions are read (plan 011, decision 15; plan 012, decision 2), following, the
+/// start, the screen, recording, diagnostics, and the version (plan 012, decision 7).
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(TakeSettings.leadKey) private var lead = TakeSettings.defaultLead
@@ -22,6 +22,9 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var context
     @Environment(ScriptRenderer.self) private var renderer
     @State private var voiceID = ""
+    /// The cue voice picked by hand, "" for Automatic.
+    @State private var cueVoiceID = AppSettings.cueVoiceID ?? ""
+    @State private var preview = VoicePreview()
     /// Bumped when Personal Voice has been asked for, so the voices are listed again.
     @State private var personalVoiceAsked = 0
     @State private var recordingsSize: Int64 = 0
@@ -35,6 +38,24 @@ struct SettingsView: View {
                         ForEach(presenterOptions, id: \.identifier) { Text($0.displayName).tag($0.identifier) }
                     }
                     .id(personalVoiceAsked)
+                    Button {
+                        if preview.isPlaying {
+                            preview.stop()
+                        } else {
+                            Task { await preview.play(with: renderer, speed: voiceSpeed) }
+                        }
+                    } label: {
+                        Label(preview.isPlaying ? "Stop" : "Preview", systemImage: preview.isPlaying ? "stop.fill" : "play.fill")
+                    }
+                    .foregroundStyle(EarwigTheme.accent)
+                    .disabled(renderer.voices == nil)
+                    Picker("Voice Speed", selection: $voiceSpeed) {
+                        ForEach(TakeSettings.voiceSpeeds, id: \.self) { Text(String(format: "%.2f×", $0)).tag($0) }
+                    }
+                    Picker("Cue Voice", selection: $cueVoiceID) {
+                        Text("Automatic").tag("")
+                        ForEach(cueOptions, id: \.identifier) { Text($0.displayName).tag($0.identifier) }
+                    }
                     if AVSpeechSynthesizer.personalVoiceAuthorizationStatus == .notDetermined {
                         Button("Allow Personal Voice") {
                             Task {
@@ -50,6 +71,11 @@ struct SettingsView: View {
                     }
                 } header: {
                     Text("Voice")
+                } footer: {
+                    if let problem = preview.problem {
+                        Text(problem)
+                            .foregroundStyle(EarwigTheme.warning)
+                    }
                 }
                 .listRowBackground(EarwigTheme.surface)
 
@@ -63,9 +89,6 @@ struct SettingsView: View {
                     }
                     Picker("Pacing", selection: $pacing) {
                         ForEach(PacingMode.allCases, id: \.self) { Text($0.label).tag($0) }
-                    }
-                    Picker("Voice speed", selection: $voiceSpeed) {
-                        ForEach(TakeSettings.voiceSpeeds, id: \.self) { Text(String(format: "%.2f×", $0)).tag($0) }
                     }
                 } header: {
                     Text("Following")
@@ -97,11 +120,11 @@ struct SettingsView: View {
                     }
                     Toggle("Light the Voice's Phrase", isOn: $lightsVoice)
                     VStack(alignment: .leading, spacing: 8) {
-                        LabeledContent("Text size") {
+                        LabeledContent("Text Size") {
                             Text("\(Int(textSize)) pt").monospacedDigit()
                         }
                         Slider(value: $textSize, in: TakeSettings.textSizeRange, step: 2)
-                            .accessibilityLabel("Text size")
+                            .accessibilityLabel("Text Size")
                         Text("The tide is out.")
                             .font(.system(size: textSize, weight: .semibold))
                             .foregroundStyle(EarwigTheme.text)
@@ -145,6 +168,15 @@ struct SettingsView: View {
                     Text("Diagnostics")
                 }
                 .listRowBackground(EarwigTheme.surface)
+
+                Section {
+                    // The version alone: links to the source and the licence would make a bought
+                    // app look like a hobby project (plan 012, decision 7).
+                    LabeledContent("Version", value: Self.version)
+                } header: {
+                    Text("About")
+                }
+                .listRowBackground(EarwigTheme.surface)
             }
             .scrollContentBackground(.hidden)
             // White labels, pale headers and values, in the light scheme (plan 011, decision 16).
@@ -163,15 +195,25 @@ struct SettingsView: View {
             }
             .onAppear {
                 recordingsSize = RecordingStore.standard.size()
-                voiceID = renderer.voices?.presenter.identifier
-                    ?? VoiceCatalogue.choose(from: VoiceCatalogue.installed(), presenterID: AppSettings.presenterVoiceID)?.presenter.identifier ?? ""
+                voiceID = renderer.voices?.presenter.identifier ?? VoiceCatalogue.chosen()?.presenter.identifier ?? ""
+                // A cue voice since deleted is Automatic again.
+                if !cueOptions.contains(where: { $0.identifier == cueVoiceID }) { cueVoiceID = "" }
             }
+            .onDisappear { preview.stop() }
             .onChange(of: voiceID) { old, new in
                 // A pick by hand; the first value is only the voice already in use.
                 guard !old.isEmpty, !new.isEmpty else { return }
+                preview.stop()
                 AppSettings.presenterVoiceID = new
-                renderer.use(VoiceCatalogue.choose(from: VoiceCatalogue.installed(), presenterID: new))
+                // A cue voice of the new presenter's gender is no longer offered: Automatic again.
+                if !cueOptions.contains(where: { $0.identifier == cueVoiceID }) { cueVoiceID = "" }
+                renderer.use(VoiceCatalogue.chosen())
             }
+            .onChange(of: cueVoiceID) { _, new in
+                AppSettings.cueVoiceID = new.isEmpty ? nil : new
+                renderer.use(VoiceCatalogue.chosen())
+            }
+            .onChange(of: voiceSpeed) { preview.stop() }
             .confirmationDialog("Delete every recording?", isPresented: $confirmingDeleteAll, titleVisibility: .visible) {
                 Button("Delete All Recordings", role: .destructive) { deleteAllRecordings() }
             } message: {
@@ -196,6 +238,21 @@ struct SettingsView: View {
     /// short footers, or none).
     /// Personal Voices first, then English voices of Enhanced quality or better, British first.
     private var presenterOptions: [VoiceInfo] { VoiceCatalogue.presenterOptions(from: VoiceCatalogue.installed()) }
+
+    /// English voices of Enhanced quality or better and not of the presenter's gender, never a
+    /// Personal Voice, beside Automatic.
+    private var cueOptions: [VoiceInfo] {
+        let voices = VoiceCatalogue.installed()
+        return VoiceCatalogue.cueOptions(from: voices, presenter: voices.first { $0.identifier == voiceID })
+    }
+
+    /// "0.2.0 (2)": the version and the build, so a TestFlight build can be told apart.
+    static let version: String = {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "\(short) (\(build))"
+    }()
 
     private var startFooter: String? {
         switch start {

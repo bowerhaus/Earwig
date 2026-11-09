@@ -108,7 +108,13 @@ struct SampleSeederTests {
     @Test func samplesAreNotDeleted() throws {
         try seeder.seed()
         let own = try ScriptImporter(context: context).paste(Fixtures.plain).script
-        ScriptsViewModel().delete(scripts, in: context)
+        let model = ScriptsViewModel()
+        for script in scripts {
+            model.askToDelete(script)
+            // A sample is never asked about, and never deleted if it were.
+            #expect((model.pendingDeletion == nil) == script.isSample)
+            model.confirmDeletion(of: script, in: context)
+        }
         #expect(scripts.count == 4)
         #expect(!scripts.contains { $0 === own })
     }

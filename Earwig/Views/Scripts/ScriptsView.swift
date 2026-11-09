@@ -48,6 +48,17 @@ struct ScriptsView: View {
                 } message: {
                     Text(model.error ?? "")
                 }
+                // The same question as Delete Script on the Script screen (#35).
+                .confirmationDialog(
+                    "Delete \(model.pendingDeletion?.title ?? "")?",
+                    isPresented: Binding(get: { model.pendingDeletion != nil }, set: { if !$0 { model.cancelDeletion() } }),
+                    titleVisibility: .visible,
+                    presenting: model.pendingDeletion
+                ) { script in
+                    Button("Delete Script", role: .destructive) { model.confirmDeletion(of: script, in: context) }
+                } message: { _ in
+                    Text("Its takes go with it.")
+                }
                 #if DEBUG
                 .task(id: samples.count) {
                     // `-EarwigDemo YES` opens the Harbour Walk sample, for simulator screenshots,
@@ -73,9 +84,15 @@ struct ScriptsView: View {
                         NavigationLink(value: script) {
                             ScriptRow(script: script)
                         }
-                    }
-                    .onDelete { offsets in
-                        model.delete(offsets.map { own[$0] }, in: context)
+                        // Not `.onDelete`, which deletes at once, nor a destructive role or a
+                        // full swipe, which slide the row away before the question is answered
+                        // (plan 012, decision 14).
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button { model.askToDelete(script) } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            .tint(EarwigTheme.warning)
+                        }
                     }
                 }
             }
@@ -98,7 +115,7 @@ struct ScriptsView: View {
     /// In place of the presenter's own scripts while there are none.
     private var pasteHint: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Copy a script on your Mac, in Markdown or plain text, then paste it here.")
+            Text("Copy a script in Markdown or plain text, then paste it here.")
                 .font(.body)
                 .foregroundStyle(EarwigTheme.text)
             pasteButton

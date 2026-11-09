@@ -8,6 +8,14 @@ enum VisitLayer: Equatable, Sendable {
     case inFront
 }
 
+/// How a walk under way goes when its screen asks it to keep away (plan 014, decision 9).
+enum VisitLeaving: Sendable {
+    /// Taken away at once: a take, Listen, Reduce Motion, or its screen gone.
+    case vanishes
+    /// Runs off: Preview in Settings.
+    case runsOff
+}
+
 /// One cubic stretch of a walk.
 struct WalkCurve: Equatable, Sendable {
     var start: CGPoint
@@ -231,7 +239,8 @@ struct WalkPlanner {
         let entry = randomEdge(using: &random)
         let from = offScreen(entry, using: &random)
         let curves: [WalkCurve]
-        if Double.random(in: 0..<1, using: &random) < Self.turnBackChance {
+        // Only from a side: one in at the top or the foot always leaves at a side.
+        if entry == .left || entry == .right, Double.random(in: 0..<1, using: &random) < Self.turnBackChance {
             curves = turningBack(from: from, at: entry, using: &random)
         } else {
             // In at the top or the foot, out at a side, so no walk is the phone's whole height.
@@ -261,6 +270,15 @@ struct WalkPlanner {
         return Walk(path: VisitPath(curves: [curve]), speed: Self.walkingSpeed * Self.runningFactor,
                     turn: Walk.Turn(from: place.heading, duration: Self.runTurn), layer: layer, start: start,
                     isRun: true, steppedBefore: place.stepped)
+    }
+
+    /// What follows a walk asked to go: nothing when it vanishes or has already gone; when it runs
+    /// off, a run straight on, as if it had heard something, or the run it is already on.
+    func leaving(_ walk: Walk, _ how: VisitLeaving, at time: TimeInterval) -> Walk? {
+        guard how == .runsOff, let place = walk.place(at: time) else { return nil }
+        if walk.isRun { return walk }
+        let behind = place.position.offset(by: Heading.direction(place.heading), times: -10)
+        return run(from: place, awayFrom: behind, layer: walk.layer, start: time)
     }
 
     func distance(from point: CGPoint, to edge: Edge) -> CGFloat {

@@ -69,7 +69,7 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
 4. **The path.** A pure `VisitPath`, made from the screen's size and a random source (seeded in tests):
    - It enters off one edge and leaves off another, or sometimes the same one, along a gentle curve that bends at most a quarter of its length either side of the straight line. A walk that enters at the top or the foot leaves at a side, so none is the phone's whole height. It always faces the way it's going.
    - It pauses once or twice for 0.5–1.5 s, with the antennae still twitching.
-   - Now and then it turns back halfway and leaves the way it came.
+   - Now and then a walk that came in at a side turns back halfway and leaves the way it came (only from a side, so one in at the top or the foot always leaves at a side).
    - It never pauses under the top bar or the home indicator, so it never seems to hide there.
    - Position and heading come from time since the walk began, so the view only asks `place(at:)`.
 
@@ -173,3 +173,128 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
 ## Results
 
 _To be filled in when the plan completes._
+
+## Review pass — 2026-11-09
+
+Findings from `/review-branch` on branch `earwig-visits`, **unresolved as written**. Each is a claim
+from a review on that date, not an established fact, and each verdict under *Assessment* is a
+recommendation, not a decision. Work through them and annotate each with what was done — fixed,
+or rejected and why. A finding that turns out to be wrong should say so here rather than be
+deleted.
+
+### Code
+
+**C1. WARNING: the keep-away check after the start delay reads an old value, so a walk can begin during Listen, Preview or a take.**
+- **Where:** `Earwig/Views/Visitor/EarwigVisitorLayer.swift`, lines 848 and 886–901.
+- **What happens:** `.task { await visit() }` runs once, when the screen appears. It captures the modifier struct, and `keepAway` is a plain `let`. After the 2–6 s sleep, `guard !keepAway` still sees the value from when the screen appeared, not the current one. `reduceMotion` is the same: it's an `@Environment` value copied into that struct.
+- **Effect:**
+  - Open Settings and tap Preview within 2–6 s: a walk starts while Preview plays. That breaks decision 9.
+  - Open Listen within that window on the Script screen: a walk starts under the sheet. The plan says the Script screen's visit is removed while the sheet is up.
+  - Tap Start within that window: a walk may start as the take begins. That depends on whether the fullScreenCover fires `onDisappear` and cancels the task.
+- **Why the existing handler misses it:** `onChange(of: keepAway)` only acts on a walk already under way. A visit that is still pending is not touched.
+- **Fix:** have the pending visit read the live value. Options:
+  - mirror `keepAway` into `@State`;
+  - restart the task with `.task(id: keepAway)`;
+  - cancel the pending visit from the `onChange`.
+
+**C2. WARNING: the plan's finish items are not done yet.**
+- **Where:** `plans/014-earwig-visits.md` (Results, line 175), `PRD.md`, `CLAUDE.md`.
+- Results is still "_To be filled in_".
+- The PRD has no version bump, no Document History row and no §10 *Earwig visits* paragraph.
+- CLAUDE.md's Status doesn't mention plan 014. Decision 10 asks for a line saying the temporary Earwig Visits slider must be removed before the next App Store build.
+- These are the plan's step 8 and its decision 10, so they have to land before the PR.
+
+**C3. SUGGESTION: the `-EarwigVisits YES` simulator flag isn't documented in CLAUDE.md.**
+- **Where:** `CLAUDE.md` Build Commands; the flag is read in `Earwig/Services/EarwigVisits.swift`, lines 79–82.
+- Every other Debug launch flag is listed there, so this one should be too.
+
+**C4. SUGGESTION: the cuts' geometry is written twice in the icon script.**
+- **Where:** `scripts/app_icon/make_app_icon.py`, lines 261–267, which repeat `cut_lines()` at lines 83–90.
+- `swift_geometry()` redoes the taper (`inset = 0.1 * (y - 450)`, the 456/568 ends) and the wing split's endpoints.
+- If the mark's cuts change in `cut_lines()`, the walking earwig drifts from the icon. That breaks decision 1's single source. Both writers should take the endpoints from one helper.
+
+Nothing looks likely to break the build:
+- the referenced symbols exist (`SplashTiming.total`, `Log.event`);
+- `line_length` is disabled, so the long generated lines are fine;
+- `EarwigTests` is outside SwiftLint.
+
+I checked the gait's alternating sets of three, including the mirrored right side, and the heading convention against `rotationEffect`; both are correct.
+
+### Tests
+
+**T1. WARNING: `aRunTurnsTheShortWayToFaceItsRoute` never checks the turn itself.**
+- File: EarwigTests/EarwigVisitsTests.swift:124-130.
+- It samples at `WalkPlanner.runTurn`. That is the moment the turn ends: `elapsed < turning` is false at Earwig/Services/EarwigWalk.swift:159, so `place` takes the walking branch and returns `path.heading(at: 0)`. The test only shows that the route's first heading points away from the tap.
+- The eased turn on the spot (EarwigWalk.swift:159-165) is never sampled mid-turn. Only elapsed 0 is touched, in `aTapSendsItAwayFromTheFinger`.
+- That test's "it turns on the spot first" (line 112) also passes without any turn, because `path.start == here` either way.
+- Fix: one sample at `start + runTurn / 2`, from a heading about π away from the route. Expect the position to equal `here` and the heading to lie between `turn.from` and the target the short way round. That covers the turn and lets lines 111-112 shrink to the `stepped` check.
+
+**T2. WARNING: the keep-away rules (plan decision 9, step 4) have no unit tests.**
+- File: Earwig/Views/Visitor/EarwigVisitorLayer.swift:79-127.
+- Plan step 4 asks for tests of "each keep-away condition". They live only in the private SwiftUI modifier:
+  - the `keepAway` and Reduce Motion guards in `visit()`;
+  - `leave(.vanishes)` calling `visits.ended(at:)`;
+  - `leave(.runsOff)` running straight on from the heading and extending the visit via `ran`, with no `ended`;
+  - an existing run left alone.
+- These were checked in the simulator only.
+- Option 1: move the leave decision into `EarwigVisits` or `WalkPlanner` as a small pure function (current walk, how, time → new walk or nil), with two short tests.
+- Option 2: if it stays view-only, note in the plan's Results that it was simulator-verified rather than unit-tested.
+- Either way, a test of `planner.run(from:awayFrom:)` with the tap just behind the heading would pin down Preview's "runs off straight on" route.
+
+**T3. SUGGESTION: decision 7's "a tap never counts as a visit ending early for the rest" is not asserted.**
+- File: EarwigTests/EarwigVisitsTests.swift:241-248.
+- `aRunKeepsTheAppBusyUntilItsEnd` should also `#expect(visits.lastVisit == 10)` after `ran`, so a later change cannot reset the rest from a run.
+- `aWalkTakenAwayFreesTheApp` (233-239) could likewise assert that `lastVisit` survives `ended(at:)`.
+- That is one line each.
+
+**T4. SUGGESTION: fold the three 40-seed tests into one.**
+- File: EarwigTests/EarwigVisitsTests.swift:50-76.
+- `aVisitStartsAndEndsOffScreen`, `aVisitTakesSecondsNotMinutes` and `pausesAreWhereItCanBeSeen` each build the same seeded walks. They differ only by layer, which the planner ignores.
+- One `@Test(arguments: 0..<40)` that checks the ends, the duration and the pauses gives the same coverage with 40 cases instead of 120.
+
+**T5. SUGGESTION: the duration bound is too loose to guard decision 3.**
+- File: EarwigTests/EarwigVisitsTests.swift:64.
+- `2 < duration < 20` would still pass at the old 60 pt/s, whose up-to-17 s crossings were the reason the speed was raised.
+- A bound nearer the plan's figure (for example under 15 s, allowing for turn-back walks) would catch that regression.
+- While there, assert that walks entering at the top or the foot leave at a side (decision 4), the one path rule left untested.
+
+**T6. SUGGESTION: a few checks are tautological and could go.**
+- `theSwingStaysSmall` (152-158): `swing * sin(...)` is bounded by `swing` by construction, and the antennae's fixed amplitudes (at most 0.14) are always under 0.2. Line 142 of `theTwoSetsOfThreeSwingOpposite` already pins the swing amplitude.
+- `theDelayIsAMomentAfterTheScreenOpens` (204-206): the loop re-tests that `Double.random(in:)` stays in its range. Only the `.everyVisit` line (207) and the splash comparison (208) carry weight.
+- Line 106 restates two constants multiplied together.
+
+**T7. SUGGESTION: the Debug `-EarwigVisits YES` override is untested.**
+- Source: `VisitFrequency.current` at Earwig/Services/EarwigVisits.swift:45-47.
+- The keys differ only in case (`EarwigVisits` against `earwigVisits`), which is easy to break.
+- Fix: add one line to `theSettingIsReadBackAndDefaultsToOneInTen` (EarwigVisitsTests.swift:190-200): `defaults.set(true, forKey: "EarwigVisits")` → `.everyVisit`.
+
+Not flagged: `EarwigFigure`, `EarwigGeometry` (generated), the Settings slider binding, and the one-line `.earwigVisits` call sites. These are drawing code or trivial pass-throughs.
+
+### Assessment
+
+- C1 — FIX: real. `visit()` runs in the task started on appear and reads the modifier's `let keepAway` and its copied `reduceMotion` from that moment (`EarwigVisitorLayer.swift:81`, `:88`). Mirror both into `@State` (set with `onChange(…, initial: true)`), which the pending task reads live.
+- C2 — SKIP: these are the plan's step 8, done at completion before the PR as `/plan_autopilot` orders it. Nothing is missing yet.
+- C3 — FIX: add `-EarwigVisits YES` to CLAUDE.md's list of Debug flags.
+- C4 — FIX: one helper gives the cuts' endpoints, and both `cut_lines()` and `swift_geometry()` use it.
+- T1 — FIX: sample the run halfway through its turn, from a heading opposite the route, and check that it stays put and turns the short way.
+- T2 — FIX (part): move the leaving decision into a small pure function in `EarwigWalk.swift` (the walk, how it leaves, the time → the walk that follows or nil), with tests for vanishing, running off straight on, and a run left alone. The `keepAway` and Reduce Motion guards stay in the view and are checked on the device.
+- T3 — FIX: assert that `lastVisit` survives `ran` and `ended(at:)`.
+- T4 — FIX: fold the three seeded tests into one.
+- T5 — FIX: a bound of 15 s, and a check that a walk in at the top or the foot leaves at a side.
+- T6 — FIX: drop `theSwingStaysSmall`, the random-range loop and line 106's restated constants.
+- T7 — FIX: one line for the Debug override.
+
+### Outcome — 2026-11-09
+
+- C1 — fixed: `keepAway` and Reduce Motion are mirrored into `@State` (`held`, set by `onChange(…, initial: true)`), which a visit waiting to begin reads after its delay.
+- C2 — not done here: the plan's step 8, done at completion before the PR.
+- C3 — fixed: `-EarwigVisits YES` is in CLAUDE.md's list of Debug flags.
+- C4 — fixed: `cuts()` gives the cuts' ends and widths to both `cut_lines()` and `swift_geometry()`. The SVGs, the PNGs and the Swift are byte-identical to before.
+- T1 — fixed: `aRunTurnsOnTheSpotTheShortWayRound` samples halfway through the turn from nearly opposite the route.
+- T2 — fixed (part): the leaving decision is `WalkPlanner.leaving(_:_:at:)`, tested by `leavingAtOnceLeavesNothing` and `runningOffGoesStraightOn`. The guards that stop a visit beginning stay in the view, for the device check.
+- T3 — fixed: `lastVisit` is asserted after `ended(at:)` and `ran`.
+- T4 — fixed: one seeded test, `aVisitCrossesTheScreen`.
+- T5 — fixed: the bound is 15 s, with a check that a walk in at the top or the foot leaves at a side. That check found a walk in at the top that turned back and took over 15 s. Turning back is now only for walks that come in at a side (decision 4 updated).
+- T6 — fixed: `theSwingStaysSmall`, the random-range loop and the restated speed are gone.
+- T7 — fixed: the Debug override is checked.
+- M1 — found while checking T4: `EarwigVisitsTests.swift` had been added after the last `xcodegen generate`, so the first two test runs (372 tests) did not include it. Regenerated, all 395 tests pass, the earwig suites among them.

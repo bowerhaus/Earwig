@@ -1,13 +1,5 @@
 import SwiftUI
 
-/// How a walk under way goes when its screen asks it to keep away (plan 014, decision 9).
-enum VisitLeaving {
-    /// Taken away at once: a take, or Listen.
-    case vanishes
-    /// Runs off: Preview in Settings.
-    case runsOff
-}
-
 extension View {
     /// Now and then the earwig walks across this screen (plan 014), behind its cards or over
     /// them. Put it on the screen's list before the list's background, so a walk behind is
@@ -27,6 +19,9 @@ private struct EarwigVisitsModifier: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var walk: Walk?
     @State private var area = VisitArea.zero
+    /// `keepAway` or Reduce Motion as they are now. A visit waiting to begin reads this, not the
+    /// copies it was started with, which would still say what they said when the screen appeared.
+    @State private var held = false
 
     private static let space = "earwigVisit"
 
@@ -41,6 +36,7 @@ private struct EarwigVisitsModifier: ViewModifier {
             .task { await visit() }
             .task(id: walk?.id) { await clear() }
             .onDisappear { leave(.vanishes) }
+            .onChange(of: keepAway || reduceMotion, initial: true) { _, hold in held = hold }
             .onChange(of: keepAway) { _, away in
                 if away { leave(leaving) }
             }
@@ -78,14 +74,14 @@ private struct EarwigVisitsModifier: ViewModifier {
     /// Rolls for a visit when the screen appears, and begins one after a moment if it comes up.
     private func visit() async {
         walk = nil
-        guard let visits, !reduceMotion else { return }
+        guard let visits, !held else { return }
         let frequency = VisitFrequency.current()
         guard frequency != .never else { return }
         var random = SystemRandomNumberGenerator()
         let roll = Double.random(in: 0..<1, using: &random)
         try? await Task.sleep(for: .seconds(VisitSchedule.delay(for: frequency, using: &random)))
         let now = Date.now.timeIntervalSinceReferenceDate
-        guard !Task.isCancelled, !keepAway, !reduceMotion, area.size.width > 0,
+        guard !Task.isCancelled, !held, area.size.width > 0,
               VisitSchedule.visits(frequency, roll: roll, at: now, lastVisit: visits.lastVisit) else { return }
         let layer: VisitLayer = Bool.random(using: &random) ? .behind : .inFront
         let next = WalkPlanner(area: area).visit(layer: layer, start: now, using: &random)
@@ -114,15 +110,12 @@ private struct EarwigVisitsModifier: ViewModifier {
     private func leave(_ how: VisitLeaving) {
         guard let current = walk else { return }
         let now = Date.now.timeIntervalSinceReferenceDate
-        if how == .runsOff, !current.isRun, let place = current.place(at: now) {
-            // Straight on, as if it had heard something.
-            let behind = place.position.offset(by: Heading.direction(place.heading), times: -10)
-            let run = WalkPlanner(area: area).run(from: place, awayFrom: behind, layer: current.layer, start: now)
-            visits?.ran(run)
-            walk = run
-        } else if how == .vanishes {
+        let next = WalkPlanner(area: area).leaving(current, how, at: now)
+        if let next {
+            if next.id != current.id { visits?.ran(next) }
+        } else {
             visits?.ended(at: now)
-            walk = nil
         }
+        walk = next
     }
 }

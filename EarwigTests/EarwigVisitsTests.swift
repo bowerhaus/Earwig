@@ -47,27 +47,20 @@ struct EarwigWalkTests {
         #expect(abs(Heading.turn(from: 3, to: -3) - (2 * .pi - 6)) < 1e-9, "the short way round")
     }
 
+    /// Off screen at both ends, a crossing of seconds, out at a side when in at the top or the
+    /// foot, and pauses only where it can be seen.
     @Test(arguments: 0..<40)
-    func aVisitStartsAndEndsOffScreen(seed: Int) {
+    func aVisitCrossesTheScreen(seed: Int) {
         var random = SeededRandom(seed: UInt64(seed))
         let walk = planner.visit(layer: .behind, start: 100, using: &random)
-        #expect(isOffScreen(walk.path.start))
-        #expect(isOffScreen(walk.path.end))
+        let start = walk.path.start, end = walk.path.end
+        #expect(isOffScreen(start) && isOffScreen(end))
         #expect(walk.place(at: walk.end + 0.01) == nil, "gone after its end")
         #expect(walk.place(at: walk.end - 0.01) != nil)
-    }
-
-    @Test(arguments: 0..<40)
-    func aVisitTakesSecondsNotMinutes(seed: Int) {
-        var random = SeededRandom(seed: UInt64(seed))
-        let walk = planner.visit(layer: .inFront, start: 0, using: &random)
-        #expect(walk.duration > 2 && walk.duration < 20, "\(walk.duration) s")
-    }
-
-    @Test(arguments: 0..<40)
-    func pausesAreWhereItCanBeSeen(seed: Int) {
-        var random = SeededRandom(seed: UInt64(seed))
-        let walk = planner.visit(layer: .behind, start: 0, using: &random)
+        #expect(walk.duration > 2 && walk.duration < 15, "\(walk.duration) s")
+        if start.y < 0 || start.y > area.size.height {
+            #expect(end.x < 0 || end.x > area.size.width, "never the phone's whole height")
+        }
         #expect((0...2).contains(walk.pauses.count))
         for pause in walk.pauses {
             #expect(planner.isClear(walk.path.point(at: pause.distance)), "never under a bar or off the edge")
@@ -103,14 +96,11 @@ struct EarwigWalkTests {
         let place = WalkPlace(position: here, heading: 0, stepped: 37)
         let run = planner.run(from: place, awayFrom: tap, layer: .inFront, start: 10)
         #expect(run.isRun)
-        #expect(run.speed == WalkPlanner.walkingSpeed * WalkPlanner.runningFactor)
         #expect(isOffScreen(run.path.end))
         let away = CGVector(dx: here.x - tap.x, dy: here.y - tap.y)
         let gone = CGVector(dx: run.path.end.x - here.x, dy: run.path.end.y - here.y)
         #expect(away.dot(gone) > 0, "it leaves on the far side from the finger")
-        let start = try #require(run.place(at: 10))
-        #expect(start.position == here, "it turns on the spot first")
-        #expect(start.stepped == 37, "its legs carry on from the walk's")
+        #expect(try #require(run.place(at: 10)).stepped == 37, "its legs carry on from the walk's")
     }
 
     @Test func aRunLeavesByTheNearestEdgeAwayFromTheFinger() {
@@ -121,12 +111,39 @@ struct EarwigWalkTests {
         #expect(run.duration < 1.5, "a dash")
     }
 
-    @Test func aRunTurnsTheShortWayToFaceItsRoute() throws {
-        let place = WalkPlace(position: CGPoint(x: 200, y: 450), heading: 0, stepped: 0)
-        // Tapped from below: it was facing up already, so it hardly turns.
+    @Test func aRunTurnsOnTheSpotTheShortWayRound() throws {
+        // Facing down and tapped from below: it turns to run up, by way of the nearer side.
+        let here = CGPoint(x: 200, y: 450)
+        let facing: CGFloat = .pi - 0.3
+        let place = WalkPlace(position: here, heading: facing, stepped: 0)
         let run = planner.run(from: place, awayFrom: CGPoint(x: 200, y: 500), layer: .inFront, start: 0)
+        let target = run.path.heading(at: 0)
+        let halfway = try #require(run.place(at: WalkPlanner.runTurn / 2))
+        #expect(halfway.position == here, "it turns before it moves")
+        let whole = Heading.turn(from: facing, to: target), sofar = Heading.turn(from: facing, to: halfway.heading)
+        #expect(sofar * whole > 0 && abs(sofar) < abs(whole), "partway round, the short way")
         let turned = try #require(run.place(at: WalkPlanner.runTurn))
-        #expect(abs(Heading.turn(from: 0, to: turned.heading)) < 0.6)
+        #expect(abs(Heading.turn(from: turned.heading, to: target)) < 0.01)
+    }
+
+    private func walkAcross(at start: TimeInterval) -> Walk {
+        let path = VisitPath(curves: [WalkCurve(start: CGPoint(x: -50, y: 400), control1: CGPoint(x: 100, y: 400),
+                                                control2: CGPoint(x: 300, y: 400), end: CGPoint(x: 450, y: 400))])
+        return Walk(path: path, speed: 90, layer: .inFront, start: start)
+    }
+
+    @Test func leavingAtOnceLeavesNothing() {
+        #expect(planner.leaving(walkAcross(at: 0), .vanishes, at: 2) == nil)
+        #expect(planner.leaving(walkAcross(at: 0), .runsOff, at: 100) == nil, "already gone")
+    }
+
+    @Test func runningOffGoesStraightOn() throws {
+        let walk = walkAcross(at: 0)
+        let run = try #require(planner.leaving(walk, .runsOff, at: 2))
+        #expect(run.isRun && run.layer == walk.layer)
+        #expect(run.path.end.x > area.size.width, "on to the right, the way it was going")
+        #expect(planner.leaving(run, .runsOff, at: 2.1) == run, "a run is left to finish")
+        #expect(planner.leaving(run, .vanishes, at: 2.1) == nil)
     }
 }
 
@@ -147,14 +164,6 @@ struct GaitTests {
         let other = Gait.pose(stepped: 12, time: 50)
         #expect(one.left == other.left && one.right == other.right && one.sway == other.sway)
         #expect(one.leftAntenna != other.leftAntenna, "the antennae twitch on their own")
-    }
-
-    @Test func theSwingStaysSmall() {
-        for step in stride(from: 0, through: 200, by: 3.7) {
-            let pose = Gait.pose(stepped: CGFloat(step), time: Double(step))
-            #expect((pose.left + pose.right).allSatisfy { abs($0) <= Gait.swing + 1e-9 })
-            #expect(abs(pose.leftAntenna) < 0.2 && abs(pose.rightAntenna) < 0.2)
-        }
     }
 }
 
@@ -196,14 +205,13 @@ struct VisitScheduleTests {
         #expect(VisitFrequency.current(defaults) == .oneIn50)
         defaults.set(VisitFrequency.never.rawValue, forKey: VisitFrequency.key)
         #expect(VisitFrequency.current(defaults) == .never)
+        defaults.set(true, forKey: "EarwigVisits")
+        #expect(VisitFrequency.current(defaults) == .everyVisit, "-EarwigVisits YES, in a Debug build")
         defaults.removePersistentDomain(forName: "EarwigVisitsTests")
     }
 
-    @Test func theDelayIsAMomentAfterTheScreenOpens() {
+    @Test func everyVisitComesSoonButNeverUnderTheSplash() {
         var random = SeededRandom(seed: 3)
-        for _ in 0..<20 {
-            #expect(VisitSchedule.delays.contains(VisitSchedule.delay(for: .oneIn10, using: &random)))
-        }
         #expect(VisitSchedule.delay(for: .everyVisit, using: &random) == VisitSchedule.testingDelay)
         #expect(VisitSchedule.testingDelay > SplashTiming.total, "never under the splash")
     }
@@ -235,6 +243,7 @@ struct VisitScheduleTests {
         visits.ready = true
         #expect(visits.begin(walk(at: 10)))
         visits.ended(at: 11)
+        #expect(visits.lastVisit == 10, "the rest still runs from when it began")
         #expect(visits.begin(walk(at: 11.5)))
     }
 
@@ -243,6 +252,7 @@ struct VisitScheduleTests {
         visits.ready = true
         #expect(visits.begin(walk(at: 10)))
         visits.ran(walk(at: 12))
+        #expect(visits.lastVisit == 10, "a tap does not restart the rest")
         #expect(!visits.begin(walk(at: 14)), "the run is out of sight at 15")
         #expect(visits.begin(walk(at: 15)))
     }

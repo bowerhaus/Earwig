@@ -21,7 +21,8 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 ## Notes
 
-- **Next: the manual tests.** The review-fixed build is installed (commit `Plan 010: review fixes`). The phone was locked at launch. Launch with `xcrun devicectl device process launch --console --terminate-existing --device 00008120-000471EE14E0201E com.bowerhaus.Earwig -- -EarwigDemo YES` in the background, console to the scratchpad, then run Verification checks one at a time: 2, 3, 4, 5, 6, then 1d (deferred by Andy). Recording is chosen on the start card now (no flag).
+- **Next: check 3** (video on the mount, With Voice then Screen Only), then 4, 5, 6 (Keep on half only), then 1d. Earwig is running on the phone (`-EarwigDemo YES`), console to the scratchpad `console-2.log`; relaunch the same way if it was closed.
+- Check 2 passed, 2026-11-09: takes 52 and 53, sound, 0 drops, thermal nominal. Andy: "The recording is clear to hear back", the file is in Files. Check 6's Keep-off half passed with it: the two takes left one file (take 53 replaced take 52).
 
 - Step 1's build is on the phone. Next: Andy unlocks it; launch with `xcrun devicectl device process launch --console --terminate-existing --device 00008120-000471EE14E0201E com.bowerhaus.Earwig -- -EarwigDemo YES -EarwigRecordVideo YES` (in the background, console to the scratchpad), then check 1a: a filmed take, route and recogniser. Then 1b (the same take not filmed, to compare), 1c (sync, the file pulled to the Mac with `devicectl device copy from`), 1d (ten minutes of takes for heat).
 - 1a PASS (Andy): voice in the earpiece throughout, following as usual. Console: take 49 SK18 A2DP + built-in mic throughout, 27.8 s completed, lead within 2 words 24%, waits 3 (longest 1.9 s), delay 0.89 s, rate 3.95 w/s; recording 0 dropped; thermal nominal. Andy: the route icons never look green (the theme's pale mint `good` on sky blue) — a follow-up, not this plan.

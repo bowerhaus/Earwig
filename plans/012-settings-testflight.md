@@ -51,7 +51,7 @@ The App Store release (#37: name, listing, privacy policy, screenshots, App Revi
 
 2. **The Voice group** holds everything about how the script sounds:
    - **Voice**, as now.
-   - **Preview**: a button that reads one sentence in the chosen voice at the chosen voice speed, through whatever the route is (the earpiece if it is in). It renders and plays the way Listen does (`VoiceRenderer`, then the player at the voice speed), so what Preview plays is what a take plays. While it plays the button reads **Stop**. The sentence is the Harbour Walk's first phrase, which the Listening check already quotes.
+   - **Preview**: a button that reads one sentence in the chosen voice at the chosen voice speed, through whatever the route is (the earpiece if it is in). It renders and plays the way Listen does (`VoiceRenderer`, then the player at the voice speed), so what Preview plays is what a take plays. While it plays the button reads **Stop**. The sentence is the Harbour Walk's first line (its first phrase, which the Listening check quotes, is "Morning!" alone: device check 1).
    - **Voice Speed**, moved from Following: it is how the voice sounds, and Preview plays at it. Following keeps Lead and Pacing.
    - **Cue Voice**: **Automatic** (default, today's rule: the best en-GB voice of the other gender, so a cue never sounds like the script) or any English voice of Enhanced quality or better, never a Personal Voice. Stored as an identifier in `AppSettings`, nil for Automatic; a voice since deleted falls back to Automatic. `VoiceCatalogue.choose` takes it.
    - **Allow Personal Voice** and **Stage Directions**, as now.

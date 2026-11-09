@@ -1,12 +1,21 @@
 import Foundation
 import Observation
 
-/// Settings' Preview (plan 012, decision 2): the sample's first phrase in the presenter's voice at
+/// Settings' Preview (plan 012, decision 2): the sample's first line in the presenter's voice at
 /// the voice speed, through whatever the route is, rendered and played as a take plays its voice
 /// (the renderer, then the voice channel's time-pitch node at the speed).
 @MainActor
 @Observable
 final class VoicePreview {
+    /// The Harbour Walk's first line, every phrase of it: its first phrase alone, which the
+    /// Listening check says, is "Morning!", one word (device check 1).
+    static let text: String = {
+        let steps = ScriptParser.parse(SampleScript.harbourWalk).steps
+        let phrases = steps.first.map { PhraseList(lines: $0.lines).phrases } ?? []
+        let line = phrases.filter { $0.line == 0 && $0.kind == .spoken }.map(\.phrase.text)
+        return line.isEmpty ? "Morning! We're starting at the old harbour, just as the tide turns." : line.joined(separator: " ")
+    }()
+
     private(set) var isPlaying = false
     private(set) var problem: String?
 
@@ -27,7 +36,7 @@ final class VoicePreview {
         isPlaying = true
         problem = nil
         do {
-            let rendered = try await renderer.renderPresenter(ListeningCheck.testPhrase)
+            let rendered = try await renderer.renderPresenter(Self.text)
             guard generation == self.generation else { return }
             try session.configure()
             audio.speed = speed

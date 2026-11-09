@@ -20,6 +20,8 @@ struct ScriptsView: View {
         NavigationStack(path: $model.path) {
             list
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Between the sky blue and the cards, so a walk behind shows in the gaps (plan 014).
+                .earwigVisits()
                 .background(EarwigTheme.background)
                 .navigationTitle("Scripts")
                 // No bar background of its own: the screen's sky blue is behind it, and setting one

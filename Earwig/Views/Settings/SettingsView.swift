@@ -19,6 +19,8 @@ struct SettingsView: View {
     @AppStorage(TakeSettings.keepsRecordingsKey) private var keepsRecordings = false
     @AppStorage(TakeSettings.cameraBehindTextKey) private var cameraBehindText = TakeSettings.defaultCameraBehindText
     @AppStorage(AppSettings.inlineDirectionsKey) private var inlineDirections: InlineDirections = .chime
+    /// Temporary, for choosing how often the earwig comes; it goes once the rate is chosen (plan 014, decision 10).
+    @AppStorage(VisitFrequency.key) private var visitFrequency: VisitFrequency = .standard
     @Environment(\.modelContext) private var context
     @Environment(ScriptRenderer.self) private var renderer
     @State private var voiceID = ""
@@ -164,8 +166,17 @@ struct SettingsView: View {
                     } label: {
                         Label("Listening Check", systemImage: "waveform.and.mic")
                     }
+                    VStack(alignment: .leading, spacing: 8) {
+                        LabeledContent("Earwig Visits", value: visitFrequency.title)
+                        Slider(value: visitSteps, in: 0...Double(VisitFrequency.allCases.count - 1), step: 1)
+                            .accessibilityLabel("Earwig Visits")
+                            .accessibilityValue(visitFrequency.title)
+                    }
                 } header: {
                     Text("Diagnostics")
+                } footer: {
+                    Text("How often an earwig wanders across the screen.")
+                        .foregroundStyle(EarwigTheme.secondaryText)
                 }
                 .listRowBackground(EarwigTheme.surface)
 
@@ -181,6 +192,8 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             // White labels, pale headers and values, in the light scheme (plan 011, decision 16).
             .foregroundStyle(EarwigTheme.text, EarwigTheme.secondaryText)
+            // Never while Preview is speaking; one walking runs off when it starts (plan 014, decision 9).
+            .earwigVisits(keepAway: preview.isPlaying, leaving: .runsOff)
             .background(EarwigTheme.background)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -220,6 +233,12 @@ struct SettingsView: View {
                 Text("Every take's recording is deleted from this iPhone. This can't be undone.")
             }
         }
+    }
+
+    /// The slider's steps, Never to Every Visit.
+    private var visitSteps: Binding<Double> {
+        Binding(get: { Double(visitFrequency.rawValue) },
+                set: { visitFrequency = VisitFrequency(rawValue: Int($0.rounded())) ?? .standard })
     }
 
     private func deleteAllRecordings() {

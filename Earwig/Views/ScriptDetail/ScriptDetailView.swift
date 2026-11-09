@@ -97,6 +97,8 @@ struct ScriptDetailView: View {
         .scrollContentBackground(.hidden)
         // White labels, pale headers and values, in the light scheme (plan 011, decision 16).
         .foregroundStyle(EarwigTheme.text, EarwigTheme.secondaryText)
+        // Never during a take or while Listen is open; one walking goes at once (plan 014, decision 9).
+        .earwigVisits(keepAway: model.take != nil || model.preview != nil)
         .background(EarwigTheme.background)
         .navigationTitle(script.title)
         .navigationBarTitleDisplayMode(.inline)

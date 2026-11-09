@@ -2,8 +2,8 @@
 
 **GitHub Issue:** [#40](https://github.com/bowerhaus/Earwig/issues/40) (PR must include "Closes #40")
 **Branch:** `earwig-visits` (from `main` at `2294bc0`, after plan 012 merged; plan 013, the App Store release, is in flight on `app-store-release` and touches none of this plan's code, so whichever merges second rebases the PRD version and CLAUDE.md's status)
-**Status:** Draft (2026-11-09). A plan for fun, outside PRD §12's stages, like plan 007.
-**Manual test:** device, on Andy's iPhone 14 Pro: the walk, its size and speed, behind and in front, the tap, and that it keeps away during a take, Listen and Preview (Verification). How often it comes is decided after about a week of TestFlight use.
+**Status:** Approved (2026-11-09, under `/plan_autopilot`). A plan for fun, outside PRD §12's stages, like plan 007.
+**Manual test:** device | on Andy's iPhone 14 Pro: the walk, its size and speed, behind and in front, the tap, and that it keeps away during a take, Listen and Preview (Verification). How often it comes is decided after about a week of TestFlight use.
 **Goal:** Every so often, the earwig from the icon walks across the screen. Sometimes it goes behind the cards, showing in the gaps between them; sometimes it walks over them. Tap it while it's in front and it runs off. It never appears during a take, while Listen or Preview is reading, or with Reduce Motion on, and it never gets in the way of a tap meant for the app.
 
 **PRD references:** §8 (screens), §10 Design Language (the mark), Document History.

@@ -105,7 +105,7 @@ Then paste in a script of your own.
 - **Stage directions.** Anything in square brackets inside a line is a stage direction, like a gesture or a look. During a take you hear a chime at that point (the default), or the direction read out in a second voice. Choose which under **Stage Directions** in Settings.
 - **Pasting again.** Paste the same text again and Earwig simply opens the script you already have. Paste a script with the same title and it replaces the text but keeps your takes. If the title has changed, use **Paste New Version** at the foot of the Script screen.
 - **Samples.** *The Harbour Walk*, *The Weekend Loaf*, *The Old Watermill* and *The Seaside Pier* are always there, below your own scripts. You can't delete them, and their takes are kept like any other script's.
-- **Deleting a script.** Swipe one of your own scripts to delete it, or tap **Delete Script** at the foot of its Script screen. Its takes go with it.
+- **Deleting a script.** Swipe one of your own scripts and tap **Delete**, or tap **Delete Script** at the foot of its Script screen. Earwig asks first, since its takes go with it.
 - **The paste prompt.** iOS asks "Allow Paste?" every time until you set **Settings › Apps › Earwig › Paste from Other Apps** to **Allow**.
 
 ### The Script screen
@@ -162,12 +162,13 @@ Tap the gear on the Scripts screen.
 
 | Group | Settings |
 |---|---|
-| Voice | **Voice**: your Personal Voice, if you have one and allow it (**Allow Personal Voice**), or any English voice of Enhanced quality or better, British first. **Stage Directions**: Chime or Spoken. |
-| Following | **Lead** (2 to 6 words, default 5, with the seconds that comes to), **Pacing** (Hybrid or Phrase-gated), **Voice speed** (0.80× to 1.00×, default 0.95×) |
+| Voice | **Voice**: your Personal Voice, if you have one and allow it (**Allow Personal Voice**), or any English voice of Enhanced quality or better, British first. **Preview** plays a line in it at the voice speed, through the earbud if it's in. **Voice Speed** (0.80× to 1.00×, default 0.95×). **Cue Voice**: Automatic, a voice of the other gender so a cue never sounds like your script, or any English voice of Enhanced quality or better. **Stage Directions**: Chime or Spoken. |
+| Following | **Lead** (2 to 6 words, default 5, with the seconds that comes to), **Pacing** (Hybrid or Phrase-gated) |
 | Start | **Slate with a reply**, **Slate alone** or **Tones only** (the default) |
-| Screen | **Mode** (With Voice or Screen Only), **Light the Voice's Phrase**, **Text size** (24 to 72 pt, default 40) |
+| Screen | **Mode** (With Voice or Screen Only), **Light the Voice's Phrase**, **Text Size** (24 to 72 pt, default 40) |
 | Recording | **Record** (Off, Sound or Video), **Video Quality**, **Camera Behind the Text**, **Keep Recordings**, the space used, and **Delete All Recordings** |
-| Diagnostics | **Listening Check** shows where the sound is going and where Earwig is listening, and lists the words it hears with how late each one arrived. **Say Test** plays a line through the earbud: with the earbud in, none of it should turn up among the heard words. |
+| Diagnostics | **Listening Check** shows where the sound is going and where Earwig is listening, and lists the words it hears with how late each one arrived. **Say Test** plays a line through the earbud: with the earbud in, none of it should turn up among the heard words. **Show Take Details** adds a line of the follow engine's numbers under a take's status, off by default. |
+| About | The **Version** and build, and links to the **Source Code** and the **Licence** |
 
 <p align="center">
   <img src="docs/screenshots/voice-take.png" alt="A take with the voice, its phrase lit just ahead of your line" width="250">&nbsp;&nbsp;

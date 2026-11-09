@@ -1,6 +1,6 @@
 # Plan 014: Earwig Visits
 
-**GitHub Issue:** _to be created (needs Andy's yes)_ (PR must include "Closes #NN")
+**GitHub Issue:** [#40](https://github.com/bowerhaus/Earwig/issues/40) (PR must include "Closes #40")
 **Branch:** `earwig-visits` (from `main` at `2294bc0`, after plan 012 merged; plan 013, the App Store release, is in flight on `app-store-release` and touches none of this plan's code, so whichever merges second rebases the PRD version and CLAUDE.md's status)
 **Status:** Draft (2026-11-09). A plan for fun, outside PRD §12's stages, like plan 007.
 **Manual test:** device, on Andy's iPhone 14 Pro: the walk, its size and speed, behind and in front, the tap, and that it keeps away during a take, Listen and Preview (Verification). How often it comes is decided after about a week of TestFlight use.

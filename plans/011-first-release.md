@@ -222,10 +222,9 @@ Built and checked on 2026-11-09. **PASS**: Andy reported every device check pass
 
   All are in, and he approved it.
 - **Review pass:** two agents' findings, recorded above with their outcomes.
-- **Follow-ups proposed, not opened:**
-  - the always-visible diagnostics line during a take;
-  - swipe to delete on the Scripts screen not asking first;
-  - the mixed capitalisation of Settings' labels.
+- **Follow-ups opened** (Andy, 2026-11-09):
+  - [#35](https://github.com/bowerhaus/Earwig/issues/35): swipe to delete on the Scripts screen doesn't ask first.
+  - [#36](https://github.com/bowerhaus/Earwig/issues/36), for plan 012: a Show Take Details switch for the diagnostics line, off by default, and Voice Speed and Text Size in Title Case.
 
   The inventory's "Save Video is not built" was wrong: the Photos permission is for the share sheet's Save Video (plan 010).
 

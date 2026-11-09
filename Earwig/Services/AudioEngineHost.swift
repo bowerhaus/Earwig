@@ -152,9 +152,19 @@ final class AudioEngineHost: PlayerOutput {
         // is heard. The next buffer then follows it with no gap in the ear, as both reach the
         // earpiece the same output latency later; `.dataPlayedBack` waited out the latency
         // (356 ms on the SK18) and added it between every two phrases (device check 2).
+        let scheduled = HostClock.now
+        let length = Double(buffer.frameLength) / buffer.format.sampleRate
         node.scheduleBuffer(buffer, at: nil, options: [], completionCallbackType: .dataRendered) { [weak self] _ in
+            let rendered = HostClock.now
             Task { @MainActor in
                 guard let self, self.tokens[channel] == token else { return }
+                // For the console: how long the buffer took to render against its length, and
+                // how long its end waited for the main thread.
+                let took = rendered - scheduled - delay
+                let waited = HostClock.now - rendered
+                if took > length * 1.5 + 0.5 || waited > 0.5 {
+                    self.onEvent?(String(format: "player: %@ of %.2f s rendered in %.2f s, its end handled %.2f s later", "\(channel)", length, took, waited))
+                }
                 completion()
             }
         }

@@ -503,8 +503,13 @@ final class TakeHost: Identifiable {
     private func startTicking() {
         ticker?.cancel()
         ticker = Task { [weak self] in
+            var last = HostClock.now
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(Int(Self.tickInterval * 1000)))
+                // A tick this late means the main thread was held: said, for the console.
+                let now = HostClock.now
+                if now - last > 0.5 { self?.log(String(format: "take: main thread held %.2f s", now - last - Self.tickInterval)) }
+                last = now
                 self?.tick()
             }
         }

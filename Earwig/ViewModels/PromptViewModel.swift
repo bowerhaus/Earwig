@@ -86,9 +86,6 @@ struct PromptViewModel: Equatable {
             && recording.cameraReady && !recording.videoStopped
     }
 
-    /// The scrolling text's opacity: full, or as Settings says over the camera (Andy, check 4b).
-    var textOpacity: Double { showsCameraBehindText ? setup.textOverCamera : 1 }
-
     /// The camera's preview on the screen at all: while framing, and behind the text after.
     var showsCamera: Bool { (isFraming && recording.cameraReady) || showsCameraBehindText }
 
@@ -266,12 +263,11 @@ extension TakeSetup {
         var lightsVoice = false
         var recording = TakeRecordingMode.off
         var cameraBehindText = false
-        var textOverCamera = TakeSettings.defaultTextOverCamera
     }
 
     var summary: Summary {
         Summary(number: stepNumber, title: stepTitle, take: take, start: settings.start,
                 screenWords: ScreenText.words(phraseList: phraseList, firstWord: script.firstWord), mode: mode, lightsVoice: lightsVoice,
-                recording: recording, cameraBehindText: cameraBehindText, textOverCamera: textOverCamera)
+                recording: recording, cameraBehindText: cameraBehindText)
     }
 }

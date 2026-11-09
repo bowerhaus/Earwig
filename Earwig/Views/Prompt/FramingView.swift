@@ -3,12 +3,17 @@ import SwiftUI
 
 /// A video take's framing (plan 010, decision 4): over the front camera's preview, full screen
 /// and mirrored, the step and take at the top and Start at the foot. The take gets ready behind
-/// it; Start is enabled once it is ready, and begins it.
+/// it; Start is enabled once it is ready, and begins it. With the camera behind the text, the
+/// step's opening words show as the take will show them, with a slider for how bright they are
+/// over the picture (Andy, check 4b).
 struct FramingView: View {
     let model: PromptViewModel
     let camera: CameraCapture?
     let onStart: () -> Void
     let onCancel: () -> Void
+
+    @AppStorage(TakeSettings.textSizeKey) private var textSize = TakeSettings.defaultTextSize
+    @AppStorage(TakeSettings.textOverCameraKey) private var textOverCamera = TakeSettings.defaultTextOverCamera
 
     var body: some View {
         ZStack {
@@ -35,7 +40,14 @@ struct FramingView: View {
                 }
                 .padding(12)
                 .background(EarwigTheme.surface.opacity(0.85), in: RoundedRectangle(cornerRadius: 16))
-                Spacer()
+                if model.setup.cameraBehindText {
+                    ScreenTextView(tokens: model.screenTokens, place: model.place, textSize: $textSize, resume: 0)
+                        .opacity(textOverCamera)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    textBrightness
+                } else {
+                    Spacer()
+                }
                 HStack(spacing: 12) {
                     Button(action: onCancel) {
                         Text("Cancel")
@@ -56,6 +68,27 @@ struct FramingView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
+    }
+}
+
+extension FramingView {
+    /// How bright the text is over the camera, for this take and the ones after.
+    private var textBrightness: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "textformat")
+                .font(.headline)
+                .foregroundStyle(EarwigTheme.text)
+                .accessibilityHidden(true)
+            Slider(value: $textOverCamera, in: TakeSettings.textOverCameraRange, step: 0.05)
+                .accessibilityLabel("Text brightness over the camera")
+            Text("\(Int((textOverCamera * 100).rounded()))%")
+                .font(.subheadline.monospacedDigit().bold())
+                .foregroundStyle(EarwigTheme.text)
+                .frame(width: 48, alignment: .trailing)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(EarwigTheme.surface.opacity(0.85), in: Capsule())
     }
 }
 

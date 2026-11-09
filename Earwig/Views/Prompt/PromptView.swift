@@ -13,6 +13,8 @@ struct PromptView: View {
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @AppStorage(TakeSettings.textSizeKey) private var textSize = TakeSettings.defaultTextSize
+    /// Set on the preview, where the text is shown over the camera (Andy, check 4b).
+    @AppStorage(TakeSettings.textOverCameraKey) private var textOverCamera = TakeSettings.defaultTextOverCamera
     /// Counts Back, Forward and Restart, so the text follows again at once after a drag.
     @State private var moves = 0
     @State private var playing: Playback?
@@ -245,7 +247,7 @@ struct PromptView: View {
         ScreenTextView(tokens: model.screenTokens, place: model.place,
                        textSize: $textSize,
                        resume: moves)
-            .opacity(model.textOpacity)
+            .opacity(model.showsCameraBehindText ? textOverCamera : 1)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onTapGesture {
                 if model.tapStarts { host.control(.tap) }

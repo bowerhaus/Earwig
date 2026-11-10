@@ -36,6 +36,7 @@ Raised by Andy on 2026-11-10. The talk settled:
   - About seven pipeline modules and two skills read them.
   - Two small additions to Cutaway are filed as Cutaway issues when this plan's implementation starts, not before (Andy; step 1).
 - **Samples stay read-only, with Edit a Copy** (Andy asked; decision 7).
+- **One term: "cue"** (Andy). The app said "cue" in Read Cues and Cue Voice and "stage directions" in Settings, and the README mixed both with "directions" (decision 11).
 
 What already exists:
 
@@ -60,6 +61,7 @@ What already exists:
 - the format labels removed, and the Seaside Pier sample rewritten in the documented format;
 - **Share** on the Script screen: the text, or a `.md` file;
 - a warning before a paste replaces changes made in Earwig;
+- "cue" as the one term in the app and the README, with Settings' Stage Directions renamed Cues in Lines (decision 11);
 - the two Cutaway issues, filed at the start of implementation;
 - tests, the simulator flag, the device check, and the README's short "Writing a script".
 
@@ -113,7 +115,7 @@ What already exists:
    - a `# ` line is the title;
    - a `## ` line starts a step, with its name if it has one;
    - with no `##` at all, each paragraph (text between blank lines) is a step;
-   - square brackets are a cue: inside a line, chimed or spoken there (Stage Directions); on its own line at the top of a step, read in the slate before the take, as Cutaway's `Shows:` is;
+   - square brackets are a cue: inside a line, chimed or spoken there (Settings' Cues in Lines); on its own line at the top of a step, read in the slate before the take, as Cutaway's `Shows:` is;
    - everything else is spoken. Round brackets are spoken.
 
    What changes in `PlainParser`:
@@ -179,6 +181,18 @@ What already exists:
     - `-EarwigNew YES` opens New on the Scripts screen.
     - Both are for screenshots and for checking the toolbar.
 
+11. **One term: "cue"** (Andy). Anything said to the presenter that isn't the script is a cue everywhere users see it: what's in square brackets, Cutaway's `Shows:`, and the step's name read in the slate.
+    - **Why "cue":**
+      - it covers everything the cue voice reads and Read Cues turns on, where "stage direction" covers only the brackets;
+      - it's the broadcast word for an instruction to the presenter, and Earwig copies a broadcast practice;
+      - it's short, for the toolbar, the start card and Settings;
+      - Read Cues and Cue Voice already use it.
+    - **Settings' Stage Directions** (Chime or Spoken) becomes **Cues in Lines**. That also says what decision 4 makes true: a cue at the top of a step is always read with the slate, and only cues inside a line are chimed or spoken. Its name says what it does, so it has no footer.
+    - **Read Cues** and **Cue Voice** keep their names.
+    - **"Stage direction"** appears once, as the explanation in the README and the editor's placeholder: a cue is "a stage direction for you, like [Gesture to the boats]".
+    - **The README** says "cue" throughout, in place of "stage direction" and "direction".
+    - **Code stays as it is.** `Direction`, `InlineDirections` and the settings' storage keys keep their names, so stored settings carry over. The PRD's §3 keeps "Direction" as the term for text that isn't spoken, and notes that users see it as a cue.
+
 ## Files
 
 - `Earwig/Views/Editor/ScriptEditorView.swift` (new): the sheet, the keyboard toolbar, the live line.
@@ -193,6 +207,7 @@ What already exists:
 - `Earwig/Services/SampleScript.swift`: the Seaside Pier rewritten.
 - `Earwig/Views/Scripts/ScriptsView.swift`, `Earwig/ViewModels/ScriptsViewModel.swift`: New, the hint, the row, the paste warning.
 - `Earwig/Views/ScriptDetail/ScriptDetailView.swift`, `Earwig/ViewModels/ScriptDetailViewModel.swift`, `Earwig/Views/ScriptDetail/StepView.swift`: Edit, Edit a Copy, Share, the warning, the cue on the card.
+- `Earwig/Views/Settings/SettingsView.swift`: Cues in Lines.
 - `EarwigTests/`: the parser, importer, editor and slate tests.
 - `README.md`, `PRD.md`, `CLAUDE.md`, `progress.md`, this plan.
 
@@ -214,12 +229,12 @@ What already exists:
    - a paste of an edited script asks first;
    - Edit a Copy is a script of the presenter's own and never adopted as the sample.
 4. **The editor.** `ScriptEditor` with tests for Title, Step and Cue at the start, middle and end of the text and with a selection, then the sheet. Checked in the simulator with `-EarwigNew YES` and `-EarwigEdit YES`, with screenshots to Andy for a first look.
-5. **The screens.** New, Edit, Edit a Copy, Share, the labels gone, the hint, the paste warning, the cue on the card.
+5. **The screens.** New, Edit, Edit a Copy, Share, the labels gone, the hint, the paste warning, the cue on the card, and Cues in Lines.
 6. **Device check** on the iPhone 14 Pro, one check at a time (Verification), installed with `devicectl`. Verdicts are Andy's.
 7. **Finish.**
    - SwiftLint clean, no warnings, all tests pass.
    - Results filled in.
-   - The README's short "Writing a script" (the format in four lines), in Andy's voice.
+   - The README: "cue" throughout (decision 11), and a short "Writing a script" (the format in four lines), in Andy's voice.
    - The PRD:
      - §1.4's non-goal struck;
      - §3 and §4.1 for the format, the editor and Share;

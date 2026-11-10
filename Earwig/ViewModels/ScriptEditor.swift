@@ -116,23 +116,60 @@ final class ScriptEditor {
         return Change(range: 0..<0, text: edit.text.isEmpty ? "# " : "# \n\n", cursor: 2)
     }
 
-    /// Step: a new step at the cursor, after a blank line, with the cursor after its `## ` for
-    /// an optional name. A selection is kept, after the heading.
+    /// Step: a new step at the cursor, after a blank line, with the cursor on the line under its
+    /// `## `, so what is dictated next is said, not the step's name (Andy on the phone: Save
+    /// never came on, the words had all gone into the heading). A name is typed after the `## `.
+    /// A selection is kept, under the heading.
     static func stepChange(in edit: Edit) -> Change {
         let at = edit.selection.lowerBound
         let before = edit.text.prefix(at)
-        let after = edit.text.dropFirst(at)
         let gap = if before.isEmpty || before.hasSuffix("\n\n") { "" } else if before.hasSuffix("\n") { "\n" } else { "\n\n" }
-        let end = after.isEmpty || after.hasPrefix("\n") ? "" : "\n"
-        return Change(range: at..<at, text: gap + "## " + end, cursor: at + gap.count + 3)
+        let heading = gap + "## \n"
+        return Change(range: at..<at, text: heading, cursor: at + heading.count)
     }
 
-    /// Cue: the selection in square brackets with the cursor after them, or `[]` with the cursor
-    /// between.
+    /// Cue: the selection in square brackets with the cursor after them. With none, `[]` with
+    /// the cursor between, on a line of its own if tapped at the end of a line with words on it.
+    /// Tapped inside a cue, it ends the cue: the cursor goes past the `]`, and for a cue on a line
+    /// of its own onto a new line under it.
     static func cueChange(in edit: Edit) -> Change {
-        let selected = String(edit.text.dropFirst(edit.selection.lowerBound).prefix(edit.selection.count))
-        let cursor = edit.selection.lowerBound + (selected.isEmpty ? 1 : selected.count + 2)
-        return Change(range: edit.selection, text: "[" + selected + "]", cursor: cursor)
+        let text = edit.text
+        let selection = edit.selection
+        if !selection.isEmpty {
+            let selected = String(text.dropFirst(selection.lowerBound).prefix(selection.count))
+            return Change(range: selection, text: "[" + selected + "]", cursor: selection.lowerBound + selected.count + 2)
+        }
+        let at = selection.lowerBound
+        let before = text.prefix(at)
+        let lineBefore = before.split(separator: "\n", omittingEmptySubsequences: false).last ?? ""
+        let lineAfter = text.dropFirst(at).prefix { $0 != "\n" }
+        if let open = lineBefore.lastIndex(of: "["), !lineBefore[open...].contains("]"),
+           let close = lineAfter.firstIndex(of: "]") {
+            let ownLine = lineBefore[..<open].allSatisfy(\.isWhitespace)
+            if ownLine && lineAfter[lineAfter.index(after: close)...].allSatisfy(\.isWhitespace) {
+                let end = at + lineAfter.count
+                return Change(range: end..<end, text: "\n", cursor: end + 1)
+            }
+            return Change(range: at..<at, text: "", cursor: at + lineAfter.distance(from: lineAfter.startIndex, to: close) + 1)
+        }
+        if lineAfter.allSatisfy(\.isWhitespace) && !lineBefore.allSatisfy(\.isWhitespace) {
+            return Change(range: at..<at, text: "\n[]", cursor: at + 2)
+        }
+        return Change(range: at..<at, text: "[]", cursor: at + 1)
+    }
+
+    /// What typing or dictating `inserted` at `at` puts in: its first letter a capital at the
+    /// start of a title, a step's name or a cue, which the keyboard leaves small after `#` and
+    /// `[` (Andy on the phone). Nil to put it in as it is; a word like "iPhone" is left.
+    static func capitalised(_ inserted: String, at: Int, in text: String) -> String? {
+        guard let first = inserted.firstIndex(where: { !$0.isWhitespace }), inserted[first].isLowercase else { return nil }
+        let next = inserted.index(after: first)
+        if next < inserted.endIndex, inserted[next].isUppercase { return nil }
+        let line = String(text.prefix(at).split(separator: "\n", omittingEmptySubsequences: false).last ?? "")
+            + inserted[..<first]
+        let starts = line.wholeMatch(of: #/\s*#{1,6}\s+/#) != nil || line.trimmingCharacters(in: .whitespaces).hasSuffix("[")
+        guard starts else { return nil }
+        return String(inserted[..<first]) + inserted[first].uppercased() + inserted[next...]
     }
 
     /// The text and cursor once a change is made.

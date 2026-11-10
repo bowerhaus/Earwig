@@ -27,5 +27,6 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - The simulator's typing drops letters at speed; a stale-update race in the text view was fixed, and the device check watches typing and dictation.
 - 432 tests pass, SwiftLint clean (after the screens).
 - Review: C1, C2, C5–C8 (C7 part) and T1–T6 fixed; C3, C4 not done (reasons in the plan). 434 tests pass.
+- Device check 1 (first try): Save never came on, as Step left the cursor on the heading (C4); no capitals after Title or in a cue, and Cue started no line. Fixed (decision 2, amended on the phone); 440 tests pass, lint clean; reinstalled.
 - Next: the device check on the iPhone 14 Pro, one check at a time (the plan's Verification), and Andy's yes for the two Cutaway issues (decision 9).
 

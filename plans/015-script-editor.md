@@ -111,6 +111,10 @@ What already exists:
      - **The bar stays put.** The help line keeps three lines, so the bar doesn't move up when the hint gives way to the count.
      - **The help line** is the hint while there's nothing to say: "Type a title, then tap Step for each part. A cue, a stage direction for you, goes in square brackets: [Gesture to the boats]." It replaces the placeholder.
      - **Title** never turns a line into the title; it goes to the title line's end, or adds a `# ` line at the top.
+   - **Amended on the phone (device check 1):**
+     - **Step puts the cursor on the line under its `## `.** With it after the `## `, everything Andy dictated became the step's name, the step had nothing to say and Save never came on (review C4). A name is typed after the `## `.
+     - **Cue at the end of a line starts a line of its own**, and **tapped inside a cue it ends it**: past the `]`, and for a cue on a line of its own onto a new line under it. Mid-sentence it is still inline.
+     - **Capitals.** The keyboard leaves the first letter after `# `, `## ` or `[` small, so the text view makes it a capital as it is typed or dictated (`ScriptEditor.capitalised`), leaving a word like "iPhone".
 
 3. **Saving.**
    - **Edit** saves through `ScriptImporter.replace(_:with:)`, the same path as Paste New Version, so takes, renderings, the cues setting and the start step are kept. Unchanged text saves nothing.
@@ -423,7 +427,7 @@ The new Slate test (`EarwigTests/SlateTests.swift:34-39`), the `create`/`edit`/s
 - C1 — fixed: the fallback title skips a heading with no name and takes the first line with words, else "Untitled script".
 - C2 — fixed: a title-like first paragraph before the first `##` is split off only when no `# ` line gave a title.
 - C3 — not done: a cue alone in a paragraph is outside the documented format, and carrying it forward would be a new rule.
-- C4 — not done: as decision 2 specifies; device check 1 watches for words dictated onto the heading line.
+- C4 — fixed after device check 1: Step puts the cursor on the line under its heading (decision 2, amended on the phone).
 - C5 — fixed: the footer reads "Cues at the top of a step are read with the slate, not chimed."
 - C6 — fixed: the seeder replaces a sample's text with `replacingEdits: true`.
 - C7 — fixed (part): `PlainParser.titleLine` is shared by the parser, Title and Edit a Copy; `ReplaceEdits.title` sits beside its message. The two dialogs stay written out.

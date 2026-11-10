@@ -24,8 +24,8 @@ struct ScriptEditorView: View {
                 // just above the keyboard, and is there with it down too.
                 HStack(spacing: 10) {
                     formatButton("Title", hint: "Goes to the script's title, or adds one at the top", ScriptEditor.titleChange)
-                    formatButton("Step", hint: "Starts a new step here", ScriptEditor.stepChange)
-                    formatButton("Cue", hint: "Puts square brackets here, for a cue", ScriptEditor.cueChange)
+                    formatButton("Step", hint: "Starts a new step, with the cursor on the line under it", ScriptEditor.stepChange)
+                    formatButton("Cue", hint: "Starts a cue in square brackets, or ends the one the cursor is in", ScriptEditor.cueChange)
                     Spacer(minLength: 0)
                 }
                 // Three lines kept for it, so the bar above stays put when the hint gives way to

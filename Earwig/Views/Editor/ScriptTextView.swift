@@ -61,6 +61,20 @@ struct ScriptTextView: UIViewRepresentable {
             changed(textView)
         }
 
+        /// Puts a capital at the start of a title, a step's name or a cue, for typing and
+        /// dictation alike. Text the keyboard is still composing is left to it.
+        func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText inserted: String) -> Bool {
+            let text = textView.text ?? ""
+            guard textView.markedTextRange == nil,
+                  let capital = ScriptEditor.capitalised(inserted, at: ScriptTextController.characters(range.location, in: text), in: text),
+                  let from = textView.position(from: textView.beginningOfDocument, offset: range.location),
+                  let to = textView.position(from: from, offset: range.length),
+                  let textRange = textView.textRange(from: from, to: to) else { return true }
+            textView.replace(textRange, withText: capital)
+            changed(textView)
+            return false
+        }
+
         func changed(_ view: UITextView) {
             known = view.text
             if text.wrappedValue != view.text { text.wrappedValue = view.text }
@@ -120,7 +134,7 @@ final class ScriptTextController {
     }
 
     /// UTF-16 units as a character offset.
-    private static func characters(_ utf16: Int, in text: String) -> Int {
+    fileprivate static func characters(_ utf16: Int, in text: String) -> Int {
         let index = String.Index(utf16Offset: min(utf16, text.utf16.count), in: text)
         return text.distance(from: text.startIndex, to: index)
     }

@@ -24,7 +24,12 @@ final class ScriptEditor {
     }
 
     let mode: Mode
-    var text: String
+    var text: String {
+        didSet { if text != oldValue { checked = ScriptImporter.check(text) } }
+    }
+    /// The text as the importer sees it, worked out once per change, not on every read of the
+    /// line, Save and Cancel (review C8).
+    private(set) var checked: Result<ParsedScript, ScriptImporter.ImportError>
     /// Where the cursor starts, as character offsets into `text`.
     let selection: Range<Int>
     private let original: String
@@ -38,7 +43,8 @@ final class ScriptEditor {
         }
         text = start.text
         selection = start.selection
-        original = start.text
+        original = ScriptImporter.cleaned(start.text)
+        checked = ScriptImporter.check(start.text)
     }
 
     /// The sheet's title.
@@ -51,19 +57,19 @@ final class ScriptEditor {
     }
 
     /// Whether there is anything to lose on Cancel.
-    var hasChanges: Bool { ScriptImporter.cleaned(text) != ScriptImporter.cleaned(original) }
+    var hasChanges: Bool { ScriptImporter.cleaned(text) != original }
 
     /// Whether Save would do something: the text is a script, and an edit has changed it. A
     /// new script or a copy saves as it is.
     var canSave: Bool {
-        guard case .success = ScriptImporter.check(text) else { return false }
+        guard case .success = checked else { return false }
         if case .edit = mode { return hasChanges }
         return true
     }
 
     /// The line under the editor: what the text makes, or how to start.
     var summary: String {
-        switch ScriptImporter.check(text) {
+        switch checked {
         case .success(let parsed):
             let steps = parsed.steps.count
             let lines = parsed.steps.reduce(0) { $0 + $1.lines.count }
@@ -103,7 +109,7 @@ final class ScriptEditor {
     static func titleChange(in edit: Edit) -> Change {
         let lines = edit.text.components(separatedBy: "\n")
         if let first = lines.firstIndex(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }),
-           lines[first].trimmingCharacters(in: .whitespaces).wholeMatch(of: #/#(?!#)(?:\s.*)?/#) != nil {
+           PlainParser.titleLine(lines[first]) != nil {
             let end = lines[...first].reduce(0) { $0 + $1.count + 1 } - 1
             return Change(range: edit.selection.lowerBound..<edit.selection.lowerBound, text: "", cursor: end)
         }
@@ -144,7 +150,7 @@ final class ScriptEditor {
     static func copyText(of text: String, title: String) -> Edit {
         var lines = text.components(separatedBy: "\n")
         if let first = lines.firstIndex(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }),
-           lines[first].wholeMatch(of: #/\s*#(?!#)\s+.*/#) != nil {
+           PlainParser.titleLine(lines[first])?.isEmpty == false {
             lines[first] = lines[first].replacing(#/\s*#*\s*$/#, with: "") + " (Copy)"
             let end = lines[...first].reduce(0) { $0 + $1.count + 1 } - 1
             return Edit(text: lines.joined(separator: "\n"), selection: end..<end)

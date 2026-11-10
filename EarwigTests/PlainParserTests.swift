@@ -32,12 +32,15 @@ struct PlainParserTests {
         #expect(script.steps.map(\.title) == ["The entrance", "The end"])
         #expect(script.steps[0].lines == ["It opened in 1899.", "It runs out a third of a mile."])
         #expect(script.steps[1].lines == ["And here we are."])
+        // A line of spaces is a blank line too.
+        #expect(ScriptParser.parse("## A\nOne.\n   \nTwo.").steps.map(\.lines) == [["One.", "Two."]])
     }
 
     @Test func textBeforeTheFirstHeadingIsAStep() {
-        let script = ScriptParser.parse("# The Pier\n\nHello everyone.\n\nWelcome to the pier.\n\n## The end\nAnd here we are.")
+        // A short first line with no full stop is not taken as a title once `#` has given one.
+        let script = ScriptParser.parse("# The Pier\n\nHello everyone\n\nWelcome to the pier.\n\n## The end\nAnd here we are.")
         #expect(script.steps.map(\.title) == ["", "The end"])
-        #expect(script.steps[0].lines == ["Hello everyone.", "Welcome to the pier."])
+        #expect(script.steps[0].lines == ["Hello everyone", "Welcome to the pier."])
     }
 
     @Test func aLoneShortFirstLineBeforeTheHeadingsIsTheTitle() {
@@ -55,7 +58,11 @@ struct PlainParserTests {
 
     @Test func aBareHeadingStartsAStepWithNoName() {
         let script = ScriptParser.parse("##\nFirst part.\n##\nSecond part.")
+        #expect(script.title == "First part.")
         #expect(script.steps.map(\.title) == ["", ""])
+        // New's bare `#`, with no title typed, names nothing (review C1).
+        #expect(ScriptParser.parse("#\n\n##\nHello.").title == "Hello.")
+        #expect(ScriptParser.parse("#\n\n##").title == "Untitled script")
         #expect(script.steps.map(\.lines) == [["First part."], ["Second part."]])
     }
 
@@ -71,6 +78,8 @@ struct PlainParserTests {
         #expect(step.directions == [Direction(kind: .cue, text: "At the pier gates, the sea behind")])
         // Further down, a bracketed line stays a cue in the lines, chimed or spoken there.
         #expect(step.lines == ["It opened in 1899.", "[Gesture along the boards]", "It runs out a third of a mile."])
+        // An empty `[]`, as Cue leaves it, is dropped.
+        #expect(ScriptParser.parse("[]\nHello.").steps[0].directions.isEmpty)
     }
 
     @Test func aCueAloneIsNotAStep() {
@@ -107,14 +116,6 @@ struct PlainParserTests {
         let script = ScriptParser.parse("First line here.\nSecond line here.")
         #expect(script.steps.count == 1)
         #expect(script.steps[0].lines.count == 2)
-    }
-
-    @Test func aMarkdownTitleNamesTheScript() {
-        let script = ScriptParser.parse("# The Pier\n\n## End of the pier\nIt is a long way out.\n\n   \n\nAnd back.")
-        #expect(script.title == "The Pier")
-        #expect(script.steps.count == 1)
-        #expect(script.steps[0].title == "End of the pier")
-        #expect(script.steps[0].lines == ["It is a long way out.", "And back."])
     }
 
     @Test func aLongFirstLineIsCutForTheTitle() {

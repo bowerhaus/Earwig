@@ -251,13 +251,14 @@ enum PlainParser {
         var lines = text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
         var scriptTitle: String?
         // A bare `#`, as New starts with before a title is typed, names nothing and is not spoken.
-        if let first = lines.firstIndex(where: { !$0.isEmpty }),
-           let match = lines[first].wholeMatch(of: #/#(?!#)(?:\s+(.*?))?\s*#*/#) {
-            scriptTitle = match.1.map(String.init).flatMap { $0.isEmpty ? nil : $0 }
+        if let first = lines.firstIndex(where: { !$0.isEmpty }), let title = titleLine(lines[first]) {
+            scriptTitle = title.isEmpty ? nil : title
             lines.remove(at: first)
         }
 
-        var blocks = lines.contains { stepHeading($0) != nil } ? headedBlocks(lines) : paragraphs(lines)
+        var blocks = lines.contains { stepHeading($0) != nil }
+            ? headedBlocks(lines, mayHoldTitle: scriptTitle == nil)
+            : paragraphs(lines)
         // A first paragraph that is one short title-like line names the script, and is not a step.
         if scriptTitle == nil, blocks.count > 1, let first = blocks.first, first.title.isEmpty, first.lines.count == 1,
            isTitle(first.lines[0]) {
@@ -282,14 +283,16 @@ enum PlainParser {
             return step
         }
 
-        let firstLine = lines.first { !$0.isEmpty }.map { stepHeading($0) ?? $0 }
+        // The first line with words, a heading's name or a line; never a bare `##` (review C1).
+        let firstLine = lines.lazy.map { stepHeading($0) ?? $0 }.first { !$0.isEmpty }
         let fallback = firstLine.map(shortened) ?? "Untitled script"
         return ParsedScript(title: scriptTitle ?? fallback, titleIsStated: scriptTitle != nil, format: .plain, preamble: nil, steps: steps)
     }
 
     /// Steps by `## ` headings. Text before the first heading is a step with no name, so nothing
-    /// written to be said is quietly never said; its first paragraph may still be the title.
-    private static func headedBlocks(_ lines: [String]) -> [Block] {
+    /// written to be said is quietly never said; its first paragraph may still be the title when
+    /// no `# ` line has given one (review C2).
+    private static func headedBlocks(_ lines: [String], mayHoldTitle: Bool) -> [Block] {
         var blocks: [Block] = []
         var before: [String] = []
         var current: Block?
@@ -304,15 +307,15 @@ enum PlainParser {
             }
         }
         if let current { blocks.append(current) }
-        return paragraphs(before).isEmpty ? blocks : leading(before) + blocks
+        return paragraphs(before).isEmpty ? blocks : leading(before, mayHoldTitle: mayHoldTitle) + blocks
     }
 
     /// The text before the first heading: its first paragraph alone if it could be the title,
     /// then the rest as one step.
-    private static func leading(_ lines: [String]) -> [Block] {
+    private static func leading(_ lines: [String], mayHoldTitle: Bool) -> [Block] {
         let paras = paragraphs(lines)
         guard let first = paras.first else { return [] }
-        if first.lines.count == 1, isTitle(first.lines[0]) {
+        if mayHoldTitle, first.lines.count == 1, isTitle(first.lines[0]) {
             let rest = paras.dropFirst().flatMap(\.lines)
             return [first] + (rest.isEmpty ? [] : [Block(lines: rest)])
         }
@@ -330,6 +333,12 @@ enum PlainParser {
             }
         }
         return blocks.filter { !$0.lines.isEmpty }
+    }
+
+    /// A title line's title ("# The Pier" is "The Pier"; a bare "#", as New starts with, is ""),
+    /// or nil. The parser, the editor's Title button and Edit a Copy share it (review C7).
+    static func titleLine(_ line: String) -> String? {
+        line.trimmingCharacters(in: .whitespaces).wholeMatch(of: #/#(?!#)(?:\s+(.*?))?\s*#*/#).map { String($0.1 ?? "") }
     }
 
     /// A step heading's name ("## The sea wall" is "The sea wall"; a bare "##" is ""), or nil.

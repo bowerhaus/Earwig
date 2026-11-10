@@ -17,7 +17,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - [x] 4. The editor: `ScriptEditor` model with tests, the sheet and keyboard toolbar
 - [x] 5. The screens: New, Edit, Edit a Copy, Share, labels gone, the hint, the paste warning, the cue on the card, Hear Cues As
 - [x] Tests + lint
-- [ ] Review + fixes
+- [x] Review + fixes (review pass and outcome in the plan; issue comment posted)
 - [ ] Manual test: device
 - [ ] Complete (commit + PR)
 
@@ -26,5 +26,6 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - Simulator: New, Edit a Copy, the Scripts and Script screens checked with `-EarwigNew YES` and `-EarwigDemo YES -EarwigEdit YES`. The keyboard toolbar didn't show in the sheet and `TextEditor` lost button edits; replaced by a bar of our own and `ScriptTextView` (decision 2, amended). Title, Step and Cue work straight after typing.
 - The simulator's typing drops letters at speed; a stale-update race in the text view was fixed, and the device check watches typing and dictation.
 - 432 tests pass, SwiftLint clean (after the screens).
-- Next: Review + fixes (review-branch Steps 1–4, issue comment, Outcome).
+- Review: C1, C2, C5–C8 (C7 part) and T1–T6 fixed; C3, C4 not done (reasons in the plan). 434 tests pass.
+- Next: the device check on the iPhone 14 Pro, one check at a time (the plan's Verification), and Andy's yes for the two Cutaway issues (decision 9).
 

@@ -79,7 +79,7 @@ struct SettingsView: View {
                             Text(problem)
                                 .foregroundStyle(EarwigTheme.warning)
                         }
-                        Text("Cues at the top of a step are always read with the slate.")
+                        Text("Cues at the top of a step are read with the slate, not chimed.")
                             .foregroundStyle(EarwigTheme.secondaryText)
                     }
                 }

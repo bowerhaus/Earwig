@@ -19,8 +19,8 @@ struct ScriptEditorTests {
     }
 
     @Test func titleGoesToTheEndOfATitleThatIsThere() {
-        let text = "\n# The Pier\n\nHello."
-        #expect(ScriptEditor.title(in: Edit(text: text, selection: 15..<15)) == Edit(text: text, selection: 11..<11))
+        // No text changes, so the text view makes no edit for it.
+        #expect(ScriptEditor.titleChange(in: Edit(text: "\n# The Pier\n\nHello.", selection: 15..<15)) == ScriptEditor.Change(range: 15..<15, text: "", cursor: 11))
         // A step heading is not the title.
         #expect(ScriptEditor.title(in: Edit(text: "## One\nHi.", selection: 0..<0)).text == "# \n\n## One\nHi.")
     }
@@ -41,6 +41,10 @@ struct ScriptEditorTests {
         #expect(ScriptEditor.step(in: Edit(text: "Hello world", selection: 6..<6)) == Edit(text: "Hello \n\n## \nworld", selection: 11..<11))
     }
 
+    @Test func stepKeepsASelectionAfterTheHeading() {
+        #expect(ScriptEditor.step(in: Edit(text: "One. Two.", selection: 5..<9)) == Edit(text: "One. \n\n## \nTwo.", selection: 10..<10))
+    }
+
     @Test func stepBeforeALineBreakAddsNoSecondOne() {
         #expect(ScriptEditor.step(in: Edit(text: "One.\nTwo.", selection: 4..<4)) == Edit(text: "One.\n\n## \nTwo.", selection: 9..<9))
     }
@@ -58,11 +62,6 @@ struct ScriptEditorTests {
     @Test func aSelectionPastTheEndIsKeptInside() {
         #expect(ScriptEditor.clamped(9..<12, in: "Hi") == 2..<2)
         #expect(ScriptEditor.clamped(1..<12, in: "Hi") == 1..<2)
-    }
-
-    @Test func aTitleThatIsThereChangesNothingButTheCursor() {
-        let change = ScriptEditor.titleChange(in: Edit(text: "# Pier\nHi.", selection: 9..<9))
-        #expect(change == ScriptEditor.Change(range: 9..<9, text: "", cursor: 6))
     }
 
     // MARK: Copies
@@ -118,16 +117,22 @@ struct ScriptEditorTests {
     }
 
     @Test func editACopyMakesAScriptOfYourOwn() throws {
-        let sample = try ScriptImporter(context: context).add(SampleScript.seasidePier)
-        sample.sampleID = "seaside-pier"
+        let sample = try ScriptImporter(context: context).add(SampleScript.harbourWalk)
+        sample.sampleID = "harbour-walk"
         let editor = ScriptEditor(mode: .copy(of: sample))
         #expect(editor.heading == "Edit a Copy")
         #expect(editor.canSave)
         let copy = try editor.save(in: context)
         #expect(copy !== sample)
         #expect(!copy.isSample)
-        #expect(copy.title == "The Seaside Pier (Copy)")
-        #expect(sample.title == "The Seaside Pier")
+        #expect(copy.title == "The Harbour Walk (Copy)")
+        #expect(copy.format == .cutaway)
+        #expect(sample.title == "The Harbour Walk")
         #expect(try context.fetchCount(FetchDescriptor<Script>()) == 2)
+    }
+
+    @Test func aSharedFileIsNamedAfterTheTitle() {
+        #expect(ScriptText(title: "Walk: 1/2?", text: "").fileName == "Walk 12.md")
+        #expect(ScriptText(title: " / ", text: "").fileName == "Script.md")
     }
 }

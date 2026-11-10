@@ -44,4 +44,27 @@ struct ScriptsViewModelTests {
         #expect(scripts.count == 1)
         #expect(takes.count == 1)
     }
+
+    // MARK: A paste over changes made in Earwig (plan 015, decision 8)
+
+    @Test func aPasteOverAnEditAsksThenReplacesOrKeeps() throws {
+        let script = try ownScript()
+        _ = try ScriptImporter(context: context).edit(script, with: "The Allotment\n\nThe beans are up.")
+        let model = ScriptsViewModel()
+
+        model.paste("The Allotment\n\nThe peas are up.", in: context)
+        let pending = try #require(model.pendingPaste)
+        #expect(pending.script === script)
+        #expect(model.path.isEmpty)
+        model.cancelPaste()
+        #expect(model.pendingPaste == nil)
+        #expect(script.orderedSteps[0].lines == ["The beans are up."])
+
+        model.paste("The Allotment\n\nThe peas are up.", in: context)
+        model.confirmPaste(try #require(model.pendingPaste), in: context)
+        #expect(model.pendingPaste == nil)
+        #expect(model.path == [script])
+        #expect(script.orderedSteps[0].lines == ["The peas are up."])
+        #expect(!script.editedInEarwig)
+    }
 }

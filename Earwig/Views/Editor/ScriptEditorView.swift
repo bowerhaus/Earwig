@@ -98,5 +98,6 @@ struct ScriptEditorView: View {
 
 /// The question before a paste replaces changes made in Earwig (plan 015, decision 8).
 enum ReplaceEdits {
+    static let title = "Replace the changes made in Earwig?"
     static let message = "Changes made to this script in Earwig will be lost. Share it first to keep them."
 }

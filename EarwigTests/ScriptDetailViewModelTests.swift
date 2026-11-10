@@ -38,6 +38,26 @@ struct ScriptDetailViewModelTests {
         #expect(model.renderState(renderer) == .idle)
     }
 
+    @Test func pasteNewVersionOverAnEditAsksFirst() async throws {
+        let context = container.mainContext
+        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        _ = try ScriptImporter(context: context).edit(script, with: SampleScript.harbourWalk.replacingOccurrences(of: "Morning!", with: "Hello!"))
+        let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
+        let model = ScriptDetailViewModel(script: script)
+
+        model.pasteNewVersion(Fixtures.rosie, in: context, renderer: renderer)
+        #expect(model.pendingNewVersion == Fixtures.rosie)
+        #expect(model.notice == nil)
+        #expect(script.title == "The Harbour Walk")
+
+        model.confirmNewVersion(Fixtures.rosie, in: context, renderer: renderer)
+        await renderer.finished()
+        #expect(model.pendingNewVersion == nil)
+        #expect(model.notice == "Updated to the new version.")
+        #expect(script.title == "Rosie's Walk")
+        #expect(!script.editedInEarwig)
+    }
+
     @Test func startOpensATakeNumberedAfterTheStepsLast() async throws {
         let context = container.mainContext
         let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script

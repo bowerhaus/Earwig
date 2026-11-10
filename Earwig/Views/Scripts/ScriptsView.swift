@@ -55,7 +55,7 @@ struct ScriptsView: View {
                 }
                 // A paste over changes made in Earwig asks first (plan 015, decision 8).
                 .confirmationDialog(
-                    "Replace the changes made in Earwig?",
+                    ReplaceEdits.title,
                     isPresented: Binding(get: { model.pendingPaste != nil }, set: { if !$0 { model.cancelPaste() } }),
                     titleVisibility: .visible,
                     presenting: model.pendingPaste

@@ -18,7 +18,8 @@ struct SampleSeeder {
             if let stored = scripts.first(where: { $0.sampleID == sample.id }) {
                 if stored.sourceHash != hash {
                     let updatedAt = stored.updatedAt
-                    _ = try importer.replace(stored, with: sample.text)
+                    // A sample's text is the app's, never an edit to keep (review C6).
+                    _ = try importer.replace(stored, with: sample.text, replacingEdits: true)
                     stored.updatedAt = updatedAt
                 }
             } else if let own = scripts.first(where: { !$0.isSample && $0.sourceHash == hash }) {

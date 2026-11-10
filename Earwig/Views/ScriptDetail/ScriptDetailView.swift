@@ -179,7 +179,7 @@ struct ScriptDetailView: View {
         }
         // Paste New Version over changes made in Earwig asks first (plan 015, decision 8).
         .confirmationDialog(
-            "Replace the changes made in Earwig?",
+            ReplaceEdits.title,
             isPresented: Binding(get: { model.pendingNewVersion != nil }, set: { if !$0 { model.pendingNewVersion = nil } }),
             titleVisibility: .visible,
             presenting: model.pendingNewVersion

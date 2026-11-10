@@ -283,3 +283,155 @@ What already exists:
 ## Results
 
 Not started.
+
+## Review pass — 2026-11-10
+
+Findings from `/review-branch` on branch `script-editor`, **unresolved as written**. Each is a claim
+from a review on that date, not an established fact, and each verdict under *Assessment* is a
+recommendation, not a decision. Work through them and annotate each with what was done — fixed,
+or rejected and why. A finding that turns out to be wrong should say so here rather than be
+deleted.
+
+### Code
+
+Review of `script-editor` against `main` (plan 015, issue #43)
+
+The working tree is clean and there are no untracked files, so the whole review is of `git diff main...HEAD`. I read all five new files in full. I found nothing that looks like it would break the build, and nothing that breaks CLAUDE.md: colours come from `EarwigTheme`, toolbar buttons use `toolbarCircle()` / `toolbarCapsule()`, labels are in Title Case, spelling is UK, and the engine is untouched. On requirements, everything in the plan's In scope that is due before Finish is implemented, with the simulator amendments followed. The findings are two parser bugs and some smaller points.
+
+**C1. WARNING: A new script can be saved with an empty title.**
+- File: `/Users/andybower/Projects/Earwig/Earwig/Services/ScriptParser.swift:285-286`
+- The fallback title is `stepHeading(firstLine) ?? firstLine`. When the first content after the `#` line is a bare `##` heading, `stepHeading` returns `""` and `shortened("")` gives `""`.
+- This is the ordinary New flow when no title is typed. New starts with `# `, the presenter taps Step, presses Return and says a line, giving `"# \n\n## \nHello."`. That parses to `title == ""`.
+- The result is an empty Scripts row and navigation title, " · 1 step · 1 line" in the editor's summary, and a share file called `Script.md`.
+- The test `checkSaysWhyTextCannotBeSaved` only covers `"#\n\nHello."`, which has no heading.
+- Fix: skip empty heading names when choosing the fallback, using the first spoken line, then "Untitled script".
+
+**C2. WARNING: Text before the first `##` can become two steps, against decision 4(i).**
+- File: `/Users/andybower/Projects/Earwig/Earwig/Services/ScriptParser.swift:312-320` (`leading`), called from `headedBlocks`.
+- `leading` always splits off a short, title-like first paragraph, even when a `# ` title has already been stated.
+- Example: `"# The Pier\n\nHello everyone\n\nWelcome to the pier.\n\n## The end\nAnd here we are."` gives three steps, with "Hello everyone" alone as step 1. The spec says text before the first heading is one step with no name.
+- Dictated text often has no full stop on a short opening phrase, so this case will come up.
+- The test `textBeforeTheFirstHeadingIsAStep` misses it because its first line is "Hello everyone." with a full stop.
+- Fix: split off the title candidate only when no `# ` title was found, by passing `scriptTitle == nil` into `headedBlocks` / `leading`.
+
+**C3. SUGGESTION: A cue-only paragraph or step is dropped, cue and all.**
+- File: `/Users/andybower/Projects/Earwig/Earwig/Services/ScriptParser.swift:268-277`
+- `"[Walk to the end]\n\nAnd here we are."` gives one step with no cue: the `.cue` direction is thrown away with the empty block. The test `aCueAloneIsNotAStep` makes that the expected result.
+- The same happens to `"## Quiet\n[A view]"` before a step. Without `##`, a cue in its own paragraph above the words it belongs to is a natural way to write.
+- Consider carrying its directions forward to the next step instead.
+
+**C4. SUGGESTION: Dictating straight after Step makes the words the step's name.**
+- File: `/Users/andybower/Projects/Earwig/Earwig/ViewModels/ScriptEditor.swift:113-122`
+- The cursor is left on the `## ` line, as decision 2 specifies. Anything dictated straight after tapping Step becomes the step's name and is never spoken.
+- That is the failure decision 4(ii) removed the name guess to prevent ("Hello everyone" vanishing into a name).
+- This follows the spec, but it is worth watching for in device check 1.
+
+**C5. SUGGESTION: The Settings footer says "always", but these cues are read only with Read Cues on.**
+- File: `/Users/andybower/Projects/Earwig/Earwig/Views/Settings/SettingsView.swift:82`
+- "Cues at the top of a step are always read with the slate." But `Slate.text(for:take:cuesOn:)` reads them only when Read Cues is on, as `SlateTests` asserts.
+- The wording is decision 11's, but "always" may read as "whatever Read Cues says". Something like "…are read with the slate, not chimed" would avoid that.
+
+**C6. SUGGESTION: A sample could stop updating if its stored script carries the edit flag.**
+- File: `/Users/andybower/Projects/Earwig/Earwig/Services/SampleSeeder.swift:21` (that line is unchanged; the change in behaviour comes from this branch's `replace(_:with:replacingEdits:)`)
+- The seeder discards the result of `replace`. Suppose a script of the presenter's own is adopted as a sample (identical text) while its `editedInEarwig` is true. Every later build's text for that sample would then return `.wouldReplaceEdits` and be skipped without notice.
+- This is unlikely. Passing `replacingEdits: true` here, or clearing the flag on adoption, makes it impossible.
+
+**C7. SUGGESTION: Repeated code (DRY).**
+- Three slightly different regexes decide what counts as a `#` title line:
+  - `PlainParser.parse` (`#(?!#)(?:\s+(.*?))?\s*#*`)
+  - `ScriptEditor.titleChange` (`#(?!#)(?:\s.*)?`)
+  - `ScriptEditor.copyText` (`\s*#(?!#)\s+.*`)
+- One shared helper on `PlainParser`, like `stepHeading`, would keep the parser, the Title button and the copy in agreement.
+- The paste-warning `confirmationDialog` is written out twice, with the title string repeated:
+  - `/Users/andybower/Projects/Earwig/Earwig/Views/Scripts/ScriptsView.swift:57-66`
+  - `/Users/andybower/Projects/Earwig/Earwig/Views/ScriptDetail/ScriptDetailView.swift:181-190`
+- `ReplaceEdits` holds only the message, and it lives in `ScriptEditorView.swift` although only the two paste flows use it. Put the title in it too, or make a small shared modifier.
+
+**C8. SUGGESTION: The editor parses the whole script several times per keystroke.**
+- Files: `/Users/andybower/Projects/Earwig/Earwig/ViewModels/ScriptEditor.swift:54-74` and `/Users/andybower/Projects/Earwig/Earwig/Views/Editor/ScriptEditorView.swift:33, 55-56`
+- `summary` and `canSave`, which is read twice (for `.disabled` and `.opacity`), each call `ScriptImporter.check(text)`. `hasChanges` runs `cleaned` on both texts, and it is read for `.interactiveDismissDisabled` too.
+- That is three full parses per body update. It is fine for short scripts but grows with a long Cutaway script. Working the parse out once per text change, for example in `didSet`, would avoid it.
+
+### Tests
+
+Test review of `script-editor` against `main`. There are no unstaged, staged or untracked test changes. The branch adds about 30 tests over 4 files. That volume fits the change, and most tests are short and well aimed. One gap probably hides a real bug.
+
+**T1. WARNING: a probable blank-title bug sits in a gap the bare-heading test leaves open.**
+`EarwigTests/PlainParserTests.swift:56-60` (`aBareHeadingStartsAStepWithNoName`) never asserts the script's title.
+- In `PlainParser.parse` (`Earwig/Services/ScriptParser.swift`), the fallback title is `stepHeading(firstLine) ?? firstLine`. For a bare `##` that gives `""`, so `"##\nFirst part.\n##\nSecond part."` parses with the title `""`.
+- This is the editor's normal New flow when no title is typed. New starts with `"# "`, and tapping Step without typing a name gives text that cleans to `"#\n\n##\nHello."`.
+- The result is a script saved with an empty title, and the editor summary reads `" · 1 step · 1 line"`.
+- The Cutaway parser guards this case with "Untitled script" (around line 220); the plain parser has no such guard.
+- Fix: assert the title in this test, or add a `check("# \n\n## \nHello.")` case to `checkSaysWhyTextCannotBeSaved` (`EarwigTests/ScriptImporterTests.swift:174`). Then fix the fallback.
+
+**T2. WARNING: nothing tests the view-model side of the ask-before-replacing-edits flow (decision 8).**
+The importer side is tested well (`ScriptImporterTests.swift:137-165`). Nothing tests the view-model state the alerts depend on:
+- In `ScriptsViewModel` (`Earwig/ViewModels/ScriptsViewModel.swift`):
+  - `paste` should set `pendingPaste` and leave `path` alone on `.wouldReplaceEdits`.
+  - `confirmPaste` should clear it, replace the text and open the script.
+  - `cancelPaste` should leave the edited text in place.
+- In `ScriptDetailViewModel.pasteNewVersion` / `confirmNewVersion` (`Earwig/ViewModels/ScriptDetailViewModel.swift`): `pendingNewVersion` should be set, and no notice or save should happen until it is confirmed.
+
+These are cheap to write:
+- `EarwigTests/ScriptsViewModelTests.swift` already has the same ask/confirm/cancel pattern for deletion.
+- `ScriptDetailViewModelTests` already builds a `ScriptRenderer` with `FakeRenderer`.
+
+One test per view model, ask then confirm, would do.
+
+**T3. SUGGESTION: Edit a Copy is tested end to end only with the plain sample.**
+- `editACopyMakesAScriptOfYourOwn` (`EarwigTests/ScriptEditorTests.swift:120`) uses the Seaside Pier, but three of the four samples are Cutaway.
+- The Cutaway case in `aCopysTitleSaysCopy` (`ScriptEditorTests.swift:70-75`) checks only `hasPrefix` of the text, not that the copy parses to the "(Copy)" title.
+- Switching the end-to-end test to `SampleScript.harbourWalk` would cover the common path without adding a test.
+
+**T4. SUGGESTION: `aMarkdownTitleNamesTheScript` now duplicates the new heading test.**
+- `EarwigTests/PlainParserTests.swift:112-118` was changed and now asserts the same things as `headingsMakeStepsAndBlankLinesInsideAreSpacing` (`PlainParserTests.swift:19-35`): the `#` title, the `##` name, and blank lines inside a step being only spacing.
+- The only extra it covers is a whitespace-only line. Put the `"   "` line into the heading test's text and drop this one.
+
+**T5. SUGGESTION: the existing-title case is tested twice.**
+- `aTitleThatIsThereChangesNothingButTheCursor` (`EarwigTests/ScriptEditorTests.swift:63-66`) asserts the raw `Change`.
+- `titleGoesToTheEndOfATitleThatIsThere` (`ScriptEditorTests.swift:21-26`) asserts the applied `Edit` for the same case.
+- If the empty-range `Change` matters for the text view's undo, keep only the `Change` assertion and fold it into the first test. Otherwise drop it.
+
+**T6. SUGGESTION: a few small pure-logic paths have no test (one-liners would do).**
+- `ScriptEditor.stepChange` with a non-empty selection: its doc says "A selection is kept, after the heading" (`Earwig/ViewModels/ScriptEditor.swift`, `stepChange`).
+- An empty `[]` line at the top of a step, which the parser drops. This is exactly what the Cue button inserts.
+- `ScriptText.fileName` (`Earwig/Models/ScriptText.swift`): stripping the characters a file name can't have, and the `"Script"` fallback.
+
+These could be added as an extra `#expect` to existing tests rather than as new tests.
+
+The new Slate test (`EarwigTests/SlateTests.swift:34-39`), the `create`/`edit`/sample tests in `ScriptImporterTests`, and the other `ScriptEditorTests` are focused and in proportion. I found nothing else worth flagging.
+
+### Assessment
+
+- C1 — FIX: real (`PlainParser.parse`'s fallback takes a bare `##`'s empty name); the fallback skips headings with no name, then falls back to "Untitled script", as the Cutaway parser does.
+- C2 — FIX: real (`leading` splits a title-like first paragraph off even under a stated `# ` title, making an extra step); split it off only when no `# ` title was found.
+- C3 — SKIP: a cue alone in a paragraph is outside the documented format (a cue on its own line at the top of a step), and carrying it to the next step is a new rule the plan didn't ask for.
+- C4 — SKIP: as decision 2 specifies; device check 1 watches for words dictated onto the heading line.
+- C5 — FIX: cheap and clearer; the footer becomes "Cues at the top of a step are read with the slate, not chimed."
+- C6 — FIX: unlikely but one argument; the seeder replaces a sample's text with `replacingEdits: true`, since a sample's text is the app's.
+- C7 — FIX (part): one shared title-line helper on `PlainParser` for the parser, Title and the copy; the dialog's title goes into `ReplaceEdits` beside its message. The two dialogs stay written out, as their bindings differ.
+- C8 — FIX: the parse is worked out once per text change, which also lightens each keystroke while typing quickly.
+- T1 — FIX: with C1, the bare-heading test asserts the title.
+- T2 — FIX: one test per view model, ask then confirm (and cancel for the Scripts screen).
+- T3 — FIX: the end-to-end Edit a Copy test uses the Harbour Walk.
+- T4 — FIX: the whitespace-only line goes into the heading test, and the duplicate is dropped.
+- T5 — FIX: the `Change` assertion folds into the existing-title test, and its separate test is dropped.
+- T6 — FIX: one-line expectations for Step with a selection, an empty `[]` at the top of a step, and `ScriptText.fileName`.
+
+### Outcome — 2026-11-10
+
+- C1 — fixed: the fallback title skips a heading with no name and takes the first line with words, else "Untitled script".
+- C2 — fixed: a title-like first paragraph before the first `##` is split off only when no `# ` line gave a title.
+- C3 — not done: a cue alone in a paragraph is outside the documented format, and carrying it forward would be a new rule.
+- C4 — not done: as decision 2 specifies; device check 1 watches for words dictated onto the heading line.
+- C5 — fixed: the footer reads "Cues at the top of a step are read with the slate, not chimed."
+- C6 — fixed: the seeder replaces a sample's text with `replacingEdits: true`.
+- C7 — fixed (part): `PlainParser.titleLine` is shared by the parser, Title and Edit a Copy; `ReplaceEdits.title` sits beside its message. The two dialogs stay written out.
+- C8 — fixed: `ScriptEditor.checked` is worked out once per text change.
+- T1 — fixed: the bare-heading test asserts the title, with New's bare `#` and an empty script.
+- T2 — fixed: `aPasteOverAnEditAsksThenReplacesOrKeeps` (Scripts screen: ask, cancel, ask, confirm) and `pasteNewVersionOverAnEditAsksFirst` (Script screen).
+- T3 — fixed: Edit a Copy end to end uses the Harbour Walk, and checks the copy stays Cutaway.
+- T4 — fixed: the whitespace-only line is an expectation in the heading test; the duplicate is gone.
+- T5 — fixed: the existing-title test asserts the `Change`; its twin is gone.
+- T6 — fixed: Step with a selection, an empty `[]` at the top of a step, and `ScriptText.fileName`.
+- Tests: 434 pass; SwiftLint clean; no warnings.

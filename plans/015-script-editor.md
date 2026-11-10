@@ -1,6 +1,6 @@
 # Plan 015: Write and Edit Scripts
 
-**GitHub Issue:** none yet (`/plan_create_issue` once the plan is agreed)
+**GitHub Issue:** [#43](https://github.com/bowerhaus/Earwig/issues/43) (PR must include "Closes #43")
 **Branch:** `script-editor` (from `main` at `ab9ea05`, after plan 014 merged). Plan 013, the App Store release, is in flight on `app-store-release` and touches the README, the PRD and CLAUDE.md, so whichever merges second rebases the PRD version, CLAUDE.md's status and the README.
 **Status:** Draft (2026-11-10), for Andy's review. Outside PRD §12's stages, like plans 007 and 014.
 **Manual test:** device | on Andy's iPhone 14 Pro: dictating into the editor, the toolbar, saving an edit keeps the takes, Share to the Mac, and the warning before a paste replaces an edit made in Earwig (Verification).

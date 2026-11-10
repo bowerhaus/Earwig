@@ -17,11 +17,13 @@ the Home Screen tile, the splash and the logo.
 
 Writes AppIcon-{light,dark,tinted}.svg and EarwigMark.svg beside this script, renders
 each with headless Chrome (which renders SVG exactly; ImageMagick is not installed),
-writes the two Contents.json files, then checks the PNGs with Pillow. Running it twice
-changes nothing.
+writes the two Contents.json files, then checks the PNGs with Pillow. It also writes the
+mark's geometry as Swift (Earwig/Critter/CritterGeometry.swift) for the earwig that
+walks across the screen (plan 014). Running it twice changes nothing.
 """
 
 import json
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -38,6 +40,7 @@ CATALOGUE = REPO / "Earwig" / "Resources" / "Assets.xcassets"
 ICON_SET = CATALOGUE / "AppIcon.appiconset"
 MARK_SET = CATALOGUE / "EarwigMark.imageset"
 MARK_POINTS = 160  # the box the mark image is made for; a smaller use scales it down
+GEOMETRY = REPO / "Earwig" / "Critter" / "CritterGeometry.swift"  # the walking earwig's (plan 014)
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 # ground None is a transparent ground. cut None cuts the body with real gaps (a mask) rather
@@ -76,14 +79,23 @@ def path(d: str, colour: str, width: float) -> str:
     return f'<path d="{d}" {stroke(colour, width)}/>'
 
 
-def cut_lines(colour: str) -> list[str]:
-    """The three cuts across the abdomen and the split between the wing cases."""
+def cuts() -> list[tuple[tuple[float, float], tuple[float, float], float]]:
+    """The three cuts across the abdomen and the split between the wing cases, each as its two
+    ends and its width: one source for the icon's SVG and the walking earwig's Swift."""
     lines = []
     for y in CUT_YS:
         inset = 0.1 * (y - 450)  # the abdomen tapers, so the cuts shorten as they go down
-        lines.append(path(f"M{456 + inset:g} {y} H{568 - inset:g}", colour, CUT_WIDTH))
-    (x1, y1), (x2, y2), width = WING_SPLIT
-    lines.append(path(f"M{x1} {y1} V{y2}", colour, width))
+        lines.append(((456 + inset, y), (568 - inset, y), CUT_WIDTH))
+    lines.append(WING_SPLIT)
+    return lines
+
+
+def cut_lines(colour: str) -> list[str]:
+    """The cuts as SVG: across the abdomen horizontally, the split vertically."""
+    lines = []
+    for (x1, y1), (x2, y2), width in cuts():
+        run = f"H{x2:g}" if y1 == y2 else f"V{y2:g}"
+        lines.append(path(f"M{x1:g} {y1:g} {run}", colour, width))
     return lines
 
 
@@ -200,6 +212,104 @@ def mark_contents() -> dict:
     return {"images": images, "info": {"author": "xcode", "version": 1}}
 
 
+def path_segments(d: str) -> list[tuple]:
+    """An SVG path of absolute M, L, C, H, V and Z commands as segments: ("move", x, y),
+    ("line", x, y), ("curve", c1x, c1y, c2x, c2y, x, y) and ("close",)."""
+    tokens = re.findall(r"[MLCHVZ]|-?\d+(?:\.\d+)?", d)
+    segments, x, y, i = [], 0.0, 0.0, 0
+    while i < len(tokens):
+        command = tokens[i]
+        i += 1
+        if command == "Z":
+            segments.append(("close",))
+            continue
+        count = {"M": 2, "L": 2, "C": 6, "H": 1, "V": 1}[command]
+        values = [float(t) for t in tokens[i:i + count]]
+        i += count
+        if command == "H":
+            x = values[0]
+            segments.append(("line", x, y))
+        elif command == "V":
+            y = values[0]
+            segments.append(("line", x, y))
+        else:
+            x, y = values[-2], values[-1]
+            segments.append(("move" if command == "M" else "line" if command == "L" else "curve", *values))
+    return segments
+
+
+def swift_number(value: float) -> str:
+    return f"{value:g}"
+
+
+def swift_segments(d: str) -> str:
+    parts = []
+    for kind, *values in path_segments(d):
+        if kind == "close":
+            parts.append(".close")
+        elif kind == "curve":
+            c1x, c1y, c2x, c2y, x, y = map(swift_number, values)
+            parts.append(f".curve(to: CGPoint(x: {x}, y: {y}), control1: CGPoint(x: {c1x}, y: {c1y}), control2: CGPoint(x: {c2x}, y: {c2y}))")
+        else:
+            x, y = map(swift_number, values)
+            parts.append(f".{kind}(CGPoint(x: {x}, y: {y}))")
+    return "[" + ", ".join(parts) + "]"
+
+
+def swift_limb(d: str, width: float) -> str:
+    return f"Limb(segments: {swift_segments(d)}, width: {swift_number(width)})"
+
+
+def swift_geometry() -> str:
+    """The mark's geometry as Swift, for the earwig that walks across the screen (plan 014,
+    decision 1): the insect upright in the 1024 box, the left side's limbs only (the right side
+    is their mirror about x 512), each limb pivoting on its first point."""
+    cx, cy, rx, ry = HEAD
+    px, py, pw, ph, pr = PRONOTUM
+    wx, wy, ww, wh, wr = WING_CASES
+    cut_limbs = [f"Limb(segments: [.move(CGPoint(x: {swift_number(x1)}, y: {swift_number(y1)})), "
+                 f".line(CGPoint(x: {swift_number(x2)}, y: {swift_number(y2)}))], width: {swift_number(width)})"
+                 for (x1, y1), (x2, y2), width in cuts()]
+    antenna_tip = path_segments(ANTENNA[0])[-1][-1]
+    forceps_tip = path_segments(FORCEPS[0])[-1][-1]
+    top, bottom = antenna_tip - ANTENNA[1] / 2, forceps_tip + FORCEPS[1] / 2
+    legs = ",\n            ".join(swift_limb(d, w) for d, w in LEGS)
+    cut_list = ",\n            ".join(cut_limbs)
+    return f"""// Generated by scripts/app_icon/make_app_icon.py from the mark's geometry (plan 014,
+// decision 1). Do not edit: change the script and run it again.
+
+import CoreGraphics
+
+extension Critter {{
+    /// The mark upright in its 1024 box, head up, before the icon's turn: the body, the cuts that
+    /// separate its parts, and the left side's limbs, each pivoting on its first point. The right
+    /// side is the left mirrored about x 512.
+    enum Geometry {{
+        static let box: CGFloat = {SIZE}
+        /// The middle of the insect from its antennae's tips to its forceps' tips, and that length.
+        static let centre = CGPoint(x: {SIZE // 2}, y: {swift_number((top + bottom) / 2)})
+        static let length: CGFloat = {swift_number(bottom - top)}
+
+        static let head = CGRect(x: {cx - rx}, y: {cy - ry}, width: {2 * rx}, height: {2 * ry})
+        static let pronotum = Plate(rect: CGRect(x: {px}, y: {py}, width: {pw}, height: {ph}), radius: {pr})
+        static let wingCases = Plate(rect: CGRect(x: {wx}, y: {wy}, width: {ww}, height: {wh}), radius: {wr})
+        static let abdomen: [Segment] = {swift_segments(ABDOMEN)}
+        /// The three cuts across the abdomen and the split between the wing cases, cut out of the body.
+        static let cuts: [Limb] = [
+            {cut_list}
+        ]
+
+        static let antenna = {swift_limb(*ANTENNA)}
+        /// Front, middle and back.
+        static let legs: [Limb] = [
+            {legs}
+        ]
+        static let forceps = {swift_limb(*FORCEPS)}
+    }}
+}}
+"""
+
+
 def main() -> None:
     ICON_SET.mkdir(parents=True, exist_ok=True)
     MARK_SET.mkdir(parents=True, exist_ok=True)
@@ -226,6 +336,10 @@ def main() -> None:
     margin = corner_margin(ICON_SET / "AppIcon-tinted.png")
     assert margin > 0, f"the insect is clipped by the tile's corners ({margin:.0f} pt outside)"
     print(f"the insect clears the tile's rounded corners by {margin:.0f} pt of 1024")
+
+    GEOMETRY.parent.mkdir(parents=True, exist_ok=True)
+    GEOMETRY.write_text(swift_geometry())
+    print(f"wrote {GEOMETRY.relative_to(REPO)}")
 
 
 if __name__ == "__main__":

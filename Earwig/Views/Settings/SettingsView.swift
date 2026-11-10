@@ -131,8 +131,12 @@ struct SettingsView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.2)
                     }
+                    Critter.SettingRow()
                 } header: {
                     Text("Screen")
+                } footer: {
+                    Text("Critter is just a bit of fun.")
+                        .foregroundStyle(EarwigTheme.secondaryText)
                 }
                 .listRowBackground(EarwigTheme.surface)
 
@@ -181,6 +185,8 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             // White labels, pale headers and values, in the light scheme (plan 011, decision 16).
             .foregroundStyle(EarwigTheme.text, EarwigTheme.secondaryText)
+            // The critter, over the cards here; never while Preview is speaking (plan 014, decision 9).
+            .critterVisits(keepAway: preview.isPlaying, leaving: .runsOff)
             .background(EarwigTheme.background)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)

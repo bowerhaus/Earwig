@@ -1,12 +1,13 @@
 import SwiftUI
 
-/// Seconds for the launch splash (plan 007, decision 7), tuned on the phone.
+/// Seconds for the launch splash (plan 007, decision 7), tuned on the phone; each half as long
+/// again since plan 014 (Andy: 50% longer), 1.425 s in all.
 enum SplashTiming {
     /// The mark and the name fade in from the launch screen's plain sky blue.
-    static let appear = 0.25
-    static let hold = 0.4
+    static let appear = 0.375
+    static let hold = 0.6
     /// The whole overlay fades out onto the Scripts screen.
-    static let fade = 0.3
+    static let fade = 0.45
 
     static var total: Double { appear + hold + fade }
 }

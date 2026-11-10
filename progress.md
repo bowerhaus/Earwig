@@ -2,6 +2,6 @@
 
 Scratch state for the plan in flight. Overwritten at the start of a plan, emptied to a stub when it completes.
 
-**Status:** Plan 012 (Settings and TestFlight, stage 7) is complete, its Results in `plans/012-settings-testflight.md`, carried by the PR from branch `settings-testflight` (check with `gh pr view settings-testflight --json state`: `OPEN` means `main` does not carry it yet, `MERGED` means it does).
+**Status:** Plan 014 (Earwig Visits, the critter, #40) is complete, its Results in `plans/014-earwig-visits.md`, carried by the PR from branch `earwig-visits` (check with `gh pr view earwig-visits --json state`: `OPEN` means `main` does not carry it yet, `MERGED` means it does).
 
-**Next:** after the merge, the v0.2.0 tag and pre-release (plan 012, step 12; each push with Andy's yes). Then the App Store release, #37, as plan 013, branched from `main`.
+**Next:** plan 013, the App Store release (#37), on its own branch `app-store-release`. Its progress is in that branch's own `progress.md`, which supersedes this one there. The critter's default rate waits for a week of TestFlight use (#42).

@@ -1,6 +1,6 @@
 # Earwig - Product Requirements Document (PRD)
 
-**Status:** Draft v0.14, 2026-11-09. Changes by version are in the Document History at the end.
+**Status:** Draft v0.15, 2026-11-10. Changes by version are in the Document History at the end.
 **Name:** Earwig (decided 2026-11-05: UK slang for listening in). Bundle identifier `com.bowerhaus.Earwig`.
 
 ## Executive Summary
@@ -268,6 +268,7 @@ slate) is a roadmap item (section 13): cheap once the microphone is open, but sc
   (default) or phrase-gated.
 - Start: slate with a reply, slate alone, or tones only (default).
 - Screen: the mode (With Voice or Screen Only), Light the Voice's Phrase, Text Size;
+  Critter, how often the earwig wanders across the screen (plan 014, section 10);
   fixed-pace words per minute when that is built (#31).
 - Recording: Off, Sound or Video; video quality (1080p or 4K); Camera Behind the Text;
   Keep Recordings; the recordings' size and Delete All Recordings (plan 010). The text's
@@ -550,9 +551,10 @@ Earwig/
   ViewModels/    ScriptsViewModel, ScriptDetailViewModel, PromptViewModel, ListeningCheck,
                  ScreenPlace, ScreenLayout, ScreenFollower
   Views/         Scripts, ScriptDetail, Prompt, Settings (with the Listening check), Splash
+  Critter/       The critter (plan 014), kept to itself: Critter, CritterWalk, CritterGeometry
   Resources/     Info.plist, Assets (the app icon, the mark, the launch colour), tones
 EarwigTests/     Engine and parser tests with fixture word streams
-scripts/app_icon/ make_app_icon.py and the SVGs it writes: the icon and the mark
+scripts/app_icon/ make_app_icon.py and the SVGs it writes: the icon and the mark, and the critter's shape
 scripts/release/ testflight.sh, ExportOptions.plist
 plans/           One plan per branch
 docs/            development.md (gotchas), this PRD stays at the root
@@ -678,9 +680,26 @@ holds the geometry, writes the SVGs, renders the PNGs with headless Chrome and a
 the mark alone, transparent, as the `EarwigMark` image the splash and any logo use; nothing
 is drawn twice. The launch screen is the sky blue alone, a colour set pinned to the theme by a
 test, so a cold launch opens on the app's own ground. A splash overlay then fades the mark and
-the name ("Earwig" in SF Rounded, bold, white) in and out over the Scripts screen in under a
-second; it shows once per process, so a return from the background or an unlock mid-take
+the name ("Earwig" in SF Rounded, bold, white) in and out over the Scripts screen in 1.425 s
+(plan 007's 0.95 s, half as long again since plan 014); it shows once per process, so a return from the background or an unlock mid-take
 shows nothing, and Reduce Motion changes nothing, since fades are not motion.
+
+**Critter** (plan 014). A bit of fun: now and then the mark, white as on the icon, wanders
+across the Scripts, Script or Settings screen.
+- **The walk.** It walks with its legs in two alternating sets of three and its antennae
+  twitching, at its own pace of 65 to 120 pt a second.
+- **Where it goes.** It comes in off one edge and leaves by another, pausing once or twice.
+  It moves with the list when it scrolls.
+- **Under or over.** It goes under a card only if it would be out the other side within 2 s,
+  and over it otherwise. A tap on it over the cards sends it running off, over them, at four
+  times its walking pace.
+- **How often.** The Critter setting, Never to All the Time (default Sometimes), is the
+  chance of a visit two to six seconds after a screen appears and every 30 s while it stays.
+  Visits are never within 3 minutes of each other, except at All the Time.
+- **When it keeps away.** Never during a take, while Listen or Voice Preview is playing,
+  with Reduce Motion, or under the splash. VoiceOver ignores it.
+- **Kept to itself.** It lives in `Earwig/Critter/`, its shape written from the mark's
+  geometry by the icon script. The README doesn't mention it.
 
 **System chrome** (plan 011). The app runs in the light scheme, so iOS draws its own menus,
 confirmations, alerts and sheets pale and frosted, never near-black; Earwig's colours are its
@@ -743,7 +762,8 @@ Each stage is one plan, one branch, one issue and one PR.
    #37.
 
 Beside the stages, plan 007 (app icon, logo and splash, #21) gave the app its mark (10), and
-plan 011 (#22) the built-in samples, the README and the first pre-release, v0.1.0.
+plan 011 (#22) the built-in samples, the README and the first pre-release, v0.1.0, and
+plan 014 (#40) the critter (10).
 
 ### Excluded from MVP
 
@@ -832,6 +852,7 @@ directly, and filming with the phone locked, which iOS does not allow.
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.15 | 2026-11-10 | Plan 014 (#40): the critter, the mark walking across the Scripts, Script and Settings screens now and then, under a card only if out within 2 s, moving with the scroll, running from a tap; the Critter setting in the Screen group (4.8, 10); its folder (7.3); the plan beside the stages (12). The splash half as long again, 1.425 s (10). Checked on the iPhone 14 Pro: the walk, under and over the cards, the scroll, the tap, keeping away, smoothness; the default rate waits for a week of TestFlight use. |
 | 0.14 | 2026-11-09 | Plan 012 (#38, #36, #35, #14): Settings as built, in seven groups with About (4.8, 8.4); Preview, Voice Speed in the Voice group, one speed for every voice (#14), and a Cue Voice of the other gender or Automatic (4.2, 4.8); speed bounds and cues on by default struck (4.8); the take details line built and removed, the take's console summary having the numbers (4.8, 8.3); swipe to delete asks first (8.1); the paste hint without "on your Mac" (8.1); Say Test the sample's whole first line, not "Morning!" alone (4.3); the release script, the Keychain key, the privacy manifest and the App Store Connect record, Earwig Ear Prompter, with the first TestFlight build, 0.2.0 (2), installed over the development build and back, keeping the data (2); stage 7 done, the MVP stages complete (12). |
 | 0.13 | 2026-11-09 | Plan 011 (#22): four built-in samples in their own section of the Scripts screen, seeded at launch and adopted from pasted copies, never deleted or replaced by a paste (4.1, 8.1); the format labelled Markdown where users see it; the README; version 0.1.0 and the release scheme, tags on `main` with no binary; the licence, PolyForm Noncommercial with a permission to make videos commercially; an App Store version planned (1, 1.3, 2). No More menu: the voice, Personal Voice and Stage Directions in a Voice group in Settings, Read Cues on the start card, Delete Script at the foot of the Script screen (4.8, 8.2, 8.4). The light scheme, mid-blue toolbar buttons and Earwig's own back button and Lead stepper (10). Stage 7 is plan 012. |
 | 0.12 | 2026-11-09 | Plan 010 (#16): recording a take, Off, Sound or Video, as built and checked on the iPhone 14 Pro with the SK18 (4.7). The front camera at 1080p30 (default) or 4K30, the sound from the built-in mic, never the earpiece; the audio session, route and engine untouched, and the follow the same filmed as not. Framing on the preview before Start; the camera behind the text while the take runs, the text's brightness set on the preview (8.3). Locking stops the video while the sound and the take go on. Finished saves, then Play Video, Play Sound or Play Back, and Share with Save Video. Files in Earwig's folder in Files, the last kept or every one, and Delete All (4.8, 8.4). Settings' footers cut to one line or none (4.8). The new services (7.2); heat (11); Phase 3 is what is left (12, 13). Non-goals (1.4). |

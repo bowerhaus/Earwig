@@ -138,12 +138,22 @@ extension Critter {
         }
     }
 
-    /// Where the cards of one screen are, in global coordinates, kept by the screen's visits and
-    /// reported by the cards. Read on every frame of a walk and never observed, so a card moving
-    /// while the list scrolls redraws nothing.
+    /// Where the cards of one screen are, in global coordinates, reported by the cards, and how
+    /// far its list has scrolled. Kept by the screen's visits, read on every frame of a walk and
+    /// never observed, so a card moving while the list scrolls redraws nothing.
     @MainActor
     final class Cards {
         var frames: [UUID: CGRect] = [:]
+        /// The list's scroll, and what it was when the walk under way set off from where it is.
+        var scroll: CGFloat = 0
+        var anchor: CGFloat = 0
+
+        /// How far the list has scrolled since then: the walk moves with it, as if on the page
+        /// (Andy, device check 3).
+        var drift: CGFloat { scroll - anchor }
+
+        /// A walk sets off from here, on the screen as it is now.
+        func setOff() { anchor = scroll }
     }
 
     fileprivate struct CardModifier: ViewModifier {
@@ -177,6 +187,7 @@ extension Critter {
         func body(content: Content) -> some View {
             content
                 .environment(\.critterCards, cards)
+                .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in cards.scroll = y }
                 .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { insets in
                     area.top = insets.top
                     area.bottom = insets.bottom
@@ -202,12 +213,13 @@ extension Critter {
                 if let walk {
                     TimelineView(.animation) { timeline in
                         let time = timeline.date.timeIntervalSinceReferenceDate
-                        if let place = walk.place(at: time), walk.layer(at: place.walked, cards: cardFrames) == layer {
+                        let drift = cards.drift
+                        if let place = walk.place(at: time), walk.layer(at: place.walked, cards: cardFrames(drift)) == layer {
                             let pose = Gait.pose(stepped: place.stepped, time: time)
                             Figure(pose: pose)
                                 .contentShape(Ellipse().scale(x: 0.6, y: 1))
                                 .rotationEffect(.radians(place.heading + pose.sway))
-                                .position(place.position)
+                                .position(x: place.position.x, y: place.position.y - drift)
                                 .onTapGesture(coordinateSpace: .named(Self.space)) { location in
                                     run(awayFrom: location)
                                 }
@@ -226,9 +238,9 @@ extension Critter {
             .accessibilityHidden(true)
         }
 
-        /// The cards' frames in the layers' coordinates.
-        private var cardFrames: [CGRect] {
-            cards.frames.values.map { $0.offsetBy(dx: -origin.x, dy: -origin.y) }
+        /// The cards' frames in the walk's coordinates: the layers', as they were when it set off.
+        private func cardFrames(_ drift: CGFloat) -> [CGRect] {
+            cards.frames.values.map { $0.offsetBy(dx: -origin.x, dy: drift - origin.y) }
         }
 
         /// Rolls for a visit a moment after the screen appears, and again every so often while it
@@ -247,7 +259,8 @@ extension Critter {
                                            lastVisit: visits.lastVisit) else { continue }
                 let next = Planner(area: area).visit(start: now, using: &random)
                 guard visits.begin(next) else { continue }
-                Log.event("earwig visits, \(String(format: "%.1f", next.duration)) s, \(cards.frames.count) cards")
+                cards.setOff()
+                Log.event("earwig visits, \(String(format: "%.1f", next.duration)) s, \(cards.frames.count) cards, scrolled \(Int(cards.scroll))")
                 walk = next
             }
         }
@@ -263,8 +276,11 @@ extension Critter {
 
         private func run(awayFrom tap: CGPoint) {
             let now = Date.now.timeIntervalSinceReferenceDate
-            guard let current = walk, !current.isRun, let place = current.place(at: now) else { return }
+            guard let current = walk, !current.isRun, var place = current.place(at: now) else { return }
+            // From where it is on the screen now, the list's scroll and all.
+            place.position.y -= cards.drift
             let run = Planner(area: area).run(from: place, awayFrom: tap, pace: current.speed, start: now)
+            cards.setOff()
             visits.ran(run)
             walk = run
         }
@@ -272,9 +288,12 @@ extension Critter {
         private func leave(_ how: Leaving) {
             guard let current = walk else { return }
             let now = Date.now.timeIntervalSinceReferenceDate
-            let next = Planner(area: area).leaving(current, how, at: now)
+            let next = Planner(area: area).leaving(current, how, at: now, drift: cards.drift)
             if let next {
-                if next.id != current.id { visits.ran(next) }
+                if next.id != current.id {
+                    cards.setOff()
+                    visits.ran(next)
+                }
             } else {
                 visits.ended(at: now)
             }
@@ -284,7 +303,7 @@ extension Critter {
 
     /// The app's visits, shared by the screens (plan 014, decisions 8 and 9): when the last began,
     /// so the rest applies across them, and whether one is under way, so there is only ever one.
-    /// There is none under the splash: the first comes at least a second after a screen appears.
+    /// There is none under the splash: the first comes at least two seconds after a screen appears.
     @MainActor
     @Observable
     final class Visits {

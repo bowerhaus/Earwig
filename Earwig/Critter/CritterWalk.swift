@@ -328,8 +328,11 @@ extension Critter {
 
         /// What follows a walk asked to go: nothing when it vanishes or has already gone; when it runs
         /// off, a run straight on, as if it had heard something, or the run it is already on.
-        func leaving(_ walk: Walk, _ how: Leaving, at time: TimeInterval) -> Walk? {
-            guard how == .runsOff, let place = walk.place(at: time) else { return nil }
+        /// `drift` is how far the list has scrolled since the walk set off, so the run starts from
+        /// where it is on the screen now.
+        func leaving(_ walk: Walk, _ how: Leaving, at time: TimeInterval, drift: CGFloat = 0) -> Walk? {
+            guard how == .runsOff, var place = walk.place(at: time) else { return nil }
+            place.position.y -= drift
             if walk.isRun { return walk }
             let behind = place.position.offset(by: Heading.direction(place.heading), times: -10)
             return run(from: place, awayFrom: behind, pace: walk.speed, start: time)
@@ -513,7 +516,7 @@ extension Critter {
         /// How long after a screen appears a visit begins, so it is not there the moment it opens.
         static let delays: ClosedRange<Double> = 2...6
         /// Long enough for the splash to be gone, for `-EarwigCritter YES`.
-        static let testingDelay: TimeInterval = 1
+        static let testingDelay: TimeInterval = 2
         /// How often a screen rolls again while it stays (Andy, device check 2).
         static let again: TimeInterval = 30
 

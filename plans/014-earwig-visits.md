@@ -155,6 +155,10 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
       - **Steps:** Never, Rarely, Now and Then, Sometimes, Often, Very Often, All the Time. These are the same chances as before, 0, 1 in 50, 1 in 20, 1 in 10, 1 in 5, 1 in 2 and 1. All the Time ignores the rest.
       - **Default:** Sometimes.
       - **Pace:** each walk picks its own between 65 and 120 pt a second, so some amble and some hurry; a run is four times the walk's pace (Andy, after device check 2). Decision 3's 90 pt a second is now the middle of that range.
+    - **It moves with the list's scroll** (Andy, device check 3).
+      - The walk is drawn as if on the page: the list's scroll since it set off (`onScrollGeometryChange`) shifts it, and the cards with it, so a scroll carries it along with the cards.
+      - A run, or running off, sets off afresh from where it is on the screen at that moment.
+    - **The splash, half as long again** (Andy, at the same check): 0.375 s in, 0.6 s held, 0.45 s out, 1.425 s in all, against plan 007's 0.95 s. The first critter now waits two seconds after a screen appears, so it never comes under the splash.
       - **Footer:** "Critter is just a bit of fun."
       - **Not in the README** (Andy).
       - Nothing is left to remove before a release.

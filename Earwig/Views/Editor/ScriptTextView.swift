@@ -6,10 +6,19 @@ import UIKit
 /// held a word it was still suggesting for, as it does while dictating, and its cursor landed
 /// short of the edit.
 struct ScriptTextView: UIViewRepresentable {
+    /// A button on the bar above the keyboard: Title, Step or Cue.
+    struct Tool {
+        let title: String
+        let systemImage: String
+        let hint: String
+        let change: (ScriptEditor.Edit) -> ScriptEditor.Change
+    }
+
     @Binding var text: String
     /// Where the cursor starts, in characters.
     let selection: Range<Int>
     let controller: ScriptTextController
+    let tools: [Tool]
 
     func makeUIView(context: Context) -> UITextView {
         let view = UITextView()
@@ -22,11 +31,75 @@ struct ScriptTextView: UIViewRepresentable {
         view.keyboardDismissMode = .interactive
         view.accessibilityLabel = "Script"
         view.text = text
+        view.inputAccessoryView = Self.toolBar(tools, controller: controller)
         view.delegate = context.coordinator
         controller.textView = view
         controller.onChange = { context.coordinator.changed(view) }
         ScriptTextController.select(selection, in: view)
         return view
+    }
+
+    /// The tools in one glass capsule floating just above the keyboard, as iOS 26 shows its
+    /// own editing tools (plan 015, decision 2, amended: Andy found pills under the text dated).
+    /// It is the text view's own, so it shows in the sheet, where SwiftUI's keyboard toolbar
+    /// didn't, and it goes with the keyboard.
+    private static func toolBar(_ tools: [Tool], controller: ScriptTextController) -> UIView {
+        let bar = UIView(frame: CGRect(x: 0, y: 0, width: 0, height: 58))
+        bar.autoresizingMask = .flexibleWidth
+        bar.backgroundColor = .clear
+        let glass = UIVisualEffectView(effect: UIGlassEffect())
+        glass.cornerConfiguration = .capsule()
+        glass.translatesAutoresizingMaskIntoConstraints = false
+        let row = UIStackView()
+        row.axis = .horizontal
+        row.alignment = .center
+        row.translatesAutoresizingMaskIntoConstraints = false
+        var buttons: [UIButton] = []
+        for (index, tool) in tools.enumerated() {
+            if index > 0 { row.addArrangedSubview(divider()) }
+            var look = UIButton.Configuration.plain()
+            look.title = tool.title
+            look.image = UIImage(systemName: tool.systemImage)
+            look.imagePadding = 6
+            look.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(textStyle: .body)
+            look.baseForegroundColor = UIColor(EarwigTheme.surface)
+            look.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+                var attributes = attributes
+                attributes.font = .preferredFont(forTextStyle: .body).withWeight(.semibold)
+                return attributes
+            }
+            let button = UIButton(configuration: look, primaryAction: UIAction { _ in controller.perform(tool.change) })
+            button.accessibilityHint = tool.hint
+            row.addArrangedSubview(button)
+            buttons.append(button)
+        }
+        for button in buttons.dropFirst() { button.widthAnchor.constraint(equalTo: buttons[0].widthAnchor).isActive = true }
+        glass.contentView.addSubview(row)
+        bar.addSubview(glass)
+        NSLayoutConstraint.activate([
+            glass.leadingAnchor.constraint(equalTo: bar.leadingAnchor, constant: 12),
+            glass.trailingAnchor.constraint(equalTo: bar.trailingAnchor, constant: -12),
+            glass.topAnchor.constraint(equalTo: bar.topAnchor, constant: 4),
+            glass.bottomAnchor.constraint(equalTo: bar.bottomAnchor, constant: -8),
+            row.leadingAnchor.constraint(equalTo: glass.contentView.leadingAnchor, constant: 8),
+            row.trailingAnchor.constraint(equalTo: glass.contentView.trailingAnchor, constant: -8),
+            row.topAnchor.constraint(equalTo: glass.contentView.topAnchor),
+            row.bottomAnchor.constraint(equalTo: glass.contentView.bottomAnchor),
+        ])
+        return bar
+    }
+
+    /// A hairline between two tools.
+    private static func divider() -> UIView {
+        let line = UIView()
+        line.backgroundColor = .separator
+        // A point wide: the system's separator colour is faint enough for a hairline.
+        line.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            line.widthAnchor.constraint(equalToConstant: 1),
+            line.heightAnchor.constraint(equalToConstant: 22),
+        ])
+        return line
     }
 
     /// Takes the text only when it changed from outside. An update a keystroke behind the text
@@ -79,6 +152,12 @@ struct ScriptTextView: UIViewRepresentable {
             known = view.text
             if text.wrappedValue != view.text { text.wrappedValue = view.text }
         }
+    }
+}
+
+private extension UIFont {
+    func withWeight(_ weight: UIFont.Weight) -> UIFont {
+        UIFont.systemFont(ofSize: pointSize, weight: weight)
     }
 }
 

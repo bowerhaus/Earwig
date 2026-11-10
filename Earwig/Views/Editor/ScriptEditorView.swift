@@ -2,7 +2,8 @@ import SwiftData
 import SwiftUI
 
 /// New and Edit (plan 015, decision 2): the script's text as it is, with Title, Step
-/// and Cue under it and a line saying what it makes. Dictation is the keyboard's own.
+/// and Cue on a bar above the keyboard and a line under the text saying what it makes.
+/// Dictation is the keyboard's own.
 struct ScriptEditorView: View {
     @State var editor: ScriptEditor
     /// Called with the saved script once the sheet has gone.
@@ -17,18 +18,10 @@ struct ScriptEditorView: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 10) {
-                ScriptTextView(text: $editor.text, selection: editor.selection, controller: textView)
+                ScriptTextView(text: $editor.text, selection: editor.selection, controller: textView, tools: Self.tools)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(EarwigTheme.surface, in: RoundedRectangle(cornerRadius: EarwigButton.corner))
-                // Our own bar, not a keyboard toolbar, which iOS 26 doesn't show in a sheet; it sits
-                // just above the keyboard, and is there with it down too.
-                HStack(spacing: 10) {
-                    formatButton("Title", hint: "Goes to the script's title, or adds one at the top", ScriptEditor.titleChange)
-                    formatButton("Step", hint: "Starts a new step, with the cursor on the line under it", ScriptEditor.stepChange)
-                    formatButton("Cue", hint: "Starts a cue in square brackets, or ends the one the cursor is in", ScriptEditor.cueChange)
-                    Spacer(minLength: 0)
-                }
-                // Three lines kept for it, so the bar above stays put when the hint gives way to
+                // Three lines kept for it, so the text above stays put when the hint gives way to
                 // the count.
                 Text(editor.summary)
                     .lineLimit(3, reservesSpace: true)
@@ -37,7 +30,8 @@ struct ScriptEditorView: View {
                     .padding(.horizontal, 6)
             }
             .padding(16)
-            .background(EarwigTheme.background)
+            // Under the keyboard too, so the tools' glass floats on the sky blue, not on white.
+            .background(EarwigTheme.background.ignoresSafeArea())
             .navigationTitle(editor.heading)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(EarwigTheme.background, for: .navigationBar)
@@ -73,10 +67,12 @@ struct ScriptEditorView: View {
         }
     }
 
-    private func formatButton(_ title: String, hint: String, _ change: @escaping (ScriptEditor.Edit) -> ScriptEditor.Change) -> some View {
-        ToolbarWordButton(title) { textView.perform(change) }
-            .accessibilityHint(hint)
-    }
+    /// Title, Step and Cue, on a bar above the keyboard (plan 015, decision 2).
+    private static let tools: [ScriptTextView.Tool] = [
+        .init(title: "Title", systemImage: "textformat.size", hint: "Goes to the script's title, or adds one at the top", change: ScriptEditor.titleChange),
+        .init(title: "Step", systemImage: "list.number", hint: "Starts a new step, with the cursor on the line under it", change: ScriptEditor.stepChange),
+        .init(title: "Cue", systemImage: "text.bubble", hint: "Starts a cue in square brackets, or ends the one the cursor is in", change: ScriptEditor.cueChange),
+    ]
 
     private func cancel() {
         if editor.hasChanges { confirmingDiscard = true } else { dismiss() }

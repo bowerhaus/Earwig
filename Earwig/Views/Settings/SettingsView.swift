@@ -66,15 +66,21 @@ struct SettingsView: View {
                         }
                         .foregroundStyle(EarwigTheme.accent)
                     }
-                    Picker("Stage Directions", selection: $inlineDirections) {
+                    // "Cue", the one word for them (plan 015, decision 11); the footer says what
+                    // the name doesn't.
+                    Picker("Hear Cues As", selection: $inlineDirections) {
                         ForEach(InlineDirections.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
                 } header: {
                     Text("Voice")
                 } footer: {
-                    if let problem = preview.problem {
-                        Text(problem)
-                            .foregroundStyle(EarwigTheme.warning)
+                    VStack(alignment: .leading, spacing: 6) {
+                        if let problem = preview.problem {
+                            Text(problem)
+                                .foregroundStyle(EarwigTheme.warning)
+                        }
+                        Text("Cues at the top of a step are always read with the slate.")
+                            .foregroundStyle(EarwigTheme.secondaryText)
                     }
                 }
                 .listRowBackground(EarwigTheme.surface)

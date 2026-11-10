@@ -2,7 +2,7 @@ import Foundation
 import Observation
 import SwiftData
 
-/// The Scripts screen (PRD §8.1): paste, delete, and which script is open.
+/// The Scripts screen (PRD §8.1): paste, New, delete, and which script is open.
 @MainActor
 @Observable
 final class ScriptsViewModel {
@@ -18,11 +18,47 @@ final class ScriptsViewModel {
         }
         do {
             let result = try ScriptImporter(context: context).paste(text)
+            if result.outcome == .wouldReplaceEdits {
+                pendingPaste = PendingPaste(text: text, script: result.script)
+                return
+            }
             try context.save()
             path = [result.script]
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    /// A paste that would replace changes made in Earwig, waiting for the question to be
+    /// answered (plan 015, decision 8).
+    struct PendingPaste {
+        let text: String
+        let script: Script
+    }
+
+    private(set) var pendingPaste: PendingPaste?
+
+    /// Replace was chosen: the paste is made, replacing the changes.
+    func confirmPaste(_ pending: PendingPaste, in context: ModelContext) {
+        pendingPaste = nil
+        do {
+            let result = try ScriptImporter(context: context).paste(pending.text, replacingEdits: true)
+            try context.save()
+            path = [result.script]
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    func cancelPaste() {
+        pendingPaste = nil
+    }
+
+    /// The editor while New's sheet is up (plan 015).
+    var editor: ScriptEditor?
+
+    func newScript() {
+        editor = ScriptEditor(mode: .new)
     }
 
     func open(_ script: Script?) {

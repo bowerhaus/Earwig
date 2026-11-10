@@ -12,9 +12,12 @@ struct ScriptDetailView: View {
     @AppStorage(TakeSettings.recordingKey) private var recording: TakeRecordingMode = .off
     @State private var model: ScriptDetailViewModel
     @State private var confirmingDelete = false
+    /// Opens another script: the copy Edit a Copy saved (plan 015, decision 7).
+    private let open: (Script) -> Void
 
-    init(script: Script) {
+    init(script: Script, open: @escaping (Script) -> Void = { _ in }) {
         _model = State(initialValue: ScriptDetailViewModel(script: script))
+        self.open = open
     }
 
     private var script: Script { model.script }
@@ -98,7 +101,7 @@ struct ScriptDetailView: View {
         // White labels, pale headers and values, in the light scheme (plan 011, decision 16).
         .foregroundStyle(EarwigTheme.text, EarwigTheme.secondaryText)
         // Never during a take or while Listen is open; one walking goes at once (plan 014, decision 9).
-        .critterVisits(keepAway: model.take != nil || model.preview != nil)
+        .critterVisits(keepAway: model.take != nil || model.preview != nil || model.editor != nil)
         .background(EarwigTheme.background)
         .navigationTitle(script.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -106,6 +109,23 @@ struct ScriptDetailView: View {
         // White titles on the sky blue in the light scheme (plan 011, decision 16).
         .toolbarColorScheme(.dark, for: .navigationBar)
         .earwigBackButton()
+        .toolbar {
+            // Share, the way back to the Mac, and Edit, or Edit a Copy for a sample (plan 015).
+            ToolbarItem(placement: .topBarTrailing) {
+                ShareLink(item: ScriptText(title: script.title, text: script.sourceText), preview: SharePreview(script.title)) {
+                    Label("Share", systemImage: "square.and.arrow.up").toolbarCircle()
+                }
+                .buttonStyle(.plain)
+            }
+            .sharedBackgroundVisibility(.hidden)
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { model.startEditing() } label: {
+                    Text(script.isSample ? "Edit a Copy" : "Edit").toolbarCapsule()
+                }
+                .buttonStyle(.plain)
+            }
+            .sharedBackgroundVisibility(.hidden)
+        }
         .onAppear { model.appeared(in: context, renderer: renderer) }
         #if DEBUG
         .task {
@@ -114,6 +134,12 @@ struct ScriptDetailView: View {
             guard UserDefaults.standard.bool(forKey: "EarwigScreen"), model.take == nil else { return }
             try? await Task.sleep(for: .seconds(1))
             model.startTake(with: renderer, in: context, mode: .screen)
+        }
+        .task {
+            // `-EarwigEdit YES` opens Edit, or Edit a Copy on a sample, for the simulator (plan 015).
+            guard UserDefaults.standard.bool(forKey: "EarwigEdit"), model.editor == nil else { return }
+            try? await Task.sleep(for: .seconds(1))
+            model.startEditing()
         }
         .onChange(of: model.renderState(renderer)) { _, state in
             // `-EarwigListen YES` opens Listen once the start step is ready, for the simulator.
@@ -144,6 +170,22 @@ struct ScriptDetailView: View {
         }
         .sheet(item: $model.preview) { preview in
             ListenView(preview: preview, title: model.startStep.map { "Step \($0.number)" } ?? "Listen")
+        }
+        .sheet(item: $model.editor) { editor in
+            ScriptEditorView(editor: editor) { saved in
+                if saved === script { model.edited(with: renderer) } else { open(saved) }
+            }
+        }
+        // Paste New Version over changes made in Earwig asks first (plan 015, decision 8).
+        .confirmationDialog(
+            "Replace the changes made in Earwig?",
+            isPresented: Binding(get: { model.pendingNewVersion != nil }, set: { if !$0 { model.pendingNewVersion = nil } }),
+            titleVisibility: .visible,
+            presenting: model.pendingNewVersion
+        ) { text in
+            Button("Replace", role: .destructive) { model.confirmNewVersion(text, in: context, renderer: renderer) }
+        } message: { _ in
+            Text(ReplaceEdits.message)
         }
         .confirmationDialog("Delete \(script.title)?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete Script", role: .destructive) {

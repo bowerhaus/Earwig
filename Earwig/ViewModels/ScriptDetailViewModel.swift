@@ -2,8 +2,8 @@ import AVFoundation
 import Observation
 import SwiftData
 
-/// The Script screen (PRD §8.2): the start step and its rendering, the cues switch, Listen, a
-/// new version, delete.
+/// The Script screen (PRD §8.2): the start step and its rendering, the cues switch, Listen, Edit,
+/// a new version, delete.
 @MainActor
 @Observable
 final class ScriptDetailViewModel {
@@ -217,14 +217,45 @@ final class ScriptDetailViewModel {
             error = ScriptImporter.ImportError.noSteps.localizedDescription
             return
         }
+        replace(with: text, replacingEdits: false, in: context, renderer: renderer)
+    }
+
+    /// Paste New Version's text, while it asks whether to replace changes made in Earwig (plan
+    /// 015, decision 8).
+    var pendingNewVersion: String?
+
+    /// Replace was chosen.
+    func confirmNewVersion(_ text: String, in context: ModelContext, renderer: ScriptRenderer) {
+        pendingNewVersion = nil
+        replace(with: text, replacingEdits: true, in: context, renderer: renderer)
+    }
+
+    private func replace(with text: String, replacingEdits: Bool, in context: ModelContext, renderer: ScriptRenderer) {
         do {
-            let result = try ScriptImporter(context: context).replace(script, with: text)
+            let result = try ScriptImporter(context: context).replace(script, with: text, replacingEdits: replacingEdits)
+            if result.outcome == .wouldReplaceEdits {
+                pendingNewVersion = text
+                return
+            }
             try context.save()
             notice = result.outcome == .unchanged ? "That is the version already here." : "Updated to the new version."
             renderStartStep(with: renderer)
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    /// The editor while Edit's sheet is up: the script itself, or a copy of a sample (plan 015,
+    /// decisions 2 and 7).
+    var editor: ScriptEditor?
+
+    func startEditing() {
+        editor = ScriptEditor(mode: script.isSample ? .copy(of: script) : .edit(script))
+    }
+
+    /// After Save: an edit's start step is rendered again for its new words.
+    func edited(with renderer: ScriptRenderer) {
+        renderStartStep(with: renderer)
     }
 
     func delete(in context: ModelContext) {

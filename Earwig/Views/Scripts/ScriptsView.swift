@@ -3,7 +3,8 @@ import SwiftUI
 import UIKit
 
 /// The scripts (PRD §8.1): the presenter's own at the top, swipe to delete, and the built-in
-/// samples below them, which cannot be deleted (plan 011). Paste from the clipboard; tap to open.
+/// samples below them, which cannot be deleted (plan 011). Paste from the clipboard, or New to
+/// write one (plan 015); tap to open.
 struct ScriptsView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Script.updatedAt, order: .reverse) private var scripts: [Script]
@@ -22,7 +23,7 @@ struct ScriptsView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // Between the sky blue and the cards, so a walk under them shows in the gaps; none
                 // while Settings is up over the list (plan 014).
-                .critterVisits(keepAway: showingSettings)
+                .critterVisits(keepAway: showingSettings || model.editor != nil)
                 .background(EarwigTheme.background)
                 .navigationTitle("Scripts")
                 // No bar background of its own: the screen's sky blue is behind it, and setting one
@@ -35,17 +36,33 @@ struct ScriptsView: View {
                         .buttonStyle(.plain)
                     }
                     .sharedBackgroundVisibility(.hidden)
-                    // While there are none of their own, the paste row has the button.
+                    // While there are none of their own, the paste row has the buttons.
                     if !own.isEmpty {
-                        ToolbarItem(placement: .primaryAction) { pasteButton }
+                        ToolbarItem(placement: .primaryAction) { newButton }
                             // No glass capsule around the pill (iOS 26 draws one for every item).
+                            .sharedBackgroundVisibility(.hidden)
+                        ToolbarItem(placement: .primaryAction) { pasteButton }
                             .sharedBackgroundVisibility(.hidden)
                     }
                 }
                 .navigationDestination(for: Script.self) { script in
-                    ScriptDetailView(script: script)
+                    ScriptDetailView(script: script, open: { model.open($0) })
                 }
                 .sheet(isPresented: $showingSettings) { SettingsView() }
+                .sheet(item: $model.editor) { editor in
+                    ScriptEditorView(editor: editor) { model.open($0) }
+                }
+                // A paste over changes made in Earwig asks first (plan 015, decision 8).
+                .confirmationDialog(
+                    "Replace the changes made in Earwig?",
+                    isPresented: Binding(get: { model.pendingPaste != nil }, set: { if !$0 { model.cancelPaste() } }),
+                    titleVisibility: .visible,
+                    presenting: model.pendingPaste
+                ) { pending in
+                    Button("Replace", role: .destructive) { model.confirmPaste(pending, in: context) }
+                } message: { _ in
+                    Text(ReplaceEdits.message)
+                }
                 .alert("Can't paste that", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
                     Button("OK", role: .cancel) {}
                 } message: {
@@ -72,6 +89,12 @@ struct ScriptsView: View {
                     // A path set in the first instant after launch can be dropped by the stack.
                     try? await Task.sleep(for: .milliseconds(400))
                     model.open(walk)
+                }
+                .task {
+                    // `-EarwigNew YES` opens New, for the simulator (plan 015).
+                    guard UserDefaults.standard.bool(forKey: "EarwigNew") else { return }
+                    try? await Task.sleep(for: .seconds(1))
+                    model.newScript()
                 }
                 #endif
         }
@@ -118,12 +141,23 @@ struct ScriptsView: View {
     /// In place of the presenter's own scripts while there are none.
     private var pasteHint: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Copy a script in Markdown or plain text, then paste it here.")
+            Text("Paste a script you've copied, or write a new one.")
                 .font(.body)
                 .foregroundStyle(EarwigTheme.text)
-            pasteButton
+            HStack(spacing: 10) {
+                pasteButton
+                newButton
+            }
         }
         .padding(.vertical, 8)
+    }
+
+    /// New: the editor on an empty script (plan 015, decision 1).
+    private var newButton: some View {
+        Button { model.newScript() } label: {
+            AccentPill(title: "New", systemImage: "square.and.pencil")
+        }
+        .buttonStyle(.plain)
     }
 
     /// Our own button, not SwiftUI's `PasteButton`: iOS darkens a `PasteButton`'s tint to keep

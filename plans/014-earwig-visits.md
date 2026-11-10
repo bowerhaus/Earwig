@@ -2,7 +2,7 @@
 
 **GitHub Issue:** [#40](https://github.com/bowerhaus/Earwig/issues/40) (PR must include "Closes #40")
 **Branch:** `earwig-visits` (from `main` at `2294bc0`, after plan 012 merged; plan 013, the App Store release, is in flight on `app-store-release` and touches none of this plan's code, so whichever merges second rebases the PRD version and CLAUDE.md's status)
-**Status:** Approved (2026-11-09, under `/plan_autopilot`). A plan for fun, outside PRD §12's stages, like plan 007.
+**Status:** Complete (2026-11-10; built under `/plan_autopilot` and checked on the phone, with Andy's changes at the device checks). A plan for fun, outside PRD §12's stages, like plan 007.
 **Manual test:** device | on Andy's iPhone 14 Pro: the walk, its size and speed, behind and in front, the tap, and that it keeps away during a take, Listen and Preview (Verification). How often it comes is decided after about a week of TestFlight use.
 **Goal:** Every so often, the earwig from the icon walks across the screen. Sometimes it goes behind the cards, showing in the gaps between them; sometimes it walks over them. Tap it while it's in front and it runs off. It never appears during a take, while Listen or Preview is reading, or with Reduce Motion on, and it never gets in the way of a tap meant for the app.
 
@@ -212,7 +212,54 @@ As built, after device check 2 (the drafted list named `Views/Visitor/` and `Ser
 
 ## Results
 
-_To be filled in when the plan completes._
+Built 2026-11-09 and checked on the iPhone 14 Pro on 2026-11-10. **PASS** on checks 1 to 6, with Andy's changes along the way (Context, "at device check 2", and the amended decisions). Check 7, the default rate, waits for a week of TestFlight use.
+
+**What was built**
+- The critter: the mark, drawn from the icon script's geometry, with a two-set gait and twitching antennae.
+- Each walk is at its own pace (65 to 120 pt/s) and moves with the list's scroll. It goes under a card only if out within 2 s, and over it otherwise.
+- A tap sends it running off over the cards at four times its pace.
+- The Critter setting (Never to All the Time, default Sometimes) is in the Screen group.
+- A roll a moment after a screen appears and every 30 s while it stays, with a 3-minute rest between visits.
+- It keeps away during a take, Listen, Preview and Reduce Motion, and none comes under the splash.
+- Kept to `Earwig/Critter/`: `Critter.swift`, `CritterWalk.swift`, and `CritterGeometry.swift`, which the icon script generates. Tests are in `EarwigTests/CritterTests.swift`. `EarwigApp` is unchanged.
+- Beside it, at Andy's request, the splash is half as long again: 1.425 s.
+
+**Simulator**
+- Walks behind and in front.
+- A tap on a row passes through an earwig in front.
+- Five cards reported on the Scripts screen.
+- The list's scroll reaches the critter.
+- The icon script's outputs are byte-identical, and the icon PNGs unchanged.
+- 400 tests pass, SwiftLint clean, no warnings.
+
+**Device (iPhone 14 Pro), Andy's verdicts**
+1. **The walk:** passed ("Walk looks right"). 29 visits logged in 3½ minutes, 4 to 14 s each.
+2. **Under and over:** the first build hid it under big cards for too long. Andy asked for:
+   - under a card only if out quickly (first 1 s, then 2 s);
+   - Critter as a setting for everyone, not in the README, its footer "just a bit of fun";
+   - a chance while staying on a screen;
+   - the feature in as few files as possible;
+   - each walk at its own pace;
+   - Never for the first step.
+   After these, passed ("Looks pretty good").
+3. **Over the cards and the scroll:** Andy asked for the critter to move with the scroll and for a longer splash. After both, the scroll passed ("works well"). He judged the splash himself.
+4. **The tap:** a tap sent it under the card it was on, and the run seemed quick. A run now keeps to its side. Three times the walk was tried, and Andy asked for four again. Passed ("seems okay").
+5. **Keeping away:** passed for a take, Listen, Preview and Reduce Motion.
+6. **Smoothness:** passed ("Smooth").
+7. **How often:** not yet. The default (Sometimes) and the rates are for Andy to judge after about a week of TestFlight use; a follow-up.
+
+**How often, for reference (staying on one screen)**
+
+| Setting | One about every |
+|---|---|
+| Rarely | 27 min |
+| Now and Then | 12–13 min |
+| Sometimes | 7½ min |
+| Often | 5 min |
+| Very Often | 3½ min |
+| All the Time | 30 s |
+
+**Review pass:** recorded below with its Outcome. C1 (a pending visit read stale keep-away and Reduce Motion) and the test findings were fixed. C2 is this section.
 
 ## Review pass — 2026-11-09
 

@@ -2,29 +2,6 @@
 
 Scratch state for the plan in flight. Overwritten at the start of a plan, emptied to a stub when it completes.
 
-**Mode:** autopilot (`/plan_autopilot`): carry on through every step below without stopping, except for the device check and a real decision.
+**Status:** Plan 014 (Earwig Visits, the critter, #40) is complete, its Results in `plans/014-earwig-visits.md`, carried by the PR from branch `earwig-visits` (check with `gh pr view earwig-visits --json state`: `OPEN` means `main` does not carry it yet, `MERGED` means it does).
 
-## Plan
-
-**Plan 014, Earwig Visits** ([#40](https://github.com/bowerhaus/Earwig/issues/40)): `plans/014-earwig-visits.md`. Read it in full before resuming; its decisions and steps are the authority, this file only tracks where we are.
-
-- **Branch:** `earwig-visits`, from `main` at `2294bc0`, pushed. Plan 013 (App Store release) is in flight on `app-store-release`; whichever merges second rebases the PRD version, CLAUDE.md's status and this file.
-- **Approved** by Andy on 2026-11-09 by `/plan_autopilot`, which also allows the commits and the PR. Merging stays Andy's.
-- **Manual test:** device, on the iPhone 14 Pro (the plan's Verification).
-
-## Steps
-
-1. [x] Geometry: the icon script writes `EarwigGeometry.swift`.
-2. [x] The figure and the gait (`EarwigFigure`, `Gait`), with a first look from the simulator.
-3. [x] Paths and running away (`VisitPath`, `Walk`), with tests.
-4. [x] Schedule and keep-away (`VisitSchedule`, `EarwigVisits`), with tests.
-5. [x] On the screens: the modifier on Scripts, Script and Settings, checked in the simulator with `-EarwigVisits YES`.
-6. [x] The slider: Earwig Visits in Diagnostics.
-7. [x] Tests + lint: 372 tests pass, SwiftLint clean (commit `2401a34`).
-8. [x] Review + fixes: recorded in the plan with its Outcome; 395 tests pass, SwiftLint clean (commit `dd0d719`).
-9. [ ] Manual test: device. **In progress**: installed on the iPhone 14 Pro, the plan's Verification checks one at a time. Check 1 (the walk): **passed** (Andy, 2026-11-10, "Walk looks right"; 29 visits logged in 3½ minutes, 4 to 14 s each). Check 2 (behind): **changes asked** (Andy, 2026-11-10): under a card only if out within 2 s, over it otherwise; Critter in the Screen group for everyone (Off to All the Time), not in the README, footer "a bit of fun"; a roll every 30 s while on a screen. Built and committed (`ad81ac5`), 398 tests pass, lint clean; the plan's decisions 6, 8 and 10 amended. Then, at Andy's request, the feature was moved into `Earwig/Critter/` (three files, a `Critter` namespace), EarwigApp untouched, flag `-EarwigCritter YES`. 398 tests pass, lint clean. Check 2 again: **passed** (Andy, 2026-11-10, "Looks pretty good"); he asked whether the critters move at different speeds (they don't: every walk is 90 pt/s, every run 360). He asked for it: each walk picks a pace between 65 and 120 pt/s, a run four times its own. Critter's first step is now labelled Never (his ask). Check 3 (over the cards): **changes asked** (Andy, 2026-11-10): the critter should move with the list's scroll, and the splash should be 50% longer. Both built (the splash 1.425 s, the first critter at 2 s); 399 tests pass, lint clean. Check 3 again: the scroll **passed** (Andy, 2026-11-10, "works well"); he is judging the longer splash himself. He asked how often each Critter setting brings one (staying on a screen: Rarely about 27 min, Now and Then 12–13, Sometimes 7½, Often 5, Very Often 3½, All the Time 30 s). Check 4 (the tap): **changes asked** (2026-11-10): a tap sent it under the card, and the run was a little quick. Built: a run keeps to the side it set off on, at three times the walk. 400 tests pass, lint clean. Check 4 again: the tap **passed** (Andy, 2026-11-10, "seems okay"), and he asked for the run back at four times the walk, which is done. Check 5 (keeping away: a take, Listen, Preview, Reduce Motion): **passed** (Andy, 2026-11-10). Next: check 6 (smoothness).
-10. [ ] Complete (commit + PR).
-
-## To resume
-
-"Resume from progress.md": read this file and the plan, run `git status` on `earwig-visits`, then carry on with the first unchecked step.
+**Next:** plan 013, the App Store release (#37), on its own branch `app-store-release`. Its progress is in that branch's own `progress.md`, which supersedes this one there. The critter's default rate waits for a week of TestFlight use.

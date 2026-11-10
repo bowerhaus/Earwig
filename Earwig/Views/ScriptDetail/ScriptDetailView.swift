@@ -41,14 +41,6 @@ struct ScriptDetailView: View {
 
     private var content: some View {
         List {
-            // The title on the page, not in the bar, where a long one was cut short beside the
-            // buttons (plan 015, decision 12). It wraps as it needs.
-            Text(script.title)
-                .font(.largeTitle.bold())
-                .foregroundStyle(EarwigTheme.text)
-                .accessibilityAddTraits(.isHeader)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
             Section {
                 startCard
                 if let preamble = script.preamble {
@@ -56,6 +48,16 @@ struct ScriptDetailView: View {
                         .font(.footnote)
                         .foregroundStyle(EarwigTheme.cue)
                 }
+            } header: {
+                // The title on the page, not in the bar, where a long one was cut short beside the
+                // buttons (plan 015, decision 12). It wraps as it needs, as close to its card as
+                // "Scripts" is to the first row.
+                Text(script.title)
+                    .font(.largeTitle.bold())
+                    .foregroundStyle(EarwigTheme.text)
+                    .textCase(nil)
+                    .accessibilityAddTraits(.isHeader)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 12, trailing: 4))
             }
             .listRowBackground(EarwigTheme.surface.critterCard())
 
@@ -81,6 +83,8 @@ struct ScriptDetailView: View {
 
         }
         .scrollContentBackground(.hidden)
+        // The title close under the bar, as "Scripts" is (Andy: the gap was too big).
+        .contentMargins(.top, 0, for: .scrollContent)
         // White labels, pale headers and values, in the light scheme (plan 011, decision 16).
         .foregroundStyle(EarwigTheme.text, EarwigTheme.secondaryText)
         // Never during a take or while Listen is open; one walking goes at once (plan 014, decision 9).

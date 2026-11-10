@@ -12,8 +12,6 @@ struct EarwigApp: App {
     /// reset, and not tied to the scene phase, so a return from the background or an unlock
     /// mid-take shows nothing (plan 007, decision 7).
     @State private var showsSplash = true
-    /// The earwig's occasional walks across the screen, shared by the screens (plan 014).
-    @State private var visits = EarwigVisits()
 
     init() {
         // White titles, large and inline, in the light scheme (plan 011, decision 16).
@@ -33,14 +31,10 @@ struct EarwigApp: App {
             ZStack {
                 ScriptsView()
                 if showsSplash {
-                    SplashView {
-                        showsSplash = false
-                        visits.ready = true
-                    }
+                    SplashView { showsSplash = false }
                 }
             }
             .environment(renderer)
-            .environment(visits)
             .tint(EarwigTheme.accent)
             .preferredColorScheme(EarwigTheme.scheme)
         }

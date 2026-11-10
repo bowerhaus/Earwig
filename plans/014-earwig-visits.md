@@ -33,6 +33,17 @@ Then, at device check 2 on 2026-11-10, after the walk passed check 1 (Andy's wor
 - **Critter is a setting for everyone.** This replaces "no Settings switch" and the temporary slider. The **Critter** slider runs from Off to All the Time in the Screen group, and stays (decision 10, amended).
 - **Not documented.** Critter isn't in the README. Its footer in Settings says only that it's a bit of fun.
 - **It can come while you stay on a screen**, not only when you arrive. A screen rolls again every **30 seconds** while it stays (decision 8, amended).
+- **Kept to as few files as possible**, since it isn't a fundamental part of the app (Andy). Everything is in `Earwig/Critter/`:
+  - `Critter.swift` draws it, puts it on a screen and holds Settings' row;
+  - `CritterWalk.swift` plans its walks and says when they come;
+  - `CritterGeometry.swift` is its shape, written by the icon script.
+  - Its types sit in a `Critter` namespace and its tests in `EarwigTests/CritterTests.swift`.
+  - Outside the folder, the screens have:
+    - `critterVisits()` on the Scripts, Script and Settings lists;
+    - `critterCard()` on the Scripts and Script screens' card backgrounds (Settings marks none, so there it always walks over the cards);
+    - `Critter.SettingRow()` and its footer in Settings.
+  - `EarwigApp` is untouched. The visits are one shared `Critter.Visits`, and none comes under the splash, because the first is at least a second after a screen appears.
+  - The Debug flag is now `-EarwigCritter YES`.
 
 The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.py`: ellipses, rounded rectangles and one path for the body, and each leg, antenna and forceps as a separate round-capped stroke. That's what makes it animatable without redrawing it.
 
@@ -151,14 +162,12 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
 
 ## Files
 
+As built, after device check 2 (the drafted list named `Views/Visitor/` and `Services/` files, since merged here):
+
+- `Earwig/Critter/Critter.swift`, `Earwig/Critter/CritterWalk.swift` (new) and `Earwig/Critter/CritterGeometry.swift` (new, generated).
 - `scripts/app_icon/make_app_icon.py` (edited: writes the Swift geometry).
-- `Earwig/Views/Visitor/EarwigGeometry.swift` (new, generated).
-- `Earwig/Views/Visitor/EarwigFigure.swift` (new: the `Canvas` drawing for a gait pose).
-- `Earwig/Views/Visitor/EarwigVisitorLayer.swift` (new: the two layers and the `.earwigVisits(on:)` modifier).
-- `Earwig/Services/EarwigWalk.swift` (new: `VisitPath`, `Walk`, `WalkPlanner`, `Gait`) and `Earwig/Services/EarwigVisits.swift` (new: `VisitFrequency`, `VisitSchedule`, `EarwigVisits`).
-- `Earwig/Views/Scripts/ScriptsView.swift`, `Earwig/Views/ScriptDetail/ScriptDetailView.swift`, `Earwig/Views/Settings/SettingsView.swift` (edited: the modifier, the keep-away conditions and the slider).
-- `Earwig/App/EarwigApp.swift` (edited: `EarwigVisits` in the environment, and no visit before the splash ends).
-- `EarwigTests/EarwigVisitsTests.swift` (new).
+- `Earwig/Views/Scripts/ScriptsView.swift`, `Earwig/Views/ScriptDetail/ScriptDetailView.swift`, `Earwig/Views/Settings/SettingsView.swift` (edited: a line or two each).
+- `EarwigTests/CritterTests.swift` (new).
 - `PRD.md`, `CLAUDE.md`, `progress.md`, this plan.
 
 ## Steps

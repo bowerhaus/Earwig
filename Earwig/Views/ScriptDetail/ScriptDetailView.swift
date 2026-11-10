@@ -48,7 +48,7 @@ struct ScriptDetailView: View {
                         .foregroundStyle(EarwigTheme.cue)
                 }
             }
-            .listRowBackground(EarwigTheme.surface.earwigCard())
+            .listRowBackground(EarwigTheme.surface.critterCard())
 
             ForEach(Array(script.orderedSteps.enumerated()), id: \.element.persistentModelID) { index, step in
                 Section {
@@ -67,7 +67,7 @@ struct ScriptDetailView: View {
                         .accessibilityHint("Starts takes from this step")
                     }
                 }
-                .listRowBackground(rowBackground(isStart: index == script.lastStep).earwigCard())
+                .listRowBackground(rowBackground(isStart: index == script.lastStep).critterCard())
             }
 
             // A sample's text is the app's, not the presenter's, and a sample is never deleted
@@ -83,7 +83,7 @@ struct ScriptDetailView: View {
                     Text("Paste a new version of this script. Its takes are kept.")
                         .foregroundStyle(EarwigTheme.secondaryText)
                 }
-                .listRowBackground(EarwigTheme.surface.earwigCard())
+                .listRowBackground(EarwigTheme.surface.critterCard())
                 Section {
                     Button(role: .destructive) { confirmingDelete = true } label: {
                         Label("Delete Script", systemImage: "trash")
@@ -91,14 +91,14 @@ struct ScriptDetailView: View {
                             .foregroundStyle(EarwigTheme.warning)
                     }
                 }
-                .listRowBackground(EarwigTheme.surface.earwigCard())
+                .listRowBackground(EarwigTheme.surface.critterCard())
             }
         }
         .scrollContentBackground(.hidden)
         // White labels, pale headers and values, in the light scheme (plan 011, decision 16).
         .foregroundStyle(EarwigTheme.text, EarwigTheme.secondaryText)
         // Never during a take or while Listen is open; one walking goes at once (plan 014, decision 9).
-        .earwigVisits(keepAway: model.take != nil || model.preview != nil)
+        .critterVisits(keepAway: model.take != nil || model.preview != nil)
         .background(EarwigTheme.background)
         .navigationTitle(script.title)
         .navigationBarTitleDisplayMode(.inline)

@@ -167,9 +167,14 @@ extension Critter {
         let isRun: Bool
         /// How far its legs had walked when it began, so a run's legs carry on from the walk's.
         let steppedBefore: CGFloat
+        /// The side of the cards it keeps to throughout, or nil to go under or over card by
+        /// card. A run keeps to the side it set off on: at a run's pace nearly every card is
+        /// quick to cross, and a tapped earwig would dive under the card it was on (Andy,
+        /// device check 4).
+        let side: Layer?
 
         init(path: Route, speed: CGFloat, pauses: [Pause] = [], turn: Turn? = nil,
-             start: TimeInterval, isRun: Bool = false, steppedBefore: CGFloat = 0) {
+             start: TimeInterval, isRun: Bool = false, steppedBefore: CGFloat = 0, side: Layer? = nil) {
             self.path = path
             self.speed = speed
             self.pauses = pauses.sorted { $0.distance < $1.distance }
@@ -177,6 +182,7 @@ extension Critter {
             self.start = start
             self.isRun = isRun
             self.steppedBefore = steppedBefore
+            self.side = side
         }
 
         /// Legs shuffle at this share of the speed while it turns on the spot.
@@ -214,6 +220,7 @@ extension Critter {
         /// goes under from the moment its head reaches a card until its tail leaves; a long stretch
         /// anywhere on it keeps it over. Away from the cards either side looks the same.
         func layer(at walked: CGFloat, cards: [CGRect], length: CGFloat = Planner.length) -> Layer {
+            if let side { return side }
             guard !cards.isEmpty else { return .inFront }
             var under = false
             for probe in [walked + length / 2, walked, walked - length / 2] {
@@ -271,7 +278,8 @@ extension Critter {
         static let walkingSpeed: CGFloat = 90
         /// Each walk's own pace, so some amble and some hurry (Andy, after device check 2).
         static let walkingSpeeds: ClosedRange<CGFloat> = 65...120
-        static let runningFactor: CGFloat = 4
+        /// A run's pace against the walk's (Andy, device check 4: four times was a little quick).
+        static let runningFactor: CGFloat = 3
         static let runTurn: TimeInterval = 0.15
         static let pauseDurations: ClosedRange<Double> = 0.5...1.5
         /// The share of walks that turn back halfway and leave the way they came.
@@ -308,7 +316,8 @@ extension Critter {
         /// A run from where it is, turning away from the finger and off the nearest edge that lies
         /// away from it.
         /// It runs at `runningFactor` times the pace it was walking at.
-        func run(from place: Place, awayFrom tap: CGPoint, pace: CGFloat = walkingSpeed, start: TimeInterval) -> Walk {
+        func run(from place: Place, awayFrom tap: CGPoint, pace: CGFloat = walkingSpeed, side: Layer = .inFront,
+                 start: TimeInterval) -> Walk {
             let here = place.position
             var away = CGVector(dx: here.x - tap.x, dy: here.y - tap.y)
             if away.length < 1 { away = Heading.direction(place.heading) }
@@ -323,19 +332,20 @@ extension Critter {
                                   end: exit)
             return Walk(path: Route(curves: [curve]), speed: pace * Self.runningFactor,
                         turn: Turn(from: place.heading, duration: Self.runTurn), start: start,
-                        isRun: true, steppedBefore: place.stepped)
+                        isRun: true, steppedBefore: place.stepped, side: side)
         }
 
         /// What follows a walk asked to go: nothing when it vanishes or has already gone; when it runs
         /// off, a run straight on, as if it had heard something, or the run it is already on.
         /// `drift` is how far the list has scrolled since the walk set off, so the run starts from
         /// where it is on the screen now.
-        func leaving(_ walk: Walk, _ how: Leaving, at time: TimeInterval, drift: CGFloat = 0) -> Walk? {
+        /// `side` is the side of the cards it is on now, which the run keeps to.
+        func leaving(_ walk: Walk, _ how: Leaving, at time: TimeInterval, drift: CGFloat = 0, side: Layer = .inFront) -> Walk? {
             guard how == .runsOff, var place = walk.place(at: time) else { return nil }
             place.position.y -= drift
             if walk.isRun { return walk }
             let behind = place.position.offset(by: Heading.direction(place.heading), times: -10)
-            return run(from: place, awayFrom: behind, pace: walk.speed, start: time)
+            return run(from: place, awayFrom: behind, pace: walk.speed, side: side, start: time)
         }
 
         func distance(from point: CGPoint, to edge: Edge) -> CGFloat {

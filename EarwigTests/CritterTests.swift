@@ -172,6 +172,16 @@ struct CritterWalkTests {
         #expect(walk.layer(at: 200, cards: rows) == .inFront)
     }
 
+    @Test func aRunKeepsToTheSideItSetOffOn() {
+        let place = Critter.Place(position: CGPoint(x: 200, y: 400), heading: .pi / 2, stepped: 0)
+        let run = planner.run(from: place, awayFrom: CGPoint(x: 150, y: 400), side: .inFront, start: 0)
+        // A card it crosses in well under two seconds at a run's pace, which a walk would go under.
+        let card = CGRect(x: 220, y: 370, width: 100, height: 60)
+        #expect(run.layer(at: 60, cards: [card]) == .inFront, "a tapped earwig never dives under a card")
+        let under = planner.run(from: place, awayFrom: CGPoint(x: 150, y: 400), side: .behind, start: 0)
+        #expect(under.layer(at: 0, cards: []) == .behind)
+    }
+
     @Test func leavingAtOnceLeavesNothing() {
         #expect(planner.leaving(walkAcross(at: 0), .vanishes, at: 2) == nil)
         #expect(planner.leaving(walkAcross(at: 0), .runsOff, at: 100) == nil, "already gone")

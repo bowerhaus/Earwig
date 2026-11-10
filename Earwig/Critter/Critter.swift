@@ -279,7 +279,8 @@ extension Critter {
             guard let current = walk, !current.isRun, var place = current.place(at: now) else { return }
             // From where it is on the screen now, the list's scroll and all.
             place.position.y -= cards.drift
-            let run = Planner(area: area).run(from: place, awayFrom: tap, pace: current.speed, start: now)
+            // Only the one over the cards can be tapped, and it runs off over them.
+            let run = Planner(area: area).run(from: place, awayFrom: tap, pace: current.speed, side: .inFront, start: now)
             cards.setOff()
             visits.ran(run)
             walk = run
@@ -288,7 +289,8 @@ extension Critter {
         private func leave(_ how: Leaving) {
             guard let current = walk else { return }
             let now = Date.now.timeIntervalSinceReferenceDate
-            let next = Planner(area: area).leaving(current, how, at: now, drift: cards.drift)
+            let side = current.place(at: now).map { current.layer(at: $0.walked, cards: cardFrames(cards.drift)) } ?? .inFront
+            let next = Planner(area: area).leaving(current, how, at: now, drift: cards.drift, side: side)
             if let next {
                 if next.id != current.id {
                     cards.setOff()

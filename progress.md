@@ -22,7 +22,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 6. [x] The slider: Earwig Visits in Diagnostics.
 7. [x] Tests + lint: 372 tests pass, SwiftLint clean (commit `2401a34`).
 8. [x] Review + fixes: recorded in the plan with its Outcome; 395 tests pass, SwiftLint clean (commit `dd0d719`).
-9. [ ] Manual test: device. **In progress**: installed on the iPhone 14 Pro, the plan's Verification checks one at a time. Check 1 (the walk): **passed** (Andy, 2026-11-10, "Walk looks right"; 29 visits logged in 3½ minutes, 4 to 14 s each). Next: check 2 (behind).
+9. [ ] Manual test: device. **In progress**: installed on the iPhone 14 Pro, the plan's Verification checks one at a time. Check 1 (the walk): **passed** (Andy, 2026-11-10, "Walk looks right"; 29 visits logged in 3½ minutes, 4 to 14 s each). Check 2 (behind): **changes asked** (Andy, 2026-11-10): under a card only if out within 2 s, over it otherwise; Critter in the Screen group for everyone (Off to All the Time), not in the README, footer "a bit of fun"; a roll every 30 s while on a screen. Built and committed (`ad81ac5`), 398 tests pass, lint clean; the plan's decisions 6, 8 and 10 amended. Next: install on the phone and run check 2 again.
 10. [ ] Complete (commit + PR).
 
 ## To resume

@@ -27,6 +27,13 @@ Then, from the questions on the same day:
 - **How often is a chance plus a rest:** a small chance each time a screen appears, and never two visits within a few minutes.
 - **Everyone sees the slider until it's removed.** It isn't hidden by build type, so removing it is a finish item for this plan and a line in the next release's checklist (decision 10).
 
+Then, at device check 2 on 2026-11-10, after the walk passed check 1 (Andy's words, then his answers to the choices put to him):
+
+- **Going under a big card hid it for too long.** It now goes under a card only when it would be out the other side within **2 seconds**, and over the card otherwise (decision 6, amended). Andy first picked "within about a second", then asked for 2.
+- **Critter is a setting for everyone.** This replaces "no Settings switch" and the temporary slider. The **Critter** slider runs from Off to All the Time in the Screen group, and stays (decision 10, amended).
+- **Not documented.** Critter isn't in the README. Its footer in Settings says only that it's a bit of fun.
+- **It can come while you stay on a screen**, not only when you arrive. A screen rolls again every **30 seconds** while it stays (decision 8, amended).
+
 The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.py`: ellipses, rounded rectangles and one path for the body, and each leg, antenna and forceps as a separate round-capped stroke. That's what makes it animatable without redrawing it.
 
 ## Scope
@@ -93,6 +100,13 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
      - Con: the window would sit above the take's cover too, so it must be torn down reliably for every take. That's risky in exactly the place it must never appear.
      - Con: it needs UIKit for its window and its hit testing.
    - On the Scripts and Script screens the layer over the list sits under the navigation bar, so it walks under the title and the buttons, not over them.
+   - **Amended at device check 2: which layer, card by card.** A walk no longer picks a layer at random.
+     - The cards' backgrounds report their frames (`earwigCard()` on each `listRowBackground`).
+     - On every frame, `Walk.layer(at:cards:)` works out which side of the cards the earwig is on: under a card only when the stretch of its route under that card takes 2 s or less (`Walk.longestHide`), and over it otherwise.
+     - It asks of its head, middle and tail, so it goes under from the moment its head reaches a card until its tail leaves. A long stretch anywhere along its body keeps it over.
+     - The rows of one card touch, so they count as one stretch.
+     - Both layers follow the walk and each draws it only while it's on that layer's side, so it can go under one card and over the next.
+     - Walks go across the phone and cards are wide, so going under is now mostly at corners and across short cards top to bottom, as Andy chose.
 
 7. **Running away.** A tap on the earwig in front:
    - turns it away from your finger;
@@ -107,6 +121,7 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
    - The rest is app-wide, so moving quickly between screens can't bring visits close together.
    - Every Visit on the slider ignores the rest, for testing.
    - There is never a visit during the splash, and never more than one earwig at a time.
+   - **Amended at device check 2:** while a screen stays up, it rolls again every 30 s (`VisitSchedule.again`), still subject to the rest. The Scripts screen keeps away while Settings is up over it.
 
 9. **When it keeps away.** An app-wide `@Observable` `EarwigVisits` in the environment holds the last visit's time and the keep-away conditions:
    - **A take:** the Script screen's visit is removed the moment `model.take` is set, not just covered. Nothing should animate under the take's cover while the engine ticks at 20 Hz.
@@ -116,7 +131,7 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
    - **VoiceOver:** the earwig is hidden from it.
    - **A visit already on screen** when a sheet opens over it carries on underneath. It's harmless, and it's gone in seconds.
 
-10. **The temporary How Often slider.**
+10. **The temporary How Often slider.** *Superseded at device check 2 by Critter, below.*
     - **Where:** Settings › Diagnostics, as Earwig Visits.
     - **Steps:** Never, 1 in 50, 1 in 20, 1 in 10, 1 in 5, 1 in 2, Every Visit, uneven so the rare choices are easy to pick.
     - **Storage:** kept in `@AppStorage`. The default is 1 in 10 while testing.
@@ -124,6 +139,13 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
       - the chosen chance becomes a constant;
       - the slider is deleted, in this plan if the rate is settled before the PR, or in a small follow-up branch otherwise;
       - CLAUDE.md's status says it must go before the next App Store build until it has gone.
+    - **Amended at device check 2: Critter.** A setting for everyone, kept in the app.
+      - **Where:** the last row of Settings' Screen group, under Text Size, labelled **Critter**.
+      - **Steps:** Off, Rarely, Now and Then, Sometimes, Often, Very Often, All the Time. These are the same chances as before, 0, 1 in 50, 1 in 20, 1 in 10, 1 in 5, 1 in 2 and 1. All the Time ignores the rest.
+      - **Default:** Sometimes.
+      - **Footer:** "Critter is just a bit of fun."
+      - **Not in the README** (Andy).
+      - Nothing is left to remove before a release.
 
 11. **Simulator flag.** `-EarwigVisits YES` (Debug builds) makes every screen appearance a visit, ignoring the slider and the rest, so the walk can be seen and screenshotted without waiting.
 
@@ -146,7 +168,7 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
 3. **Paths and running away.** `VisitPath`, with tests: it starts and ends off screen, faces the way it goes, its legs are still during a pause, and it doesn't pause under the bars. A run starts from the current place and leaves by the nearest edge.
 4. **Schedule and keep-away.** `VisitSchedule` and `EarwigVisits`, with tests: the chance, the rest, Every Visit ignoring the rest, Never never visiting, and each keep-away condition.
 5. **On the screens.** The modifier on Scripts, Script and Settings, with the layers behind and in front and tap-through checked in the simulator with `-EarwigVisits YES`. Also checked there: a take started mid-walk removes it, and Listen and Preview keep it away.
-6. **The slider.** Earwig Visits in Diagnostics.
+6. **The slider.** Earwig Visits in Diagnostics; Critter in the Screen group since device check 2.
 7. **Device check** on the iPhone 14 Pro, one check at a time (Verification), installed with `devicectl`. Verdicts are Andy's.
 8. **Finish.**
    - SwiftLint clean, no warnings, all tests pass.
@@ -163,12 +185,12 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
 - Simulator, with `-EarwigVisits YES`: a walk on each of the three screens, behind and in front; rows still open and swipe under the earwig in front; a take, Listen and Preview keep it away.
 - On the iPhone 14 Pro, Andy's verdicts:
   1. **The walk.** The gait, size and speed read as an earwig walking, not sliding or swimming.
-  2. **Behind.** It shows in the gaps and disappears cleanly under the cards.
+  2. **Behind.** It shows in the gaps and disappears cleanly under the cards, and never stays hidden more than about 2 s (amended).
   3. **In front.** It walks over the cards under the navigation bar, and the list under it still scrolls and opens.
   4. **The tap.** It runs from your finger, fast, off the nearest edge, and the tap opens nothing.
   5. **Keeping away.** With Every Visit, start a take mid-walk: it is gone, and the take behaves as usual. Open Listen and play Preview: no earwig. Turn on Reduce Motion: no earwig.
   6. **Smoothness.** No hitch while scrolling the list during a walk.
-  7. **How often.** After about a week of TestFlight use at a chosen setting, Andy picks the rate.
+  7. **How often.** After about a week of TestFlight use at a chosen setting, Andy picks the rate. Critter's default is set from this.
 
 ## Results
 

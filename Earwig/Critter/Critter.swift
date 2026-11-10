@@ -264,7 +264,7 @@ extension Critter {
         private func run(awayFrom tap: CGPoint) {
             let now = Date.now.timeIntervalSinceReferenceDate
             guard let current = walk, !current.isRun, let place = current.place(at: now) else { return }
-            let run = Planner(area: area).run(from: place, awayFrom: tap, start: now)
+            let run = Planner(area: area).run(from: place, awayFrom: tap, pace: current.speed, start: now)
             visits.ran(run)
             walk = run
         }

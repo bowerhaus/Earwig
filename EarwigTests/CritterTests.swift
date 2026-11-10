@@ -57,7 +57,8 @@ struct CritterWalkTests {
         #expect(isOffScreen(start) && isOffScreen(end))
         #expect(walk.place(at: walk.end + 0.01) == nil, "gone after its end")
         #expect(walk.place(at: walk.end - 0.01) != nil)
-        #expect(walk.duration > 2 && walk.duration < 15, "\(walk.duration) s")
+        #expect(walk.duration > 2 && walk.duration < 20, "\(walk.duration) s, even at the slowest pace")
+        #expect(Critter.Planner.walkingSpeeds.contains(walk.speed))
         if start.y < 0 || start.y > area.size.height {
             #expect(end.x < 0 || end.x > area.size.width, "never the phone's whole height")
         }
@@ -101,6 +102,15 @@ struct CritterWalkTests {
         let gone = CGVector(dx: run.path.end.x - here.x, dy: run.path.end.y - here.y)
         #expect(away.dx * gone.dx + away.dy * gone.dy > 0, "it leaves on the far side from the finger")
         #expect(try #require(run.place(at: 10)).stepped == 37, "its legs carry on from the walk's")
+    }
+
+    @Test func eachWalkHasItsOwnPaceAndRunsAtFourTimesIt() {
+        var random = SeededRandom(seed: 7)
+        let speeds = (0..<20).map { _ in planner.visit(start: 0, using: &random).speed }
+        #expect(Set(speeds).count > 10, "some amble, some hurry")
+        let place = Critter.Place(position: CGPoint(x: 200, y: 450), heading: 0, stepped: 0)
+        let run = planner.run(from: place, awayFrom: CGPoint(x: 200, y: 500), pace: 70, start: 0)
+        #expect(run.speed == 70 * Critter.Planner.runningFactor)
     }
 
     @Test func aRunLeavesByTheNearestEdgeAwayFromTheFinger() {

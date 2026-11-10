@@ -269,6 +269,8 @@ extension Critter {
         static let length: CGFloat = 70
         /// About 1.5 cm a second on the 14 Pro, near a real earwig's pace.
         static let walkingSpeed: CGFloat = 90
+        /// Each walk's own pace, so some amble and some hurry (Andy, after device check 2).
+        static let walkingSpeeds: ClosedRange<CGFloat> = 65...120
         static let runningFactor: CGFloat = 4
         static let runTurn: TimeInterval = 0.15
         static let pauseDurations: ClosedRange<Double> = 0.5...1.5
@@ -299,12 +301,14 @@ extension Critter {
                 curves = [gentle(from: from, to: offScreen(exit, using: &random), using: &random)]
             }
             let path = Route(curves: curves)
-            return Walk(path: path, speed: Self.walkingSpeed, pauses: pauses(on: path, using: &random), start: start)
+            return Walk(path: path, speed: CGFloat.random(in: Self.walkingSpeeds, using: &random),
+                        pauses: pauses(on: path, using: &random), start: start)
         }
 
         /// A run from where it is, turning away from the finger and off the nearest edge that lies
         /// away from it.
-        func run(from place: Place, awayFrom tap: CGPoint, start: TimeInterval) -> Walk {
+        /// It runs at `runningFactor` times the pace it was walking at.
+        func run(from place: Place, awayFrom tap: CGPoint, pace: CGFloat = walkingSpeed, start: TimeInterval) -> Walk {
             let here = place.position
             var away = CGVector(dx: here.x - tap.x, dy: here.y - tap.y)
             if away.length < 1 { away = Heading.direction(place.heading) }
@@ -317,7 +321,7 @@ extension Critter {
                                   control1: here.offset(by: away, times: length * 1.2),
                                   control2: exit.offset(by: edge.outward, times: -length),
                                   end: exit)
-            return Walk(path: Route(curves: [curve]), speed: Self.walkingSpeed * Self.runningFactor,
+            return Walk(path: Route(curves: [curve]), speed: pace * Self.runningFactor,
                         turn: Turn(from: place.heading, duration: Self.runTurn), start: start,
                         isRun: true, steppedBefore: place.stepped)
         }
@@ -328,7 +332,7 @@ extension Critter {
             guard how == .runsOff, let place = walk.place(at: time) else { return nil }
             if walk.isRun { return walk }
             let behind = place.position.offset(by: Heading.direction(place.heading), times: -10)
-            return run(from: place, awayFrom: behind, start: time)
+            return run(from: place, awayFrom: behind, pace: walk.speed, start: time)
         }
 
         func distance(from point: CGPoint, to edge: Edge) -> CGFloat {
@@ -481,7 +485,7 @@ extension Critter {
 
         var title: String {
             switch self {
-            case .never: "Off"
+            case .never: "Never"
             case .oneIn50: "Rarely"
             case .oneIn20: "Now and Then"
             case .oneIn10: "Sometimes"

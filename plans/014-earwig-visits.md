@@ -30,7 +30,7 @@ Then, from the questions on the same day:
 Then, at device check 2 on 2026-11-10, after the walk passed check 1 (Andy's words, then his answers to the choices put to him):
 
 - **Going under a big card hid it for too long.** It now goes under a card only when it would be out the other side within **2 seconds**, and over the card otherwise (decision 6, amended). Andy first picked "within about a second", then asked for 2.
-- **Critter is a setting for everyone.** This replaces "no Settings switch" and the temporary slider. The **Critter** slider runs from Off to All the Time in the Screen group, and stays (decision 10, amended).
+- **Critter is a setting for everyone.** This replaces "no Settings switch" and the temporary slider. The **Critter** slider runs from Never to All the Time in the Screen group, and stays (decision 10, amended; its first step was labelled Off until Andy asked for Never).
 - **Not documented.** Critter isn't in the README. Its footer in Settings says only that it's a bit of fun.
 - **It can come while you stay on a screen**, not only when you arrive. A screen rolls again every **30 seconds** while it stays (decision 8, amended).
 - **Kept to as few files as possible**, since it isn't a fundamental part of the app (Andy). Everything is in `Earwig/Critter/`:
@@ -152,8 +152,9 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
       - CLAUDE.md's status says it must go before the next App Store build until it has gone.
     - **Amended at device check 2: Critter.** A setting for everyone, kept in the app.
       - **Where:** the last row of Settings' Screen group, under Text Size, labelled **Critter**.
-      - **Steps:** Off, Rarely, Now and Then, Sometimes, Often, Very Often, All the Time. These are the same chances as before, 0, 1 in 50, 1 in 20, 1 in 10, 1 in 5, 1 in 2 and 1. All the Time ignores the rest.
+      - **Steps:** Never, Rarely, Now and Then, Sometimes, Often, Very Often, All the Time. These are the same chances as before, 0, 1 in 50, 1 in 20, 1 in 10, 1 in 5, 1 in 2 and 1. All the Time ignores the rest.
       - **Default:** Sometimes.
+      - **Pace:** each walk picks its own between 65 and 120 pt a second, so some amble and some hurry; a run is four times the walk's pace (Andy, after device check 2). Decision 3's 90 pt a second is now the middle of that range.
       - **Footer:** "Critter is just a bit of fun."
       - **Not in the README** (Andy).
       - Nothing is left to remove before a release.

@@ -278,8 +278,8 @@ extension Critter {
         static let walkingSpeed: CGFloat = 90
         /// Each walk's own pace, so some amble and some hurry (Andy, after device check 2).
         static let walkingSpeeds: ClosedRange<CGFloat> = 65...120
-        /// A run's pace against the walk's (Andy, device check 4: four times was a little quick).
-        static let runningFactor: CGFloat = 3
+        /// A run's pace against the walk's (Andy, device check 4: three times was tried, and four kept).
+        static let runningFactor: CGFloat = 4
         static let runTurn: TimeInterval = 0.15
         static let pauseDurations: ClosedRange<Double> = 0.5...1.5
         /// The share of walks that turn back halfway and leave the way they came.

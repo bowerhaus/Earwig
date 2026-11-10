@@ -161,7 +161,7 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
     - **A run keeps to its side, at three times the walk** (Andy, device check 4).
       - A tap sent the earwig under the card it was on: at a run's pace nearly every card is quick to cross, so the 2-second rule put it under.
       - A run now keeps to the side of the cards it set off on: over them after a tap, and whichever side it was on when Preview sends it off.
-      - Four times the walking pace was a little quick, so a run is three times it.
+      - Four times the walking pace seemed a little quick, so three times was tried. With the tap fixed, Andy asked for four again, and four stays.
     - **The splash, half as long again** (Andy, at the same check): 0.375 s in, 0.6 s held, 0.45 s out, 1.425 s in all, against plan 007's 0.95 s. The first critter now waits two seconds after a screen appears, so it never comes under the splash.
       - **Footer:** "Critter is just a bit of fun."
       - **Not in the README** (Andy).

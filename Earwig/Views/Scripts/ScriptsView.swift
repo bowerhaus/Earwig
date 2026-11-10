@@ -156,7 +156,8 @@ private struct ScriptRow: View {
         let steps = script.steps?.count ?? 0
         let stepText = steps == 1 ? "1 step" : "\(steps) steps"
         let take = script.lastTake.map { "last take \($0.startedAt.formatted(.relative(presentation: .named)))" } ?? "no takes yet"
-        return "\(stepText) · \(script.format.label) · \(take)"
+        // No format label: users see one format (plan 015, decision 5).
+        return "\(stepText) · \(take)"
     }
 }
 

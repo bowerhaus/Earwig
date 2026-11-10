@@ -5,22 +5,17 @@ enum ScriptFormat: String, Codable, CaseIterable, Sendable {
     /// A Cutaway project's `script.md` (`cutaway/script@1`).
     case cutaway
     case plain
-
-    /// Shown to the presenter. The format is Cutaway's, but Cutaway is not published, so the app
-    /// calls it what it is (plan 011, decision 13).
-    var label: String {
-        switch self {
-        case .cutaway: "Markdown"
-        case .plain: "Plain text"
-        }
-    }
 }
 
-/// Text in a step that the presenter does not say (PRD §3, "Direction"). Never matched; the
-/// title and `Shows:` are read as cues at the start of a step (stage 5).
+/// Text in a step that the presenter does not say (PRD §3, "Direction"; a cue where users see
+/// it, plan 015, decision 11). Never matched; the title, `Shows:` and a step's opening cue are
+/// read with the slate at the start of a take.
 struct Direction: Codable, Equatable, Hashable, Sendable {
     enum Kind: String, Codable, Sendable {
         case shows, footage, open, notes
+        /// A plain script's line wholly in square brackets before its first spoken line
+        /// (plan 015, decision 4).
+        case cue
         /// A line the parser did not understand, kept as it was.
         case unknown
     }
@@ -35,7 +30,7 @@ struct Direction: Codable, Equatable, Hashable, Sendable {
         case .footage: "Footage"
         case .open: "Open"
         case .notes: "Notes"
-        case .unknown: nil
+        case .cue, .unknown: nil
         }
     }
 }

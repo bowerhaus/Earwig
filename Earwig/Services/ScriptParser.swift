@@ -230,58 +230,111 @@ enum CutawayParser {
     }
 }
 
-/// Plain text (PRD §4.1): blank-line-separated blocks are steps; a block's first line is its
-/// title when it is short, has no sentence-ending punctuation and more lines follow it. A
-/// first block that is only such a line is the script's title.
+/// Plain text, the format Earwig documents (PRD §4.1; plan 015, decision 4): a `# ` line is the
+/// title; a `## ` line starts a step, with its name, and blank lines inside a step are only
+/// spacing; with no `## ` line at all, each paragraph is a step. A line wholly in square
+/// brackets before a step's first spoken line is the step's cue, read with the slate. A first
+/// paragraph that is one short title-like line, with more after it, is the script's title.
+/// Step names come only from headings: a short first line is spoken, never taken as a name.
 enum PlainParser {
 
     static let maxTitleWords = 8
     static let maxScriptTitleLength = 40
 
+    /// A step as it is read: its name from a heading, if any, and its lines.
+    private struct Block {
+        var title = ""
+        var lines: [String] = []
+    }
+
     static func parse(_ text: String) -> ParsedScript {
-        var lines = text.components(separatedBy: "\n")
+        var lines = text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
         var scriptTitle: String?
-        if let first = lines.firstIndex(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }),
-           let match = lines[first].wholeMatch(of: #/\s*#\s+(.*?)\s*#*\s*/#) {
-            scriptTitle = String(match.1)
+        // A bare `#`, as New starts with before a title is typed, names nothing and is not spoken.
+        if let first = lines.firstIndex(where: { !$0.isEmpty }),
+           let match = lines[first].wholeMatch(of: #/#(?!#)(?:\s+(.*?))?\s*#*/#) {
+            scriptTitle = match.1.map(String.init).flatMap { $0.isEmpty ? nil : $0 }
             lines.remove(at: first)
         }
 
-        var blocks: [[String]] = [[]]
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.isEmpty {
-                if !(blocks.last ?? []).isEmpty { blocks.append([]) }
-            } else {
-                blocks[blocks.count - 1].append(trimmed)
-            }
-        }
-        blocks.removeAll(where: \.isEmpty)
-        // A first block that is one short title-like line names the script, and is not a step.
-        if scriptTitle == nil, let first = blocks.first, first.count == 1, blocks.count > 1, isTitle(first[0]) {
-            scriptTitle = headingText(first[0]) ?? first[0]
+        var blocks = lines.contains { stepHeading($0) != nil } ? headedBlocks(lines) : paragraphs(lines)
+        // A first paragraph that is one short title-like line names the script, and is not a step.
+        if scriptTitle == nil, blocks.count > 1, let first = blocks.first, first.title.isEmpty, first.lines.count == 1,
+           isTitle(first.lines[0]) {
+            scriptTitle = first.lines[0]
             blocks.removeFirst()
         }
 
-        var steps: [ParsedStep] = []
-        for block in blocks {
-            var body = block
-            var title = ""
-            if body.count > 1, let candidate = headingText(body[0]) ?? (isTitle(body[0]) ? body[0] : nil) {
-                title = candidate
+        let steps = blocks.compactMap { block -> ParsedStep? in
+            var body = block.lines.map { $0.replacing(#/^[-*+]\s+/#, with: "") }.filter { !$0.isEmpty }
+            var directions: [Direction] = []
+            while let first = body.first, let cue = first.wholeMatch(of: #/\[([^\[\]]*)\]/#) {
+                let text = cue.1.trimmingCharacters(in: .whitespaces)
+                if !text.isEmpty { directions.append(Direction(kind: .cue, text: text)) }
                 body.removeFirst()
             }
-            let spoken = body.map { $0.replacing(#/^[-*+]\s+/#, with: "") }.filter { !$0.isEmpty }
-            steps.append(ParsedStep(number: steps.count + 1, title: title, lines: spoken))
+            guard !body.isEmpty else { return nil }
+            return ParsedStep(number: 0, title: block.title, directions: directions, lines: body)
+        }
+        .enumerated().map { index, step in
+            var step = step
+            step.number = index + 1
+            return step
         }
 
-        let fallback = blocks.first?.first.map { shortened(headingText($0) ?? $0) } ?? "Untitled script"
+        let firstLine = lines.first { !$0.isEmpty }.map { stepHeading($0) ?? $0 }
+        let fallback = firstLine.map(shortened) ?? "Untitled script"
         return ParsedScript(title: scriptTitle ?? fallback, titleIsStated: scriptTitle != nil, format: .plain, preamble: nil, steps: steps)
     }
 
-    /// A Markdown heading's text ("## The sea wall"), which is always a title.
-    private static func headingText(_ line: String) -> String? {
-        line.wholeMatch(of: #/#{1,6}\s+(.*?)\s*#*/#).map { String($0.1) }
+    /// Steps by `## ` headings. Text before the first heading is a step with no name, so nothing
+    /// written to be said is quietly never said; its first paragraph may still be the title.
+    private static func headedBlocks(_ lines: [String]) -> [Block] {
+        var blocks: [Block] = []
+        var before: [String] = []
+        var current: Block?
+        for line in lines {
+            if let heading = stepHeading(line) {
+                if let current { blocks.append(current) }
+                current = Block(title: heading)
+            } else if current != nil {
+                if !line.isEmpty { current?.lines.append(line) }
+            } else {
+                before.append(line)
+            }
+        }
+        if let current { blocks.append(current) }
+        return paragraphs(before).isEmpty ? blocks : leading(before) + blocks
+    }
+
+    /// The text before the first heading: its first paragraph alone if it could be the title,
+    /// then the rest as one step.
+    private static func leading(_ lines: [String]) -> [Block] {
+        let paras = paragraphs(lines)
+        guard let first = paras.first else { return [] }
+        if first.lines.count == 1, isTitle(first.lines[0]) {
+            let rest = paras.dropFirst().flatMap(\.lines)
+            return [first] + (rest.isEmpty ? [] : [Block(lines: rest)])
+        }
+        return [Block(lines: paras.flatMap(\.lines))]
+    }
+
+    /// Blank-line-separated paragraphs, each a step with no name.
+    private static func paragraphs(_ lines: [String]) -> [Block] {
+        var blocks: [Block] = [Block()]
+        for line in lines {
+            if line.isEmpty {
+                if !(blocks.last?.lines.isEmpty ?? true) { blocks.append(Block()) }
+            } else {
+                blocks[blocks.count - 1].lines.append(line)
+            }
+        }
+        return blocks.filter { !$0.lines.isEmpty }
+    }
+
+    /// A step heading's name ("## The sea wall" is "The sea wall"; a bare "##" is ""), or nil.
+    static func stepHeading(_ line: String) -> String? {
+        line.wholeMatch(of: #/#{2,6}(?:\s+(.*?))?\s*#*/#).map { String($0.1 ?? "") }
     }
 
     static func isTitle(_ line: String) -> Bool {

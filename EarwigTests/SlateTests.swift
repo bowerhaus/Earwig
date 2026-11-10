@@ -31,6 +31,13 @@ struct SlateTests {
         #expect(Slate.text(for: step, take: 3, cuesOn: false) == "Step 2, take 3.")
     }
 
+    @Test func aStepsOpeningCuesAreReadAfterItsTitle() {
+        let step = Step(sortOrder: 0, number: 1, title: "The entrance")
+        step.directions = [Direction(kind: .cue, text: "At the pier gates")]
+        #expect(Slate.text(for: step, take: 1, cuesOn: true) == "Step 1. The entrance. At the pier gates. Step 1, take 1.")
+        #expect(Slate.text(for: step, take: 1, cuesOn: false) == "Step 1, take 1.")
+    }
+
     @Test func theReplyIsTheNumberTakeAndTakeNumber() {
         #expect(Slate.replyWords(number: 3, shotID: nil, take: 2) == [.number(3), ScriptWord(text: "take"), .number(2)])
     }

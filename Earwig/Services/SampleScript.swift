@@ -141,19 +141,19 @@ enum SampleScript {
         - See you next time.
         """
 
-    /// Plain text, so that format has a sample (plan 011).
+    /// The documented format, `#` and `##`, so it has a sample (plans 011 and 015).
     static let seasidePier = """
-        The Seaside Pier
+        # The Seaside Pier
 
-        The entrance
+        ## The entrance
         This pier opened in 1899, and for a while it was the longest on the coast.
         [Gesture along the boards] It runs out nearly a third of a mile, so we'll take it slowly.
 
-        Halfway out
+        ## Halfway out
         Every board under your feet was replaced in the 1990s, one plank at a time.
         If you look down through the gaps, you can see the tide coming in.
 
-        The end of the pier
+        ## The end of the pier
         And here we are. On a clear day you can see the lighthouse from here.
         That's the pier. Thanks for walking it with me.
         """

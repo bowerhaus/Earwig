@@ -21,7 +21,8 @@ struct StepPhrase: Codable, Equatable, Sendable {
 struct PhraseList: Codable, Equatable, Sendable {
     /// Bump when the splitting or the script words change, so stored lists are rebuilt.
     /// 2: a clause is cut only past `PhraseSplitter.maxClauseWords` (plan 009).
-    static let currentVersion = 2
+    /// 3: plain text's documented format: `##` sections, no step-name guess, opening cues (plan 015).
+    static let currentVersion = 3
 
     var parserVersion: Int
     var phrases: [StepPhrase]

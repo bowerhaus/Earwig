@@ -2,7 +2,7 @@
 
 **GitHub Issue:** [#43](https://github.com/bowerhaus/Earwig/issues/43) (PR must include "Closes #43")
 **Branch:** `script-editor` (from `main` at `ab9ea05`, after plan 014 merged). Plan 013, the App Store release, is in flight on `app-store-release` and touches the README, the PRD and CLAUDE.md, so whichever merges second rebases the PRD version, CLAUDE.md's status and the README.
-**Status:** Draft (2026-11-10), for Andy's review. Outside PRD §12's stages, like plans 007 and 014.
+**Status:** Approved (2026-11-10) under `/plan_autopilot`; in progress. Outside PRD §12's stages, like plans 007 and 014.
 **Manual test:** device | on Andy's iPhone 14 Pro: dictating into the editor, the toolbar, saving an edit keeps the takes, Share to the Mac, and the warning before a paste replaces an edit made in Earwig (Verification).
 **Goal:** A script can be written and edited in Earwig, by typing or by the keyboard's own dictation, in one simple documented format: `#` for the title, `##` for a step, square brackets for a cue, everything else spoken. An edited script can go back to the Mac. Cutaway's `script.md` still pastes exactly as now.
 

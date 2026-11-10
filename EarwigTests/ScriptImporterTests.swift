@@ -98,8 +98,96 @@ struct ScriptImporterTests {
         #expect(!importer.refreshIfStale(script))
     }
 
+    // MARK: Written in Earwig (plan 015)
+
+    @Test func newNeverReplacesAScriptByItsTitle() throws {
+        let pasted = try importer.paste("# The Pier\n\nIt opened in 1899.").script
+        let written = try importer.create("# The Pier\n\nIt is a long way out.")
+        #expect(written.outcome == .added)
+        #expect(written.script !== pasted)
+        #expect(written.script.editedInEarwig)
+        #expect(!pasted.editedInEarwig)
+        #expect(count == 2)
+    }
+
+    @Test func newWithAStoredScriptsTextOpensIt() throws {
+        let pasted = try importer.paste(SampleScript.harbourWalk).script
+        let written = try importer.create(SampleScript.harbourWalk + "\n")
+        #expect(written.outcome == .unchanged)
+        #expect(written.script === pasted)
+        #expect(count == 1)
+    }
+
+    @Test func anEditKeepsTakesAndTheStartStepAndIsMarked() throws {
+        let script = try importer.paste(SampleScript.harbourWalk).script
+        script.lastStep = 1
+        let take = Take(stepIndex: 1)
+        context.insert(take)
+        take.script = script
+        let edited = SampleScript.harbourWalk.replacingOccurrences(of: "built in 1890", with: "built in 1891")
+        let result = try importer.edit(script, with: edited)
+        #expect(result.outcome == .replaced)
+        #expect(script.editedInEarwig)
+        #expect(script.takes?.count == 1)
+        #expect(script.lastStep == 1)
+        #expect(script.orderedSteps[1].lines[0].contains("1891"))
+        #expect(try importer.edit(script, with: edited).outcome == .unchanged)
+    }
+
+    @Test func aPasteOverAnEditAsksFirst() throws {
+        let script = try importer.paste(SampleScript.harbourWalk).script
+        _ = try importer.edit(script, with: SampleScript.harbourWalk.replacingOccurrences(of: "Morning!", with: "Hello!"))
+        let newer = SampleScript.harbourWalk.replacingOccurrences(of: "Morning!", with: "Good morning!")
+
+        // By title on the Scripts screen.
+        let asked = try importer.paste(newer)
+        #expect(asked.outcome == .wouldReplaceEdits)
+        #expect(asked.script === script)
+        #expect(script.orderedSteps[0].lines[0].hasPrefix("Hello!"))
+        let replaced = try importer.paste(newer, replacingEdits: true)
+        #expect(replaced.outcome == .replaced)
+        #expect(!script.editedInEarwig)
+        #expect(count == 1)
+
+        // By Paste New Version on the Script screen.
+        _ = try importer.edit(script, with: SampleScript.harbourWalk)
+        #expect(try importer.replace(script, with: Fixtures.rosie).outcome == .wouldReplaceEdits)
+        #expect(try importer.replace(script, with: Fixtures.rosie, replacingEdits: true).outcome == .replaced)
+        #expect(!script.editedInEarwig)
+    }
+
+    @Test func aPasteOfTheSameTextOverAnEditOpensIt() throws {
+        let script = try importer.paste(SampleScript.harbourWalk).script
+        let edited = SampleScript.harbourWalk.replacingOccurrences(of: "Morning!", with: "Hello!")
+        _ = try importer.edit(script, with: edited)
+        #expect(try importer.paste(edited).outcome == .unchanged)
+        #expect(try importer.replace(script, with: edited).outcome == .unchanged)
+    }
+
+    @Test func aSampleIsNeverEdited() throws {
+        let sample = try importer.add(SampleScript.seasidePier)
+        sample.sampleID = "seaside-pier"
+        #expect(try importer.edit(sample, with: "# Changed\n\nNew words.").outcome == .unchanged)
+        #expect(sample.title == "The Seaside Pier")
+    }
+
+    @Test func checkSaysWhyTextCannotBeSaved() {
+        #expect(throws: Never.self) { try ScriptImporter.check("# The Pier\n\nIt opened in 1899.").get() }
+        #expect(ScriptImporter.check("# ").failure == .noSteps)
+        #expect(ScriptImporter.check("#\n\nHello.").map(\.title) == .success("Hello."))
+        #expect(ScriptImporter.check("## Quiet\n[A view]").failure == .noSteps)
+        #expect(ScriptImporter.check("[A view] [Another]").failure == .noWords)
+    }
+
     @Test func hashIgnoresLineEndingsAndTrailingSpace() {
         #expect(ScriptImporter.hash("a\r\nb  \n") == ScriptImporter.hash("a\nb"))
         #expect(ScriptImporter.hash("a\nb") != ScriptImporter.hash("a\nc"))
+    }
+}
+
+private extension Swift.Result {
+    var failure: Failure? {
+        if case .failure(let error) = self { return error }
+        return nil
     }
 }

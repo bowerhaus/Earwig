@@ -2,8 +2,7 @@ import SwiftData
 import SwiftUI
 
 /// New, Edit and Edit a Copy (plan 015, decision 2): the script's text as it is, with Title, Step
-/// and Cue above the keyboard and a line under the text saying what it makes. Dictation is the
-/// keyboard's own.
+/// and Cue under it and a line saying what it makes. Dictation is the keyboard's own.
 struct ScriptEditorView: View {
     @State var editor: ScriptEditor
     /// Called with the saved script once the sheet has gone.
@@ -11,24 +10,28 @@ struct ScriptEditorView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
-    @FocusState private var focused: Bool
     @State private var confirmingDiscard = false
     @State private var error: String?
+    @State private var textView = ScriptTextController()
 
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 10) {
-                TextEditor(text: $editor.text, selection: selection)
-                    .focused($focused)
-                    .font(.body)
-                    .foregroundStyle(EarwigTheme.text)
-                    .tint(EarwigTheme.accent)
-                    .scrollContentBackground(.hidden)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                ScriptTextView(text: $editor.text, selection: editor.selection, controller: textView)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(EarwigTheme.surface, in: RoundedRectangle(cornerRadius: 16))
-                    .accessibilityLabel("Script")
+                // Our own bar, not a keyboard toolbar, which iOS 26 doesn't show in a sheet; it sits
+                // just above the keyboard, and is there with it down too.
+                HStack(spacing: 10) {
+                    formatButton("Title", hint: "Goes to the script's title, or adds one at the top", ScriptEditor.titleChange)
+                    formatButton("Step", hint: "Starts a new step here", ScriptEditor.stepChange)
+                    formatButton("Cue", hint: "Puts square brackets here, for a cue", ScriptEditor.cueChange)
+                    Spacer(minLength: 0)
+                }
+                // Three lines kept for it, so the bar above stays put when the hint gives way to
+                // the count.
                 Text(editor.summary)
+                    .lineLimit(3, reservesSpace: true)
                     .font(.footnote)
                     .foregroundStyle(EarwigTheme.secondaryText)
                     .padding(.horizontal, 6)
@@ -53,15 +56,6 @@ struct ScriptEditorView: View {
                         .opacity(editor.canSave ? 1 : 0.4)
                 }
                 .sharedBackgroundVisibility(.hidden)
-                ToolbarItemGroup(placement: .keyboard) {
-                    Button("Title") { editor.addTitle() }
-                        .accessibilityHint("Goes to the script's title, or adds one at the top")
-                    Button("Step") { editor.addStep() }
-                        .accessibilityHint("Starts a new step here")
-                    Button("Cue") { editor.addCue() }
-                        .accessibilityHint("Puts square brackets here, for a cue")
-                    Spacer()
-                }
             }
             .confirmationDialog("Discard your changes?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
                 Button("Discard Changes", role: .destructive) { dismiss() }
@@ -74,23 +68,17 @@ struct ScriptEditorView: View {
         }
         // A swipe down would lose the changes without asking.
         .interactiveDismissDisabled(editor.hasChanges)
-        .onAppear { focused = true }
+        // Once the sheet is up, or the keyboard doesn't come.
+        .task {
+            try? await Task.sleep(for: .milliseconds(300))
+            textView.focus()
+        }
     }
 
-    /// The editor's character offsets as SwiftUI's selection, kept inside the text.
-    private var selection: Binding<TextSelection?> {
-        Binding {
-            let text = editor.text
-            let range = ScriptEditor.clamped(editor.selection, in: text)
-            let lower = text.index(text.startIndex, offsetBy: range.lowerBound)
-            let upper = text.index(text.startIndex, offsetBy: range.upperBound)
-            return TextSelection(range: lower..<upper)
-        } set: { selection in
-            guard case .selection(let range) = selection?.indices else { return }
-            let text = editor.text
-            guard range.lowerBound >= text.startIndex, range.upperBound <= text.endIndex else { return }
-            editor.selection = text.distance(from: text.startIndex, to: range.lowerBound)..<text.distance(from: text.startIndex, to: range.upperBound)
-        }
+    private func formatButton(_ title: String, hint: String, _ change: @escaping (ScriptEditor.Edit) -> ScriptEditor.Change) -> some View {
+        Button { textView.perform(change) } label: { Text(title).toolbarCapsule() }
+            .buttonStyle(.plain)
+            .accessibilityHint(hint)
     }
 
     private func cancel() {

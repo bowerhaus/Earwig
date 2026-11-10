@@ -119,8 +119,9 @@ struct ScriptDetailView: View {
             }
             .sharedBackgroundVisibility(.hidden)
             ToolbarItem(placement: .topBarTrailing) {
+                // An icon, as Share is, so the title keeps its room; the sheet says Edit a Copy.
                 Button { model.startEditing() } label: {
-                    Text(script.isSample ? "Edit a Copy" : "Edit").toolbarCapsule()
+                    Label(script.isSample ? "Edit a Copy" : "Edit", systemImage: "square.and.pencil").toolbarCircle()
                 }
                 .buttonStyle(.plain)
             }
@@ -366,6 +367,9 @@ struct AccentPill: View {
 
     var body: some View {
         Label(title, systemImage: systemImage)
+            // The word too in a toolbar, which shows a label's icon alone, so New and Paste are
+            // told apart (plan 015).
+            .labelStyle(.titleAndIcon)
             .font(expands ? .title3.bold() : .subheadline.bold())
             .lineLimit(1)
             .minimumScaleFactor(0.7)

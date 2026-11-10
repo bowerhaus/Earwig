@@ -56,12 +56,13 @@ struct ScriptEditorTests {
     }
 
     @Test func aSelectionPastTheEndIsKeptInside() {
-        let editor = ScriptEditor(mode: .new)
-        editor.text = "Hi"
-        editor.selection = 9..<12
-        editor.addCue()
-        #expect(editor.text == "Hi[]")
-        #expect(editor.selection == 3..<3)
+        #expect(ScriptEditor.clamped(9..<12, in: "Hi") == 2..<2)
+        #expect(ScriptEditor.clamped(1..<12, in: "Hi") == 1..<2)
+    }
+
+    @Test func aTitleThatIsThereChangesNothingButTheCursor() {
+        let change = ScriptEditor.titleChange(in: Edit(text: "# Pier\nHi.", selection: 9..<9))
+        #expect(change == ScriptEditor.Change(range: 9..<9, text: "", cursor: 6))
     }
 
     // MARK: Copies

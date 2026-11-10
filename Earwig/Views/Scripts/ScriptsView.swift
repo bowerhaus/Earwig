@@ -38,10 +38,11 @@ struct ScriptsView: View {
                     .sharedBackgroundVisibility(.hidden)
                     // While there are none of their own, the paste row has the buttons.
                     if !own.isEmpty {
-                        ToolbarItem(placement: .primaryAction) { newButton }
+                        // Their own widths, or the toolbar cuts the words short.
+                        ToolbarItem(placement: .primaryAction) { newButton.fixedSize() }
                             // No glass capsule around the pill (iOS 26 draws one for every item).
                             .sharedBackgroundVisibility(.hidden)
-                        ToolbarItem(placement: .primaryAction) { pasteButton }
+                        ToolbarItem(placement: .primaryAction) { pasteButton.fixedSize() }
                             .sharedBackgroundVisibility(.hidden)
                     }
                 }

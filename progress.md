@@ -12,14 +12,19 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 - [x] Set up: plan approved, progress.md
 - [ ] 1. The Cutaway issues: drafted texts are in decision 9; file them in `bowerhaus/Cutaway` with Andy's yes, asked at the device-check pause (moved there so the build isn't held up)
-- [ ] 2. The parser: PlainParser rules (decision 4), `Direction.Kind.cue`, the slate, parser version 3, the Seaside Pier, tests
-- [ ] 3. The importer: `create(_:)`, `editedInEarwig`, the paste outcome to confirm, tests
-- [ ] 4. The editor: `ScriptEditor` model with tests, the sheet and keyboard toolbar
-- [ ] 5. The screens: New, Edit, Edit a Copy, Share, labels gone, the hint, the paste warning, the cue on the card, Hear Cues As
-- [ ] Tests + lint
+- [x] 2. The parser: PlainParser rules (decision 4), `Direction.Kind.cue`, the slate, parser version 3, the Seaside Pier, tests
+- [x] 3. The importer: `create(_:)`, `editedInEarwig`, the paste outcome to confirm, tests
+- [x] 4. The editor: `ScriptEditor` model with tests, the sheet and keyboard toolbar
+- [x] 5. The screens: New, Edit, Edit a Copy, Share, labels gone, the hint, the paste warning, the cue on the card, Hear Cues As
+- [x] Tests + lint
 - [ ] Review + fixes
 - [ ] Manual test: device
 - [ ] Complete (commit + PR)
 
 ## Notes
+
+- Simulator: New, Edit a Copy, the Scripts and Script screens checked with `-EarwigNew YES` and `-EarwigDemo YES -EarwigEdit YES`. The keyboard toolbar didn't show in the sheet and `TextEditor` lost button edits; replaced by a bar of our own and `ScriptTextView` (decision 2, amended). Title, Step and Cue work straight after typing.
+- The simulator's typing drops letters at speed; a stale-update race in the text view was fixed, and the device check watches typing and dictation.
+- 432 tests pass, SwiftLint clean (after the screens).
+- Next: Review + fixes (review-branch Steps 1–4, issue comment, Outcome).
 

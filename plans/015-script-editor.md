@@ -83,6 +83,9 @@ What already exists:
      - **Paste New Version** and **Delete Script** stay where they are.
    - **Share:** on the Script screen, a share button beside Edit (`toolbarCircle()`), for every script, samples included.
    - The Script screen has had no More menu since plan 011, so these are plain buttons, not a menu.
+   - **Amended in the simulator:**
+     - Edit is a pencil icon (`toolbarCircle()`) like Share, not a capsule: "Edit a Copy" in a capsule cut the title to "The Harbo…". The sheet's title says Edit a Copy for a sample.
+     - The toolbar showed New and Paste as icons alone, which can't be told apart, so `AccentPill` now shows its word in a toolbar too.
 
 2. **The editor. Options:**
    - **(a) The raw text in a `TextEditor` (recommended).**
@@ -102,6 +105,12 @@ What already exists:
    - **Save** is enabled only when the importer would accept the text (at least one step with spoken words).
    - **Cancel** with changes asks "Discard your changes?" first.
    - **Dictation** is the keyboard's microphone; Earwig adds nothing. The device check finds out whether iOS's "new line" and "new paragraph" commands work in the editor (Verification, check 1).
+   - **Amended in the simulator:**
+     - **Not a keyboard toolbar.** iOS 26 showed nothing for `ToolbarItemGroup(placement: .keyboard)` in the sheet, so Title, Step and Cue are a bar of Earwig's own capsules under the text, above the keyboard and there with it down too.
+     - **Not SwiftUI's `TextEditor`.** It lost a button's edit made while the keyboard still held a word it was suggesting for, as it does while dictating, and put the cursor short of the edit. The text is UIKit's `UITextView` (`ScriptTextView`), and a button's edit is a replacement (`ScriptEditor.Change`) made through the input system, with the keyboard told of it first, so it can be undone and the keyboard stays in step.
+     - **The bar stays put.** The help line keeps three lines, so the bar doesn't move up when the hint gives way to the count.
+     - **The help line** is the hint while there's nothing to say: "Type a title, then tap Step for each part. A cue, a stage direction for you, goes in square brackets: [Gesture to the boats]." It replaces the placeholder.
+     - **Title** never turns a line into the title; it goes to the title line's end, or adds a `# ` line at the top.
 
 3. **Saving.**
    - **Edit** saves through `ScriptImporter.replace(_:with:)`, the same path as Paste New Version, so takes, renderings, the cues setting and the start step are kept. Unchanged text saves nothing.
@@ -168,7 +177,7 @@ What already exists:
    - It's set when Edit saves a change, and cleared by any paste that replaces the script's text.
    - When a paste would replace a script with it set, on the Scripts screen (by title) or by Paste New Version, a dialog asks first:
      - title: "Replace the changes made in Earwig?"
-     - message: "This script was edited here since it was last pasted. Share it first to keep those changes."
+     - message: "Changes made to this script in Earwig will be lost. Share it first to keep them." (Amended from "edited here since it was last pasted": a script written with New was never pasted.)
      - buttons: **Replace** and **Cancel**.
    - The importer reports this as an outcome to confirm rather than replacing at once.
 
@@ -197,7 +206,8 @@ What already exists:
 
 ## Files
 
-- `Earwig/Views/Editor/ScriptEditorView.swift` (new): the sheet, the keyboard toolbar, the live line.
+- `Earwig/Views/Editor/ScriptEditorView.swift` (new): the sheet, the bar of buttons, the live line.
+- `Earwig/Views/Editor/ScriptTextView.swift` (new): UIKit's text view, and the buttons' edits made through the input system.
 - `Earwig/ViewModels/ScriptEditor.swift` (new): the text, the selection and the toolbar's edits as plain functions, the parse for the live line, and save.
 - `Earwig/Models/ScriptText.swift` (new): the `Transferable` for Share.
 - `Earwig/Services/ScriptImporter.swift`: `create(_:)`, the edit flag, the outcome a paste asks to confirm.

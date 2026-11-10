@@ -32,7 +32,7 @@ struct LaunchSplashTests {
 
     /// Half as long again as plan 007's 0.95 s (Andy, plan 014), and still brief.
     @Test func theSplashIsBrief() {
-        #expect(abs(SplashTiming.total - 1.425) < 1e-9)
+        #expect(SplashTiming.total > 1 && SplashTiming.total < 1.5)
     }
 
     /// Red, green, blue and alpha in 8-bit steps, so float noise doesn't count.

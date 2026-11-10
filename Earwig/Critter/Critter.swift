@@ -335,8 +335,8 @@ extension Critter {
         }
     }
 
-    /// Critter's row in Settings' Screen group (plan 014, decision 10): how often it comes, Off to
-    /// All the Time.
+    /// Critter's row in Settings' Screen group (plan 014, decision 10): how often it comes, Never
+    /// to All the Time.
     struct SettingRow: View {
         @AppStorage(Frequency.key) private var frequency: Frequency = .standard
 

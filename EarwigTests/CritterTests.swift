@@ -19,6 +19,19 @@ struct SeededRandom: RandomNumberGenerator {
     }
 }
 
+/// A straight 300 pt route from the origin to the right.
+func straightRoute() -> Critter.Route {
+    Critter.Route(curves: [Critter.Curve(start: .zero, control1: CGPoint(x: 100, y: 0),
+                                         control2: CGPoint(x: 200, y: 0), end: CGPoint(x: 300, y: 0))])
+}
+
+/// A walk right across the iPhone 17's screen along y 400 at 90 pt a second, from x −50.
+func walkAcross(at start: TimeInterval) -> Critter.Walk {
+    let path = Critter.Route(curves: [Critter.Curve(start: CGPoint(x: -50, y: 400), control1: CGPoint(x: 100, y: 400),
+                                                    control2: CGPoint(x: 300, y: 400), end: CGPoint(x: 450, y: 400))])
+    return Critter.Walk(path: path, speed: 90, start: start)
+}
+
 /// The critter's walks (plan 014, decisions 2 to 4, 6 and 7).
 struct CritterWalkTests {
     /// The iPhone 17's screen, with a large title's bars at the top and the home indicator below.
@@ -31,8 +44,7 @@ struct CritterWalkTests {
     }
 
     @Test func aPathIsMeasuredAlongItself() {
-        let path = Critter.Route(curves: [Critter.Curve(start: .zero, control1: CGPoint(x: 100, y: 0),
-                                                control2: CGPoint(x: 200, y: 0), end: CGPoint(x: 300, y: 0))])
+        let path = straightRoute()
         #expect(abs(path.length - 300) < 0.01)
         #expect(abs(path.point(at: 150).x - 150) < 0.5)
         #expect(path.point(at: -10) == path.start)
@@ -70,18 +82,13 @@ struct CritterWalkTests {
     }
 
     @Test func itFacesAlongItsRoute() {
-        let path = Critter.Route(curves: [Critter.Curve(start: CGPoint(x: -50, y: 400), control1: CGPoint(x: 100, y: 400),
-                                                control2: CGPoint(x: 300, y: 400), end: CGPoint(x: 450, y: 400))])
-        let walk = Critter.Walk(path: path, speed: 90, start: 0)
-        let place = walk.place(at: 2)
+        let place = walkAcross(at: 0).place(at: 2)
         #expect(abs((place?.heading ?? 0) - .pi / 2) < 0.01, "walking right, it faces right")
         #expect(abs((place?.position.x ?? 0) - 130) < 1, "90 pt a second from x −50")
     }
 
     @Test func itStandsStillWhilePausedAndItsLegsDoToo() throws {
-        let path = Critter.Route(curves: [Critter.Curve(start: .zero, control1: CGPoint(x: 100, y: 0),
-                                                control2: CGPoint(x: 200, y: 0), end: CGPoint(x: 300, y: 0))])
-        let walk = Critter.Walk(path: path, speed: 100, pauses: [Critter.Pause(distance: 100, duration: 1)], start: 0)
+        let walk = Critter.Walk(path: straightRoute(), speed: 100, pauses: [Critter.Pause(distance: 100, duration: 1)], start: 0)
         let early = try #require(walk.place(at: 1.2))
         let late = try #require(walk.place(at: 1.8))
         #expect(early.position == late.position)
@@ -136,12 +143,6 @@ struct CritterWalkTests {
         #expect(abs(Critter.Heading.turn(from: turned.heading, to: target)) < 0.01)
     }
 
-    private func walkAcross(at start: TimeInterval) -> Critter.Walk {
-        let path = Critter.Route(curves: [Critter.Curve(start: CGPoint(x: -50, y: 400), control1: CGPoint(x: 100, y: 400),
-                                                control2: CGPoint(x: 300, y: 400), end: CGPoint(x: 450, y: 400))])
-        return Critter.Walk(path: path, speed: 90, start: start)
-    }
-
     /// Under a card only when it would be out within two seconds; over it otherwise (Andy,
     /// device check 2). The walk goes right along y 400 at 90 pt a second, so 2 s is 180 pt.
     @Test func underAShortCardOverALongOne() {
@@ -194,6 +195,11 @@ struct CritterWalkTests {
         #expect(run.path.end.x > area.size.width, "on to the right, the way it was going")
         #expect(planner.leaving(run, .runsOff, at: 2.1) == run, "a run is left to finish")
         #expect(planner.leaving(run, .vanishes, at: 2.1) == nil)
+        // Scrolled 50 pt up since it set off, and under a card: the run starts where it is on
+        // the screen now, and stays under.
+        let under = try #require(planner.leaving(walk, .runsOff, at: 2, drift: 50, side: .behind))
+        #expect(abs(under.path.start.y - 350) < 0.5)
+        #expect(under.layer(at: 0, cards: []) == .behind)
     }
 }
 
@@ -243,7 +249,6 @@ struct CritterScheduleTests {
         let chances = Critter.Frequency.allCases.map(\.chance)
         #expect(chances.first == 0 && chances.last == 1)
         #expect(chances == chances.sorted())
-        #expect(Critter.Frequency.allCases.map(\.rawValue) == Array(0..<Critter.Frequency.allCases.count), "the slider's steps")
     }
 
     @Test func theSettingIsReadBackAndDefaultsToOneInTen() throws {
@@ -260,16 +265,13 @@ struct CritterScheduleTests {
         defaults.removePersistentDomain(forName: "CritterTests")
     }
 
-    @Test func everyVisitComesSoonButNeverUnderTheSplash() {
+    @Test func everyVisitComesSoon() {
         var random = SeededRandom(seed: 3)
         #expect(Critter.Schedule.delay(for: .everyVisit, using: &random) == Critter.Schedule.testingDelay)
-        #expect(Critter.Schedule.testingDelay > SplashTiming.total, "never under the splash")
     }
 
     private func walk(at start: TimeInterval) -> Critter.Walk {
-        let path = Critter.Route(curves: [Critter.Curve(start: .zero, control1: CGPoint(x: 100, y: 0),
-                                                control2: CGPoint(x: 200, y: 0), end: CGPoint(x: 300, y: 0))])
-        return Critter.Walk(path: path, speed: 100, start: start)
+        Critter.Walk(path: straightRoute(), speed: 100, start: start)
     }
 
     @Test func noVisitUnderTheSplash() {

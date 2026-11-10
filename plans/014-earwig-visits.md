@@ -134,7 +134,7 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
    - There is never a visit during the splash, and never more than one earwig at a time.
    - **Amended at device check 2:** while a screen stays up, it rolls again every 30 s (`VisitSchedule.again`), still subject to the rest. The Scripts screen keeps away while Settings is up over it.
 
-9. **When it keeps away.** An app-wide `@Observable` `EarwigVisits` in the environment holds the last visit's time and the keep-away conditions:
+9. **When it keeps away.** An app-wide `@Observable` `EarwigVisits` in the environment holds the last visit's time and the keep-away conditions: *Amended: this is `Critter.Visits`, shared by the screens (`Critter.Visits.shared`), not put in the environment.*
    - **A take:** the Script screen's visit is removed the moment `model.take` is set, not just covered. Nothing should animate under the take's cover while the engine ticks at 20 Hz.
    - **Listen:** the Listen sheet has no earwig, and the Script screen's visit is removed while the sheet is up.
    - **Preview:** in Settings, none starts while Preview plays, and one already walking runs off when Preview starts.
@@ -167,7 +167,7 @@ The mark is already drawn from simple shapes in `scripts/app_icon/make_app_icon.
       - **Not in the README** (Andy).
       - Nothing is left to remove before a release.
 
-11. **Simulator flag.** `-EarwigVisits YES` (Debug builds) makes every screen appearance a visit, ignoring the slider and the rest, so the walk can be seen and screenshotted without waiting.
+11. **Simulator flag.** `-EarwigVisits YES` (Debug builds) makes every screen appearance a visit, ignoring the slider and the rest, so the walk can be seen and screenshotted without waiting. *Amended: the flag is now `-EarwigCritter YES`, and the first visit comes two seconds after a screen appears, then every 30 s.*
 
 ## Files
 
@@ -200,7 +200,7 @@ As built, after device check 2 (the drafted list named `Views/Visitor/` and `Ser
 
 - `uv run --with pillow scripts/app_icon/make_app_icon.py` twice: the second run changes nothing.
 - `xcodebuild test` passes with no warnings; SwiftLint clean.
-- Simulator, with `-EarwigVisits YES`: a walk on each of the three screens, behind and in front; rows still open and swipe under the earwig in front; a take, Listen and Preview keep it away.
+- Simulator, with `-EarwigCritter YES` (drafted as `-EarwigVisits YES`): a walk on each of the three screens, behind and in front; rows still open and swipe under the earwig in front; a take, Listen and Preview keep it away.
 - On the iPhone 14 Pro, Andy's verdicts:
   1. **The walk.** The gait, size and speed read as an earwig walking, not sliding or swimming.
   2. **Behind.** It shows in the gaps and disappears cleanly under the cards, and never stays hidden more than about 2 s (amended).
@@ -385,3 +385,117 @@ Not flagged: `EarwigFigure`, `EarwigGeometry` (generated), the Settings slider b
 - T6 — fixed: `theSwingStaysSmall`, the random-range loop and the restated speed are gone.
 - T7 — fixed: the Debug override is checked.
 - M1 — found while checking T4: `EarwigVisitsTests.swift` had been added after the last `xcodegen generate`, so the first two test runs (372 tests) did not include it. Regenerated, all 395 tests pass, the earwig suites among them.
+
+## Review pass — 2026-11-10
+
+Findings from `/review-branch` on branch `earwig-visits`, **unresolved as written**. Each is a claim
+from a review on that date, not an established fact, and each verdict under *Assessment* is a
+recommendation, not a decision. Work through them and annotate each with what was done — fixed,
+or rejected and why. A finding that turns out to be wrong should say so here rather than be
+deleted.
+
+### Code
+
+**Summary:** I found no CRITICAL or WARNING issues. The amended requirements are met by the code as it stands:
+- **Under or over:** a walk goes under a card only if it is out within 2 s, judged at its head, middle and tail; rows that touch count as one card.
+- **Settings:** the Critter slider runs Never to All the Time, defaults to Sometimes, and its footer is "Critter is just a bit of fun."
+- **How often:** the first roll comes 2–6 s after a screen appears, then every 30 s while it stays. There are 3 minutes between visits, except at All the Time.
+- **Pace and the tap:** each walk has its own pace (65–120 pt/s). A tap sends it running over the cards at 4× that pace.
+- **Scroll:** the walk moves with the list's scroll.
+- **Keeping away:** it stays away during a take (`model.take`), Listen (`model.preview`), Preview (`preview.isPlaying`, where it runs off), Reduce Motion and the splash (2 s against 1.425 s). The Scripts screen keeps away while Settings is up. The Listening Check is pushed, so the critter's visits on Settings stop while it is open.
+- **Layout and docs:** the code is kept to `Earwig/Critter/`, `EarwigApp` is untouched, and the flag is documented as `-EarwigCritter YES`.
+- **Earlier review:** the 2026-11-09 C1 fix (the `held` mirror read by the waiting visit) is in place.
+
+Coordinate checks:
+- The drift and origin arithmetic in `cardFrames`, `run(awayFrom:)` and `leave` is consistent.
+- The tap location and the walk positions use the same layer space.
+- The icon script's `cuts()` helper feeds both the SVG and the Swift writers.
+
+C1. SUGGESTION: the plan still names the old Debug flag in its decision and test text. The app and CLAUDE.md use `-EarwigCritter YES`.
+- `plans/014-earwig-visits.md`, line 170 (decision 11) and lines 188 and 203 (Steps and Verification), still say `-EarwigVisits YES`. Line 137 still names an `EarwigVisits` type.
+- The Context on line 46 records the rename, but decision 11 has no "amended" note, so anyone reading the decision or the Verification list would use a flag that does nothing.
+
+C2. SUGGESTION: a stale doc comment on `SettingRow`.
+- `Earwig/Critter/Critter.swift`, lines 338–339, says "Off to All the Time".
+- Andy renamed the first step Never at device check 2, and `Frequency.title` says "Never".
+
+C3. SUGGESTION: two tests make the same splash assertion.
+- `EarwigTests/CritterTests.swift`, line 266 (in `everyVisitComesSoonButNeverUnderTheSplash`) and line 277 (in `noVisitUnderTheSplash`), both expect `testingDelay > SplashTiming.total`.
+- Dropping it from the first test leaves that test about `.everyVisit`'s delay only.
+
+C4. SUGGESTION: the crossing-time bound is back to 20 s, though the plan's Outcome T5 says 15 s.
+- `EarwigTests/CritterTests.swift`, line 60, bounds the crossing at `< 20` s.
+- That looks deliberate, since the slowest pace is now 65 pt/s and the message says "even at the slowest pace". But it no longer matches what the Outcome records.
+- Either note the change in the plan, or tighten the bound to what the 65 pt/s worst case actually needs.
+
+Build integrity: nothing looks likely to break the build.
+- The referenced symbols exist (`EarwigTheme.text`, `SplashTiming.total`, `Log.event`, `VoicePreview.isPlaying`, `ScriptDetailViewModel.preview` and `.take`).
+- `vertical_whitespace` and `line_length` are disabled in `.swiftlint.yml`, so the double blank line at `CritterWalk.swift` lines 295–296 and the long generated lines are fine.
+- `EarwigTests` is excluded from SwiftLint.
+
+### Tests
+
+I found one coverage gap worth fixing (T1). The rest are small simplifications. The earlier review's T1 to T7 fixes are all still in place, though the duration bound from the old T5 has since been loosened (see T3).
+
+Scope: the only test changes on the branch are `EarwigTests/CritterTests.swift` (new, 303 lines) and a one-test edit to `EarwigTests/LaunchSplashTests.swift`. Nothing is staged, unstaged or untracked under `EarwigTests/`.
+
+**T1. WARNING: the scroll drift and the side kept when a walk leaves have a pure seam but are never tested.**
+- `Planner.leaving(_:_:at:drift:side:)` (`Earwig/Critter/CritterWalk.swift:343-349`) takes `drift` (from device check 3, the scroll) and `side` (from device check 4: a run keeps to its side of the cards).
+- Its only tests, `leavingAtOnceLeavesNothing` and `runningOffGoesStraightOn` (`EarwigTests/CritterTests.swift:185-197`), always use the defaults (`drift: 0`, `side: .inFront`). `drift` and `side` appear nowhere else in the tests.
+- So nothing checks that Preview's run-off starts where the list has scrolled the earwig to, or that an earwig under a card stays under when it runs off.
+- Fix: in `runningOffGoesStraightOn`, call `leaving(walk, .runsOff, at: 2, drift: 50, side: .behind)` and expect two things:
+  - `run.path.start.y` is about 350;
+  - `run.layer(at: 0, cards: []) == .behind`.
+- The tap path's `place.position.y -= cards.drift` and the side chosen in `leave()` (`Earwig/Critter/Critter.swift:281` and `:292`) are inside the private view. They could only be device-checked unless that small calculation moved into the planner.
+
+**T2. SUGGESTION: the splash test now pins the constant and no longer states a rule.**
+- `theSplashIsBrief` (`EarwigTests/LaunchSplashTests.swift:33-36`) expects `SplashTiming.total` to equal 1.425 exactly. That is just appear + hold + fade, so any retune breaks it without anything regressing.
+- The rule that matters to this branch, no visit under the splash, is already covered by `noVisitUnderTheSplash`.
+- Fix: test a bound that says what "brief" means (for example under 1.5 s), or drop the test.
+- Separately, CLAUDE.md's Status still says the splash finishes "in under a second", which is now out of date.
+
+**T3. SUGGESTION: the duration bound is now as loose as it was before the earlier review's T5.**
+- The Outcome records that T5 was fixed with a 15 s bound. `aVisitCrossesTheScreen` is back to `duration > 2 && duration < 20` (`EarwigTests/CritterTests.swift:60`), presumably for the slowest pace in the new `walkingSpeeds` (65 to 120).
+- If 20 s is really needed at 65 pt/s, say so in the plan's Results. Otherwise tighten it, so a crossing that slows down again still fails.
+
+**T4. SUGGESTION: the splash comparison is asserted twice.**
+- `Critter.Schedule.testingDelay > SplashTiming.total` is in both `everyVisitComesSoonButNeverUnderTheSplash` (line 266) and `noVisitUnderTheSplash` (line 277).
+- Keep it only in `noVisitUnderTheSplash`, and rename the first test to match what is left.
+
+**T5. SUGGESTION: the same test routes are built five times over.**
+- The straight 300 pt route appears at lines 34, 82 and 270 (the last as the private `walk(at:)` in `CritterScheduleTests`).
+- The y-400 crossing route appears at line 73 (`itFacesAlongItsRoute`) and again in `walkAcross(at:)` at line 140.
+- One file-level helper for each would remove the copies, and `itFacesAlongItsRoute` could use `walkAcross(at: 0)` as it is.
+
+**T6. SUGGESTION: one check is true by construction.**
+- In `theStepsRunFromNeverToEveryVisit` (`EarwigTests/CritterTests.swift:246`), the rawValue check can only hold for an `Int` enum with implicit raw values.
+- Keep the first/last and sorted checks on `chance`, and drop line 246.
+
+The volume of tests suits about 570 lines of pure planning logic. Most tests are short and each covers one plan decision. I left out drawing code (`Figure`, `CritterGeometry`), the Settings slider binding and the one-line modifier call sites, which are trivial or visual. I did not run the test suite.
+
+### Assessment
+
+- C1 — FIX: add an amended note to decision 11 and to decision 9's `EarwigVisits`, and give the Verification line the new flag. The Steps are left as the record of what was planned.
+- C2 — FIX: the comment says Never to All the Time.
+- C3 — FIX: the same as T4; it is fixed once.
+- C4 — FIX (part): keep 20 s, which is what the slowest pace needs (the 15 s bound at 90 pt/s scales to about 20.8 s at 65), and record why in this pass's Outcome.
+- T1 — FIX: `runningOffGoesStraightOn` also leaves with `drift: 50, side: .behind` and checks where the run starts and the side it keeps.
+- T2 — FIX (part): `theSplashIsBrief` bounds the splash at under 1.5 s rather than pinning 1.425. NOT REAL for its CLAUDE.md note: CLAUDE.md's Status says "1.425 s since plan 014", and "under a second" is in neither CLAUDE.md nor the PRD.
+- T3 — as C4.
+- T4 — FIX: the splash comparison stays only in `noVisitUnderTheSplash`, and the other test becomes `everyVisitComesSoon`.
+- T5 — FIX: one file-level helper for each route.
+- T6 — FIX: drop the rawValue check.
+
+### Outcome — 2026-11-10
+
+- C1 — fixed: decisions 9 and 11 carry amended notes (`Critter.Visits.shared`; `-EarwigCritter YES`, two seconds, then every 30 s), and the Verification line names the new flag. The Steps stay as the record of what was planned.
+- C2 — fixed: `SettingRow`'s comment says Never to All the Time.
+- C3 — fixed with T4.
+- C4 — kept at 20 s: at the slowest pace, 65 pt/s, the 15 s bound set at 90 pt/s scales to about 20.8 s, and 40 seeded walks all finish within 20 s. A crossing that slows down again still fails.
+- T1 — fixed: `runningOffGoesStraightOn` also leaves with `drift: 50, side: .behind` and checks that the run starts at y 350 and stays under the cards.
+- T2 — fixed (part): `theSplashIsBrief` checks the splash is over a second and under 1.5 s. Its CLAUDE.md note was not real: CLAUDE.md says "1.425 s since plan 014".
+- T3 — as C4.
+- T4 — fixed: the splash comparison is only in `noVisitUnderTheSplash`; the other test is `everyVisitComesSoon`.
+- T5 — fixed: `straightRoute()` and `walkAcross(at:)` are file-level helpers, used by every test that had its own copy.
+- T6 — fixed: the rawValue check is gone.
+- 400 tests pass, SwiftLint clean.

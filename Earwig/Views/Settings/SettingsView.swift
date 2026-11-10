@@ -19,7 +19,7 @@ struct SettingsView: View {
     @AppStorage(TakeSettings.keepsRecordingsKey) private var keepsRecordings = false
     @AppStorage(TakeSettings.cameraBehindTextKey) private var cameraBehindText = TakeSettings.defaultCameraBehindText
     @AppStorage(AppSettings.inlineDirectionsKey) private var inlineDirections: InlineDirections = .chime
-    /// Temporary, for choosing how often the earwig comes; it goes once the rate is chosen (plan 014, decision 10).
+    /// How often the earwig comes (plan 014, decision 10).
     @AppStorage(VisitFrequency.key) private var visitFrequency: VisitFrequency = .standard
     @Environment(\.modelContext) private var context
     @Environment(ScriptRenderer.self) private var renderer
@@ -79,7 +79,7 @@ struct SettingsView: View {
                             .foregroundStyle(EarwigTheme.warning)
                     }
                 }
-                .listRowBackground(EarwigTheme.surface)
+                .listRowBackground(EarwigTheme.surface.earwigCard())
 
                 Section {
                     LabeledContent("Lead") {
@@ -98,7 +98,7 @@ struct SettingsView: View {
                     Text("Both wait at phrase ends; Hybrid also speeds the voice up or down to keep the lead.")
                         .foregroundStyle(EarwigTheme.secondaryText)
                 }
-                .listRowBackground(EarwigTheme.surface)
+                .listRowBackground(EarwigTheme.surface.earwigCard())
 
                 Section {
                     Picker("Start", selection: $start) {
@@ -114,7 +114,7 @@ struct SettingsView: View {
                             .foregroundStyle(EarwigTheme.secondaryText)
                     }
                 }
-                .listRowBackground(EarwigTheme.surface)
+                .listRowBackground(EarwigTheme.surface.earwigCard())
 
                 Section {
                     Picker("Mode", selection: $mode) {
@@ -133,10 +133,19 @@ struct SettingsView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.2)
                     }
+                    VStack(alignment: .leading, spacing: 8) {
+                        LabeledContent("Critter", value: visitFrequency.title)
+                        Slider(value: visitSteps, in: 0...Double(VisitFrequency.allCases.count - 1), step: 1)
+                            .accessibilityLabel("Critter")
+                            .accessibilityValue(visitFrequency.title)
+                    }
                 } header: {
                     Text("Screen")
+                } footer: {
+                    Text("Critter is just a bit of fun.")
+                        .foregroundStyle(EarwigTheme.secondaryText)
                 }
-                .listRowBackground(EarwigTheme.surface)
+                .listRowBackground(EarwigTheme.surface.earwigCard())
 
                 Section {
                     Picker("Record", selection: $recording) {
@@ -158,7 +167,7 @@ struct SettingsView: View {
                     Text("With Keep Recordings off, each recording replaces the last. They're in Files, under On My iPhone › Earwig.")
                         .foregroundStyle(EarwigTheme.secondaryText)
                 }
-                .listRowBackground(EarwigTheme.surface)
+                .listRowBackground(EarwigTheme.surface.earwigCard())
 
                 Section {
                     NavigationLink {
@@ -166,19 +175,10 @@ struct SettingsView: View {
                     } label: {
                         Label("Listening Check", systemImage: "waveform.and.mic")
                     }
-                    VStack(alignment: .leading, spacing: 8) {
-                        LabeledContent("Earwig Visits", value: visitFrequency.title)
-                        Slider(value: visitSteps, in: 0...Double(VisitFrequency.allCases.count - 1), step: 1)
-                            .accessibilityLabel("Earwig Visits")
-                            .accessibilityValue(visitFrequency.title)
-                    }
                 } header: {
                     Text("Diagnostics")
-                } footer: {
-                    Text("How often an earwig wanders across the screen.")
-                        .foregroundStyle(EarwigTheme.secondaryText)
                 }
-                .listRowBackground(EarwigTheme.surface)
+                .listRowBackground(EarwigTheme.surface.earwigCard())
 
                 Section {
                     // The version alone: links to the source and the licence would make a bought
@@ -187,7 +187,7 @@ struct SettingsView: View {
                 } header: {
                     Text("About")
                 }
-                .listRowBackground(EarwigTheme.surface)
+                .listRowBackground(EarwigTheme.surface.earwigCard())
             }
             .scrollContentBackground(.hidden)
             // White labels, pale headers and values, in the light scheme (plan 011, decision 16).
@@ -235,7 +235,7 @@ struct SettingsView: View {
         }
     }
 
-    /// The slider's steps, Never to Every Visit.
+    /// Critter's steps, Off to All the Time.
     private var visitSteps: Binding<Double> {
         Binding(get: { Double(visitFrequency.rawValue) },
                 set: { visitFrequency = VisitFrequency(rawValue: Int($0.rounded())) ?? .standard })

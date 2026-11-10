@@ -20,8 +20,9 @@ struct ScriptsView: View {
         NavigationStack(path: $model.path) {
             list
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                // Between the sky blue and the cards, so a walk behind shows in the gaps (plan 014).
-                .earwigVisits()
+                // Between the sky blue and the cards, so a walk under them shows in the gaps; none
+                // while Settings is up over the list (plan 014).
+                .earwigVisits(keepAway: showingSettings)
                 .background(EarwigTheme.background)
                 .navigationTitle("Scripts")
                 // No bar background of its own: the screen's sky blue is behind it, and setting one
@@ -98,7 +99,7 @@ struct ScriptsView: View {
                     }
                 }
             }
-            .listRowBackground(EarwigTheme.surface)
+            .listRowBackground(EarwigTheme.surface.earwigCard())
             Section {
                 ForEach(samples) { script in
                     NavigationLink(value: script) {
@@ -109,7 +110,7 @@ struct ScriptsView: View {
                 Text("Samples")
                     .foregroundStyle(EarwigTheme.secondaryText)
             }
-            .listRowBackground(EarwigTheme.surface)
+            .listRowBackground(EarwigTheme.surface.earwigCard())
         }
         .scrollContentBackground(.hidden)
     }

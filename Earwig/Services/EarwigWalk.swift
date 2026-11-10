@@ -1,8 +1,8 @@
 import CoreGraphics
 import Foundation
 
-/// Which side of the cards a walk is on (plan 014, decision 6): behind them, seen only in the
-/// gaps, or over them, where a tap sends it running.
+/// Which side of the cards the earwig is on (plan 014, decision 6): behind them, seen only in
+/// the gaps, or over them, where a tap sends it running.
 enum VisitLayer: Equatable, Sendable {
     case behind
     case inFront
@@ -108,6 +108,8 @@ struct WalkPlace: Equatable, Sendable {
     /// How far its legs have walked, for the gait: it grows while it walks or turns and stands
     /// still while it pauses, so the legs never slide.
     var stepped: CGFloat
+    /// How far along its route it is.
+    var walked: CGFloat = 0
 }
 
 /// One walk across the screen, or one run off it (plan 014, decisions 4 and 7). Everything
@@ -131,20 +133,18 @@ struct Walk: Identifiable, Equatable, Sendable {
     /// In order along the route.
     let pauses: [Pause]
     let turn: Turn?
-    let layer: VisitLayer
     /// When it began, as `Date.timeIntervalSinceReferenceDate`.
     let start: TimeInterval
     let isRun: Bool
     /// How far its legs had walked when it began, so a run's legs carry on from the walk's.
     let steppedBefore: CGFloat
 
-    init(path: VisitPath, speed: CGFloat, pauses: [Pause] = [], turn: Turn? = nil, layer: VisitLayer,
+    init(path: VisitPath, speed: CGFloat, pauses: [Pause] = [], turn: Turn? = nil,
          start: TimeInterval, isRun: Bool = false, steppedBefore: CGFloat = 0) {
         self.path = path
         self.speed = speed
         self.pauses = pauses.sorted { $0.distance < $1.distance }
         self.turn = turn
-        self.layer = layer
         self.start = start
         self.isRun = isRun
         self.steppedBefore = steppedBefore
@@ -173,7 +173,40 @@ struct Walk: Identifiable, Equatable, Sendable {
         }
         let walked = distance(after: elapsed - turning)
         return WalkPlace(position: path.point(at: walked), heading: path.heading(at: walked),
-                         stepped: steppedBefore + speed * Self.turningStep * CGFloat(turning) + walked)
+                         stepped: steppedBefore + speed * Self.turningStep * CGFloat(turning) + walked, walked: walked)
+    }
+
+    /// Under a card only if it would be out the other side within this (Andy, device check 2).
+    static let longestHide: TimeInterval = 2
+
+    /// Which side of the cards it is on at a place on its route (plan 014, decision 6). It
+    /// goes under a card only when the stretch of its route under that card takes no longer
+    /// than `longestHide`, and over it otherwise. Its head, middle and tail are all asked, so it
+    /// goes under from the moment its head reaches a card until its tail leaves; a long stretch
+    /// anywhere on it keeps it over. Away from the cards either side looks the same.
+    func layer(at walked: CGFloat, cards: [CGRect], length: CGFloat = WalkPlanner.length) -> VisitLayer {
+        guard !cards.isEmpty else { return .inFront }
+        var under = false
+        for probe in [walked + length / 2, walked, walked - length / 2] {
+            guard let stretch = stretchUnderCards(at: probe, cards: cards) else { continue }
+            if TimeInterval(stretch / speed) > Self.longestHide { return .inFront }
+            under = true
+        }
+        return under ? .behind : .inFront
+    }
+
+    /// The length of the route's stretch under the cards that a distance is in, or nil if it is
+    /// not under one. Cards that touch, as the rows of one card do, are one stretch.
+    func stretchUnderCards(at distance: CGFloat, cards: [CGRect]) -> CGFloat? {
+        let length = path.length
+        guard distance >= 0, distance <= length else { return nil }
+        let isUnder = { (d: CGFloat) in cards.contains { $0.contains(path.point(at: d)) } }
+        guard isUnder(distance) else { return nil }
+        let step: CGFloat = 4
+        var from = distance, to = distance
+        while from - step >= 0, isUnder(from - step) { from -= step }
+        while to + step <= length, isUnder(to + step) { to += step }
+        return to - from + step
     }
 
     /// The distance along the route after so long walking, allowing for the pauses.
@@ -235,7 +268,7 @@ struct WalkPlanner {
     }
 
     /// A walk across, entering off one edge and leaving off another, or turning back.
-    func visit<G: RandomNumberGenerator>(layer: VisitLayer, start: TimeInterval, using random: inout G) -> Walk {
+    func visit<G: RandomNumberGenerator>(start: TimeInterval, using random: inout G) -> Walk {
         let entry = randomEdge(using: &random)
         let from = offScreen(entry, using: &random)
         let curves: [WalkCurve]
@@ -249,12 +282,12 @@ struct WalkPlanner {
             curves = [gentle(from: from, to: offScreen(exit, using: &random), using: &random)]
         }
         let path = VisitPath(curves: curves)
-        return Walk(path: path, speed: Self.walkingSpeed, pauses: pauses(on: path, using: &random), layer: layer, start: start)
+        return Walk(path: path, speed: Self.walkingSpeed, pauses: pauses(on: path, using: &random), start: start)
     }
 
     /// A run from where it is, turning away from the finger and off the nearest edge that lies
     /// away from it.
-    func run(from place: WalkPlace, awayFrom tap: CGPoint, layer: VisitLayer, start: TimeInterval) -> Walk {
+    func run(from place: WalkPlace, awayFrom tap: CGPoint, start: TimeInterval) -> Walk {
         let here = place.position
         var away = CGVector(dx: here.x - tap.x, dy: here.y - tap.y)
         if away.length < 1 { away = Heading.direction(place.heading) }
@@ -268,7 +301,7 @@ struct WalkPlanner {
                               control2: exit.offset(by: edge.outward, times: -length),
                               end: exit)
         return Walk(path: VisitPath(curves: [curve]), speed: Self.walkingSpeed * Self.runningFactor,
-                    turn: Walk.Turn(from: place.heading, duration: Self.runTurn), layer: layer, start: start,
+                    turn: Walk.Turn(from: place.heading, duration: Self.runTurn), start: start,
                     isRun: true, steppedBefore: place.stepped)
     }
 
@@ -278,7 +311,7 @@ struct WalkPlanner {
         guard how == .runsOff, let place = walk.place(at: time) else { return nil }
         if walk.isRun { return walk }
         let behind = place.position.offset(by: Heading.direction(place.heading), times: -10)
-        return run(from: place, awayFrom: behind, layer: walk.layer, start: time)
+        return run(from: place, awayFrom: behind, start: time)
     }
 
     func distance(from point: CGPoint, to edge: Edge) -> CGFloat {

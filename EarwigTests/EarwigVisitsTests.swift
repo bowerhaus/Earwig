@@ -52,7 +52,7 @@ struct EarwigWalkTests {
     @Test(arguments: 0..<40)
     func aVisitCrossesTheScreen(seed: Int) {
         var random = SeededRandom(seed: UInt64(seed))
-        let walk = planner.visit(layer: .behind, start: 100, using: &random)
+        let walk = planner.visit(start: 100, using: &random)
         let start = walk.path.start, end = walk.path.end
         #expect(isOffScreen(start) && isOffScreen(end))
         #expect(walk.place(at: walk.end + 0.01) == nil, "gone after its end")
@@ -71,7 +71,7 @@ struct EarwigWalkTests {
     @Test func itFacesAlongItsRoute() {
         let path = VisitPath(curves: [WalkCurve(start: CGPoint(x: -50, y: 400), control1: CGPoint(x: 100, y: 400),
                                                 control2: CGPoint(x: 300, y: 400), end: CGPoint(x: 450, y: 400))])
-        let walk = Walk(path: path, speed: 90, layer: .behind, start: 0)
+        let walk = Walk(path: path, speed: 90, start: 0)
         let place = walk.place(at: 2)
         #expect(abs((place?.heading ?? 0) - .pi / 2) < 0.01, "walking right, it faces right")
         #expect(abs((place?.position.x ?? 0) - 130) < 1, "90 pt a second from x −50")
@@ -80,7 +80,7 @@ struct EarwigWalkTests {
     @Test func itStandsStillWhilePausedAndItsLegsDoToo() throws {
         let path = VisitPath(curves: [WalkCurve(start: .zero, control1: CGPoint(x: 100, y: 0),
                                                 control2: CGPoint(x: 200, y: 0), end: CGPoint(x: 300, y: 0))])
-        let walk = Walk(path: path, speed: 100, pauses: [Walk.Pause(distance: 100, duration: 1)], layer: .behind, start: 0)
+        let walk = Walk(path: path, speed: 100, pauses: [Walk.Pause(distance: 100, duration: 1)], start: 0)
         let early = try #require(walk.place(at: 1.2))
         let late = try #require(walk.place(at: 1.8))
         #expect(early.position == late.position)
@@ -94,7 +94,7 @@ struct EarwigWalkTests {
     func aTapSendsItAwayFromTheFinger(tap: CGPoint) throws {
         let here = CGPoint(x: 200, y: 450)
         let place = WalkPlace(position: here, heading: 0, stepped: 37)
-        let run = planner.run(from: place, awayFrom: tap, layer: .inFront, start: 10)
+        let run = planner.run(from: place, awayFrom: tap, start: 10)
         #expect(run.isRun)
         #expect(isOffScreen(run.path.end))
         let away = CGVector(dx: here.x - tap.x, dy: here.y - tap.y)
@@ -106,7 +106,7 @@ struct EarwigWalkTests {
     @Test func aRunLeavesByTheNearestEdgeAwayFromTheFinger() {
         // Near the right edge, tapped from the left: out to the right, not round the long way.
         let place = WalkPlace(position: CGPoint(x: 370, y: 500), heading: 0, stepped: 0)
-        let run = planner.run(from: place, awayFrom: CGPoint(x: 340, y: 500), layer: .inFront, start: 0)
+        let run = planner.run(from: place, awayFrom: CGPoint(x: 340, y: 500), start: 0)
         #expect(run.path.end.x > area.size.width)
         #expect(run.duration < 1.5, "a dash")
     }
@@ -116,7 +116,7 @@ struct EarwigWalkTests {
         let here = CGPoint(x: 200, y: 450)
         let facing: CGFloat = .pi - 0.3
         let place = WalkPlace(position: here, heading: facing, stepped: 0)
-        let run = planner.run(from: place, awayFrom: CGPoint(x: 200, y: 500), layer: .inFront, start: 0)
+        let run = planner.run(from: place, awayFrom: CGPoint(x: 200, y: 500), start: 0)
         let target = run.path.heading(at: 0)
         let halfway = try #require(run.place(at: WalkPlanner.runTurn / 2))
         #expect(halfway.position == here, "it turns before it moves")
@@ -129,7 +129,37 @@ struct EarwigWalkTests {
     private func walkAcross(at start: TimeInterval) -> Walk {
         let path = VisitPath(curves: [WalkCurve(start: CGPoint(x: -50, y: 400), control1: CGPoint(x: 100, y: 400),
                                                 control2: CGPoint(x: 300, y: 400), end: CGPoint(x: 450, y: 400))])
-        return Walk(path: path, speed: 90, layer: .inFront, start: start)
+        return Walk(path: path, speed: 90, start: start)
+    }
+
+    /// Under a card only when it would be out within two seconds; over it otherwise (Andy,
+    /// device check 2). The walk goes right along y 400 at 90 pt a second, so 2 s is 180 pt.
+    @Test func underAShortCardOverALongOne() {
+        let walk = walkAcross(at: 0)
+        let short = CGRect(x: 100, y: 370, width: 120, height: 60)
+        let long = CGRect(x: 20, y: 370, width: 360, height: 60)
+        #expect(walk.layer(at: 160, cards: [short]) == .behind)
+        #expect(walk.layer(at: 160, cards: [long]) == .inFront)
+        #expect(walk.layer(at: 160, cards: []) == .inFront)
+        #expect(walk.layer(at: 0, cards: [short]) == .inFront, "away from the cards")
+    }
+
+    @Test func itGoesUnderFromHeadToTail() {
+        let walk = walkAcross(at: 0)
+        let card = CGRect(x: 150, y: 370, width: 100, height: 60)
+        // The route starts at x −50, so distance d is at x d − 50; the earwig is 70 pt long.
+        #expect(walk.layer(at: 175, cards: [card]) == .behind, "its head, at x 160, is under")
+        #expect(walk.layer(at: 160, cards: [card]) == .inFront, "its head, at x 145, is not yet")
+        #expect(walk.layer(at: 325, cards: [card]) == .behind, "its tail, at x 240, is still under")
+    }
+
+    @Test func touchingCardsAreOneStretch() throws {
+        let walk = walkAcross(at: 0)
+        // Two rows of one card, 100 pt each: 200 pt together, over two seconds.
+        let rows = [CGRect(x: 100, y: 370, width: 100, height: 60), CGRect(x: 200, y: 370, width: 100, height: 60)]
+        let stretch = try #require(walk.stretchUnderCards(at: 200, cards: rows))
+        #expect(abs(stretch - 200) < 8)
+        #expect(walk.layer(at: 200, cards: rows) == .inFront)
     }
 
     @Test func leavingAtOnceLeavesNothing() {
@@ -140,7 +170,7 @@ struct EarwigWalkTests {
     @Test func runningOffGoesStraightOn() throws {
         let walk = walkAcross(at: 0)
         let run = try #require(planner.leaving(walk, .runsOff, at: 2))
-        #expect(run.isRun && run.layer == walk.layer)
+        #expect(run.isRun)
         #expect(run.path.end.x > area.size.width, "on to the right, the way it was going")
         #expect(planner.leaving(run, .runsOff, at: 2.1) == run, "a run is left to finish")
         #expect(planner.leaving(run, .vanishes, at: 2.1) == nil)
@@ -219,7 +249,7 @@ struct VisitScheduleTests {
     private func walk(at start: TimeInterval) -> Walk {
         let path = VisitPath(curves: [WalkCurve(start: .zero, control1: CGPoint(x: 100, y: 0),
                                                 control2: CGPoint(x: 200, y: 0), end: CGPoint(x: 300, y: 0))])
-        return Walk(path: path, speed: 100, layer: .behind, start: start)
+        return Walk(path: path, speed: 100, start: start)
     }
 
     @Test func noVisitBeforeTheSplashHasGone() {

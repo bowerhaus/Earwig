@@ -1,9 +1,10 @@
 import Foundation
 import Observation
 
-/// How often the earwig comes (plan 014, decision 10): the chance each time a screen appears.
-/// The steps are uneven, so the rare ones are easy to pick. Set by the temporary Earwig Visits
-/// slider in Diagnostics, which goes once the rate is chosen.
+/// How often the earwig comes (plan 014, decision 10, amended at device check 2): the chance of
+/// a visit a moment after a screen appears and every `VisitSchedule.again` while it stays. The
+/// steps are uneven, so the rare ones are easy to pick. Set by the Critter slider in Settings'
+/// Screen group.
 enum VisitFrequency: Int, CaseIterable, Sendable {
     case never
     case oneIn50
@@ -30,13 +31,13 @@ enum VisitFrequency: Int, CaseIterable, Sendable {
 
     var title: String {
         switch self {
-        case .never: "Never"
-        case .oneIn50: "1 in 50"
-        case .oneIn20: "1 in 20"
-        case .oneIn10: "1 in 10"
-        case .oneIn5: "1 in 5"
-        case .oneIn2: "1 in 2"
-        case .everyVisit: "Every Visit"
+        case .never: "Off"
+        case .oneIn50: "Rarely"
+        case .oneIn20: "Now and Then"
+        case .oneIn10: "Sometimes"
+        case .oneIn5: "Often"
+        case .oneIn2: "Very Often"
+        case .everyVisit: "All the Time"
         }
     }
 
@@ -51,14 +52,16 @@ enum VisitFrequency: Int, CaseIterable, Sendable {
 }
 
 /// Whether a screen gets a visit (plan 014, decision 8): its chance, and an app-wide rest
-/// between visits so moving quickly between screens cannot bring two close together. Every
-/// Visit ignores the rest, for testing.
+/// between visits so moving quickly between screens cannot bring two close together. All the
+/// Time ignores the rest, for testing.
 enum VisitSchedule {
     static let rest: TimeInterval = 180
     /// How long after a screen appears a visit begins, so it is not there the moment it opens.
     static let delays: ClosedRange<Double> = 2...6
     /// Long enough for the splash to be gone, for `-EarwigVisits YES`.
     static let testingDelay: TimeInterval = 1
+    /// How often a screen rolls again while it stays (Andy, device check 2).
+    static let again: TimeInterval = 30
 
     static func delay<G: RandomNumberGenerator>(for frequency: VisitFrequency, using random: inout G) -> TimeInterval {
         frequency == .everyVisit ? testingDelay : Double.random(in: delays, using: &random)

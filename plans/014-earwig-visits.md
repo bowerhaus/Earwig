@@ -246,7 +246,7 @@ Built 2026-11-09 and checked on the iPhone 14 Pro on 2026-11-10. **PASS** on che
 4. **The tap:** a tap sent it under the card it was on, and the run seemed quick. A run now keeps to its side. Three times the walk was tried, and Andy asked for four again. Passed ("seems okay").
 5. **Keeping away:** passed for a take, Listen, Preview and Reduce Motion.
 6. **Smoothness:** passed ("Smooth").
-7. **How often:** not yet. The default (Sometimes) and the rates are for Andy to judge after about a week of TestFlight use; a follow-up.
+7. **How often:** not yet. The default (Sometimes) and the rates are for Andy to judge after about a week of TestFlight use: follow-up [#42](https://github.com/bowerhaus/Earwig/issues/42).
 
 **How often, for reference (staying on one screen)**
 

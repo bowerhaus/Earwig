@@ -61,7 +61,7 @@ What already exists:
 - the format labels removed, and the Seaside Pier sample rewritten in the documented format;
 - **Share** on the Script screen: the text, or a `.md` file;
 - a warning before a paste replaces changes made in Earwig;
-- "cue" as the one term in the app and the README, with Settings' Stage Directions renamed Cues in Lines (decision 11);
+- "cue" as the one term in the app and the README, with Settings' Stage Directions renamed Hear Cues As (decision 11);
 - the two Cutaway issues, filed at the start of implementation;
 - tests, the simulator flag, the device check, and the README's short "Writing a script".
 
@@ -115,7 +115,7 @@ What already exists:
    - a `# ` line is the title;
    - a `## ` line starts a step, with its name if it has one;
    - with no `##` at all, each paragraph (text between blank lines) is a step;
-   - square brackets are a cue: inside a line, chimed or spoken there (Settings' Cues in Lines); on its own line at the top of a step, read in the slate before the take, as Cutaway's `Shows:` is;
+   - square brackets are a cue: inside a line, chimed or spoken there (Settings' Hear Cues As); on its own line at the top of a step, read in the slate before the take, as Cutaway's `Shows:` is;
    - everything else is spoken. Round brackets are spoken.
 
    What changes in `PlainParser`:
@@ -187,7 +187,9 @@ What already exists:
       - it's the broadcast word for an instruction to the presenter, and Earwig copies a broadcast practice;
       - it's short, for the toolbar, the start card and Settings;
       - Read Cues and Cue Voice already use it.
-    - **Settings' Stage Directions** (Chime or Spoken) becomes **Cues in Lines**. That also says what decision 4 makes true: a cue at the top of a step is always read with the slate, and only cues inside a line are chimed or spoken. Its name says what it does, so it has no footer.
+    - **Settings' Stage Directions** (Chime or Spoken) becomes **Hear Cues As** (Andy), so it reads with its choice: "Hear Cues As Chime".
+      - Its footer says what the name doesn't: "Cues at the top of a step are always read with the slate." Decision 4 makes that true, and only cues in the middle of what you say are chimed or spoken.
+      - **Cues in Lines** was tried first and dropped: "lines" is Earwig's word for a script's parts, and Andy couldn't tell what it meant until it was explained. **Cues While You Speak** was also offered.
     - **Read Cues** and **Cue Voice** keep their names.
     - **"Stage direction"** appears once, as the explanation in the README and the editor's placeholder: a cue is "a stage direction for you, like [Gesture to the boats]".
     - **The README** says "cue" throughout, in place of "stage direction" and "direction".
@@ -207,7 +209,7 @@ What already exists:
 - `Earwig/Services/SampleScript.swift`: the Seaside Pier rewritten.
 - `Earwig/Views/Scripts/ScriptsView.swift`, `Earwig/ViewModels/ScriptsViewModel.swift`: New, the hint, the row, the paste warning.
 - `Earwig/Views/ScriptDetail/ScriptDetailView.swift`, `Earwig/ViewModels/ScriptDetailViewModel.swift`, `Earwig/Views/ScriptDetail/StepView.swift`: Edit, Edit a Copy, Share, the warning, the cue on the card.
-- `Earwig/Views/Settings/SettingsView.swift`: Cues in Lines.
+- `Earwig/Views/Settings/SettingsView.swift`: Hear Cues As and its footer.
 - `EarwigTests/`: the parser, importer, editor and slate tests.
 - `README.md`, `PRD.md`, `CLAUDE.md`, `progress.md`, this plan.
 
@@ -229,7 +231,7 @@ What already exists:
    - a paste of an edited script asks first;
    - Edit a Copy is a script of the presenter's own and never adopted as the sample.
 4. **The editor.** `ScriptEditor` with tests for Title, Step and Cue at the start, middle and end of the text and with a selection, then the sheet. Checked in the simulator with `-EarwigNew YES` and `-EarwigEdit YES`, with screenshots to Andy for a first look.
-5. **The screens.** New, Edit, Edit a Copy, Share, the labels gone, the hint, the paste warning, the cue on the card, and Cues in Lines.
+5. **The screens.** New, Edit, Edit a Copy, Share, the labels gone, the hint, the paste warning, the cue on the card, and Hear Cues As.
 6. **Device check** on the iPhone 14 Pro, one check at a time (Verification), installed with `devicectl`. Verdicts are Andy's.
 7. **Finish.**
    - SwiftLint clean, no warnings, all tests pass.

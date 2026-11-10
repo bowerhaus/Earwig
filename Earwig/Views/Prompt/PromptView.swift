@@ -79,10 +79,7 @@ struct PromptView: View {
 
     private func routeIcon(_ systemImage: String, state: PromptViewModel.RouteState, label: String, size: CGFloat = 44) -> some View {
         Image(systemName: systemImage)
-            .font(size < 44 ? .body : .title2)
-            .foregroundStyle(colour(state))
-            .frame(width: size, height: size)
-            .background(EarwigTheme.surface, in: Circle())
+            .surfaceCircle(size < 44 ? .body : .title2, colour: colour(state), size: size)
             .accessibilityLabel("\(label) \(Self.describe(state))")
     }
 
@@ -252,11 +249,7 @@ struct PromptView: View {
     private func screenControls(_ model: PromptViewModel, vertical: Bool) -> some View {
         if model.canCancel {
             Button(action: onDone) {
-                Text("Cancel")
-                    .font(.headline)
-                    .foregroundStyle(EarwigTheme.text)
-                    .frame(maxWidth: vertical ? 88 : .infinity, minHeight: 48)
-                    .background(EarwigTheme.surface, in: Capsule())
+                Text("Cancel").secondAction(maxWidth: vertical ? 88 : .infinity, minHeight: 48)
             }
             .buttonStyle(.plain)
         } else {
@@ -291,11 +284,7 @@ struct PromptView: View {
                 .buttonStyle(.plain)
             }
             Button(action: onDone) {
-                Text("Done")
-                    .font(.title3.bold())
-                    .foregroundStyle(EarwigTheme.text)
-                    .frame(maxWidth: .infinity, minHeight: 52)
-                    .background(EarwigTheme.surface, in: Capsule())
+                Text("Done").secondAction(.title3.bold())
             }
             .buttonStyle(.plain)
             // Held, as Next Take is, while the file is saved: the take still has the mic, the
@@ -328,11 +317,7 @@ extension PromptView {
                     playButton("Play Back", systemImage: "play.fill") { playing = Playback(url: result.url, soundOnly: true) }
                 }
                 ShareLink(item: result.url) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.title3.bold())
-                        .foregroundStyle(EarwigTheme.text)
-                        .frame(width: 52, height: 52)
-                        .background(EarwigTheme.surface, in: Circle())
+                    Image(systemName: "square.and.arrow.up").surfaceCircle()
                 }
                 .accessibilityLabel("Share")
             }
@@ -341,13 +326,7 @@ extension PromptView {
 
     private func playButton(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label(title, systemImage: systemImage)
-                .font(.headline)
-                .foregroundStyle(EarwigTheme.text)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, minHeight: 52)
-                .background(EarwigTheme.surface, in: Capsule())
+            Label(title, systemImage: systemImage).secondAction()
         }
         .buttonStyle(.plain)
     }
@@ -365,10 +344,7 @@ private struct IconControl: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.title3.bold())
-                .foregroundStyle(lit ? EarwigTheme.onAccent : EarwigTheme.text)
-                .frame(maxWidth: .infinity, minHeight: 56)
-                .background(lit ? EarwigTheme.accent : EarwigTheme.surface, in: RoundedRectangle(cornerRadius: 16))
-                .contentShape(RoundedRectangle(cornerRadius: 16))
+                .choice(lit, on: .sky, minHeight: EarwigButton.controlHeight, in: RoundedRectangle(cornerRadius: EarwigButton.corner))
         }
         .buttonStyle(.plain)
         .disabled(!enabled)

@@ -11,10 +11,8 @@ final class ScriptEditor {
     enum Mode {
         /// New on the Scripts screen.
         case new
-        /// Edit on the Script screen of a script of the presenter's own.
+        /// Edit, on the Script screen or a swipe on the Scripts screen: a sample too (decision 7).
         case edit(Script)
-        /// Edit a Copy on a sample's Script screen: saved as a new script of the presenter's own.
-        case copy(of: Script)
     }
 
     /// The text and the cursor or selection after a toolbar edit.
@@ -39,7 +37,6 @@ final class ScriptEditor {
         let start: Edit = switch mode {
         case .new: Edit(text: "# ", selection: 2..<2)
         case .edit(let script): Edit(text: script.sourceText, selection: 0..<0)
-        case .copy(let script): Self.copyText(of: script.sourceText, title: script.title)
         }
         text = start.text
         selection = start.selection
@@ -52,7 +49,6 @@ final class ScriptEditor {
         switch mode {
         case .new: "New Script"
         case .edit: "Edit Script"
-        case .copy: "Edit a Copy"
         }
     }
 
@@ -60,7 +56,7 @@ final class ScriptEditor {
     var hasChanges: Bool { ScriptImporter.cleaned(text) != original }
 
     /// Whether Save would do something: the text is a script, and an edit has changed it. A
-    /// new script or a copy saves as it is.
+    /// new script saves as it is.
     var canSave: Bool {
         guard case .success = checked else { return false }
         if case .edit = mode { return hasChanges }
@@ -82,12 +78,12 @@ final class ScriptEditor {
     /// How the format works, shown until there is something to say (plan 015, decision 11).
     static let hint = "Type a title, then tap Step for each part. A cue, a stage direction for you, goes in square brackets: [Gesture to the boats]."
 
-    /// Saves the text: a new script for New and Edit a Copy, or the edited script. Returns the
+    /// Saves the text: a new script for New, or the edited script. Returns the
     /// script to show.
     func save(in context: ModelContext) throws -> Script {
         let importer = ScriptImporter(context: context)
         let script: Script = switch mode {
-        case .new, .copy: try importer.create(text).script
+        case .new: try importer.create(text).script
         case .edit(let script): try importer.edit(script, with: text).script
         }
         try context.save()
@@ -181,20 +177,6 @@ final class ScriptEditor {
     static func title(in edit: Edit) -> Edit { applied(titleChange(in: edit), to: edit.text) }
     static func step(in edit: Edit) -> Edit { applied(stepChange(in: edit), to: edit.text) }
     static func cue(in edit: Edit) -> Edit { applied(cueChange(in: edit), to: edit.text) }
-
-    /// A sample's text with "(Copy)" after its title, so the copy is never the sample's own text,
-    /// which would open the sample (plan 015, decision 7). The cursor is at the title's end.
-    static func copyText(of text: String, title: String) -> Edit {
-        var lines = text.components(separatedBy: "\n")
-        if let first = lines.firstIndex(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }),
-           PlainParser.titleLine(lines[first])?.isEmpty == false {
-            lines[first] = lines[first].replacing(#/\s*#*\s*$/#, with: "") + " (Copy)"
-            let end = lines[...first].reduce(0) { $0 + $1.count + 1 } - 1
-            return Edit(text: lines.joined(separator: "\n"), selection: end..<end)
-        }
-        let heading = "# \(title) (Copy)"
-        return Edit(text: heading + "\n\n" + text, selection: heading.count..<heading.count)
-    }
 
     /// The range kept inside the text, which may have changed since the range was set.
     static func clamped(_ range: Range<Int>, in text: String) -> Range<Int> {

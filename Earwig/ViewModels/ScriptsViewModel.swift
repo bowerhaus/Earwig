@@ -61,6 +61,34 @@ final class ScriptsViewModel {
         editor = ScriptEditor(mode: .new)
     }
 
+    /// Edit from a swipe (plan 015, decision 12).
+    func edit(_ script: Script) {
+        editor = ScriptEditor(mode: .edit(script))
+    }
+
+    /// The sample a swipe asked to reset, waiting for the question to be answered.
+    private(set) var pendingReset: Script?
+
+    func askToReset(_ script: Script) {
+        guard script.isEditedSample else { return }
+        pendingReset = script
+    }
+
+    /// Reset Sample: its text back, its takes kept (plan 015, decision 7).
+    func confirmReset(of script: Script, in context: ModelContext) {
+        pendingReset = nil
+        do {
+            try ScriptImporter(context: context).reset(script)
+            try context.save()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    func cancelReset() {
+        pendingReset = nil
+    }
+
     func open(_ script: Script?) {
         if let script { path = [script] }
     }

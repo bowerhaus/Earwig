@@ -110,21 +110,6 @@ struct ScriptEditorTests {
         #expect(ScriptEditor.clamped(1..<12, in: "Hi") == 1..<2)
     }
 
-    // MARK: Copies
-
-    @Test func aCopysTitleSaysCopy() {
-        let copy = ScriptEditor.copyText(of: "# The Pier\n\nHello.", title: "The Pier")
-        #expect(copy == Edit(text: "# The Pier (Copy)\n\nHello.", selection: 17..<17))
-        let cutaway = ScriptEditor.copyText(of: "# Script: The Walk #\n\n## 1. Off\nSays:\n- Hi.", title: "The Walk")
-        #expect(cutaway.text.hasPrefix("# Script: The Walk (Copy)\n"))
-    }
-
-    @Test func aCopyOfTextWithNoTitleLineGetsOne() {
-        let copy = ScriptEditor.copyText(of: "The Pier\n\nHello.", title: "The Pier")
-        #expect(copy.text == "# The Pier (Copy)\n\nThe Pier\n\nHello.")
-        #expect(copy.selection == 17..<17)
-    }
-
     // MARK: The editor
 
     @Test func newStartsWithATitleAndCannotSaveYet() {
@@ -162,19 +147,17 @@ struct ScriptEditorTests {
         #expect(script.orderedSteps[0].lines == ["Hello. Again."])
     }
 
-    @Test func editACopyMakesAScriptOfYourOwn() throws {
+    @Test func editingASampleEditsTheSample() throws {
         let sample = try ScriptImporter(context: context).add(SampleScript.harbourWalk)
         sample.sampleID = "harbour-walk"
-        let editor = ScriptEditor(mode: .copy(of: sample))
-        #expect(editor.heading == "Edit a Copy")
-        #expect(editor.canSave)
-        let copy = try editor.save(in: context)
-        #expect(copy !== sample)
-        #expect(!copy.isSample)
-        #expect(copy.title == "The Harbour Walk (Copy)")
-        #expect(copy.format == .cutaway)
-        #expect(sample.title == "The Harbour Walk")
-        #expect(try context.fetchCount(FetchDescriptor<Script>()) == 2)
+        let editor = ScriptEditor(mode: .edit(sample))
+        #expect(editor.heading == "Edit Script")
+        #expect(!editor.canSave)
+        editor.text = editor.text.replacingOccurrences(of: "Morning!", with: "Hello!")
+        #expect(try editor.save(in: context) === sample)
+        #expect(sample.isEditedSample)
+        #expect(sample.format == .cutaway)
+        #expect(try context.fetchCount(FetchDescriptor<Script>()) == 1)
     }
 
     @Test func aSharedFileIsNamedAfterTheTitle() {

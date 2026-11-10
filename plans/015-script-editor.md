@@ -86,6 +86,7 @@ What already exists:
    - **Amended in the simulator:**
      - Edit is a pencil icon (`toolbarCircle()`) like Share, not a capsule: "Edit a Copy" in a capsule cut the title to "The Harbo…". The sheet's title says Edit a Copy for a sample.
      - The toolbar showed New and Paste as icons alone, which can't be told apart, so `AccentPill` now shows its word in a toolbar too.
+   - **Amended on the phone (Andy, after device check 1): superseded by decision 12.** The Scripts toolbar's yellow pills and the Script toolbar's blue circles didn't match, Edit meant Edit a Copy on a sample, and the Share and pencil icons sat off-centre in their circles.
 
 2. **The editor. Options:**
    - **(a) The raw text in a `TextEditor` (recommended).**
@@ -167,7 +168,11 @@ What already exists:
    - Which one each destination takes is checked on the phone (Verification, check 4).
    - What's shared is the stored text, exactly as written, so a Cutaway script goes back as valid Cutaway.
 
-7. **Samples: Edit a Copy** (Andy asked).
+7. **Samples: Edit a Copy** (Andy asked). **Amended on the phone: samples are edited and reset (Andy), and Edit a Copy is gone.**
+   - Edit means the same on every script. An edited sample is `editedInEarwig`; `SampleSeeder` leaves it alone, so a later build's text doesn't replace an edit, and **Reset Sample** (in More, and a swipe on the Scripts list) puts this build's text back, keeping the takes, after asking ("Your changes to it will be lost. Its takes are kept.").
+   - A paste still never replaces a sample, and a sample is still never deleted.
+   - There is no longer a one-tap way to keep a sample and also have a variant of it of your own; thought rare.
+   - What follows is the decision as first made:
    - Samples stay read-only: their text is the app's, and a later build replaces it (plan 011, decision 6).
    - On a sample's Script screen, the Edit button reads **Edit a Copy**.
    - It opens the editor on the sample's text with the title changed to "The Harbour Walk (Copy)", and saves through `create(_:)` as a script of the presenter's own, with no takes.
@@ -208,6 +213,18 @@ What already exists:
     - **The README** says "cue" throughout, in place of "stage direction" and "direction".
     - **Code stays as it is.** `Direction`, `InlineDirections` and the settings' storage keys keep their names, so stored settings carry over. The PRD's §3 keeps "Direction" as the term for text that isn't spoken, and notes that users see it as a cue.
 
+12. **One set of buttons** (Andy, after device check 1: "take a step back and consider the UI/UX again").
+    - **Named button styles** in `Views/Common/ButtonStyles.swift`, beside `EarwigTheme`'s colours: views never build a button's fill, shape or height themselves (Andy asked for one place to change the look).
+      - **Toolbar:** an icon in a mid-blue circle (`toolbarCircle`) only for Back, Settings and More; everything else a word in a mid-blue capsule (`ToolbarWordButton`, `toolbarCapsule`): New, Paste, Edit, Done, Cancel, Save. Never filled with the accent.
+      - **Main action:** `AccentPill`, filled with the accent (Start Take, Next Take, Play, and New and Paste on the empty Scripts screen).
+      - **Choice:** `choice(_:)`, on the accent when chosen (With Voice, Record, Hold). Yellow is "chosen" as well as the main action, so no rule ties yellow to the main action alone (Andy).
+      - **Second action** (`secondAction`), **circle outside the toolbar** (`surfaceCircle`), **row action** (`rowAction`), **destructive** (`destructiveAction`).
+      - The screens look as before apart from the toolbars.
+    - **The Script screen's toolbar:** **Edit** (a word) and **More** (an ellipsis, which centres in its circle), with Share, Paste New Version, and Delete Script or Reset Sample. All at the top, however long the script: the foot was too far down to find (Andy). The foot's Paste New Version and Delete cards are gone.
+      - The menu is iOS's pale one: the screen sets no bar background or dark bar of its own, as the Scripts screen sets none. A dark bar made the menu near-black; a bar background without it turned the Scripts title black on the way back. The menu's icons are mid-blue, as the accent is faint on it.
+    - **The title is on the page**, large and wrapping, not in the bar, where a long one was cut short beside the buttons.
+    - **Swipe on the Scripts list** gives **Edit** beside Delete on your own scripts, and Edit, with Reset once edited, on a sample: a shortcut, not the only way (Andy wasn't convinced a swipe alone would be found).
+
 ## Files
 
 - `Earwig/Views/Editor/ScriptEditorView.swift` (new): the sheet, the bar of buttons, the live line.
@@ -245,7 +262,7 @@ What already exists:
    - a paste of an edited script asks first;
    - Edit a Copy is a script of the presenter's own and never adopted as the sample.
 4. **The editor.** `ScriptEditor` with tests for Title, Step and Cue at the start, middle and end of the text and with a selection, then the sheet. Checked in the simulator with `-EarwigNew YES` and `-EarwigEdit YES`, with screenshots to Andy for a first look.
-5. **The screens.** New, Edit, Edit a Copy, Share, the labels gone, the hint, the paste warning, the cue on the card, and Hear Cues As.
+5. **The screens.** New, Edit, Share, the labels gone, the hint, the paste warning, the cue on the card, and Hear Cues As.
 6. **Device check** on the iPhone 14 Pro, one check at a time (Verification), installed with `devicectl`. Verdicts are Andy's.
 7. **Finish.**
    - SwiftLint clean, no warnings, all tests pass.
@@ -263,8 +280,8 @@ What already exists:
 
 - `xcodebuild test` passes with no warnings; SwiftLint clean.
 - Simulator:
-  - New, Edit and Edit a Copy open, save and cancel;
-  - the toolbar's three buttons;
+  - New and Edit open, save and cancel, on a sample too;
+  - the toolbars (decision 12), the More menu, and the swipe's Edit and Reset;
   - the live line;
   - Save disabled with nothing to say;
   - the paste warning;
@@ -282,7 +299,8 @@ What already exists:
      - Share, then Copy, and paste on the Mac by Universal Clipboard.
      - Share by AirDrop. What arrives in each case?
   5. **The warning.** Edit a script in Earwig, then paste a version from the Mac. Earwig asks before replacing it.
-  6. **Edit a Copy.** Copy a sample, change it, and save. It's listed with your own scripts, and the sample is unchanged.
+  6. **A sample edited and reset.** Edit a sample, change a line, and save; then More › Reset Sample, or a swipe on the Scripts list. The text is back, and the takes are kept.
+  7. **The buttons** (decision 12). Do the Scripts and Script toolbars, the More menu and the swipe feel consistent and easy to find?
 
 ## Results
 

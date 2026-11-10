@@ -45,6 +45,8 @@ final class Script {
     }
 
     var isSample: Bool { sampleID != nil }
+    /// A sample whose text was changed in Earwig: it has Reset Sample (plan 015, decision 7).
+    var isEditedSample: Bool { isSample && editedInEarwig }
 
     var orderedSteps: [Step] { (steps ?? []).sorted { $0.sortOrder < $1.sortOrder } }
 

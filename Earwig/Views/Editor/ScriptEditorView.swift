@@ -1,7 +1,7 @@
 import SwiftData
 import SwiftUI
 
-/// New, Edit and Edit a Copy (plan 015, decision 2): the script's text as it is, with Title, Step
+/// New and Edit (plan 015, decision 2): the script's text as it is, with Title, Step
 /// and Cue under it and a line saying what it makes. Dictation is the keyboard's own.
 struct ScriptEditorView: View {
     @State var editor: ScriptEditor
@@ -19,7 +19,7 @@ struct ScriptEditorView: View {
             VStack(alignment: .leading, spacing: 10) {
                 ScriptTextView(text: $editor.text, selection: editor.selection, controller: textView)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(EarwigTheme.surface, in: RoundedRectangle(cornerRadius: 16))
+                    .background(EarwigTheme.surface, in: RoundedRectangle(cornerRadius: EarwigButton.corner))
                 // Our own bar, not a keyboard toolbar, which iOS 26 doesn't show in a sheet; it sits
                 // just above the keyboard, and is there with it down too.
                 HStack(spacing: 10) {
@@ -45,13 +45,11 @@ struct ScriptEditorView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { cancel() } label: { Text("Cancel").toolbarCapsule() }
-                        .buttonStyle(.plain)
+                    ToolbarWordButton("Cancel") { cancel() }
                 }
                 .sharedBackgroundVisibility(.hidden)
                 ToolbarItem(placement: .confirmationAction) {
-                    Button { save() } label: { Text("Save").toolbarCapsule() }
-                        .buttonStyle(.plain)
+                    ToolbarWordButton("Save") { save() }
                         .disabled(!editor.canSave)
                         .opacity(editor.canSave ? 1 : 0.4)
                 }
@@ -76,8 +74,7 @@ struct ScriptEditorView: View {
     }
 
     private func formatButton(_ title: String, hint: String, _ change: @escaping (ScriptEditor.Edit) -> ScriptEditor.Change) -> some View {
-        Button { textView.perform(change) } label: { Text(title).toolbarCapsule() }
-            .buttonStyle(.plain)
+        ToolbarWordButton(title) { textView.perform(change) }
             .accessibilityHint(hint)
     }
 
@@ -94,6 +91,11 @@ struct ScriptEditorView: View {
             self.error = error.localizedDescription
         }
     }
+}
+
+/// The question before Reset Sample (plan 015, decision 7).
+enum ResetSample {
+    static let message = "Your changes to it will be lost. Its takes are kept."
 }
 
 /// The question before a paste replaces changes made in Earwig (plan 015, decision 8).

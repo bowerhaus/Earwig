@@ -39,7 +39,7 @@ struct FramingView: View {
                     Spacer(minLength: 8)
                 }
                 .padding(12)
-                .background(EarwigTheme.surface.opacity(0.85), in: RoundedRectangle(cornerRadius: 16))
+                .background(EarwigTheme.surface.opacity(0.85), in: RoundedRectangle(cornerRadius: EarwigButton.corner))
                 if model.setup.cameraBehindText {
                     ScreenTextView(tokens: model.screenTokens, place: model.place, textSize: $textSize, resume: 0)
                         .opacity(textOverCamera)
@@ -50,11 +50,7 @@ struct FramingView: View {
                 }
                 HStack(spacing: 12) {
                     Button(action: onCancel) {
-                        Text("Cancel")
-                            .font(.headline)
-                            .foregroundStyle(EarwigTheme.text)
-                            .frame(maxWidth: 120, minHeight: 52)
-                            .background(EarwigTheme.surface, in: Capsule())
+                        Text("Cancel").secondAction(maxWidth: 120)
                     }
                     .buttonStyle(.plain)
                     Button(action: onStart) {

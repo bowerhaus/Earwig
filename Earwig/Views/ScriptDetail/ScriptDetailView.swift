@@ -12,12 +12,10 @@ struct ScriptDetailView: View {
     @AppStorage(TakeSettings.recordingKey) private var recording: TakeRecordingMode = .off
     @State private var model: ScriptDetailViewModel
     @State private var confirmingDelete = false
-    /// Opens another script: the copy Edit a Copy saved (plan 015, decision 7).
-    private let open: (Script) -> Void
+    @State private var confirmingReset = false
 
-    init(script: Script, open: @escaping (Script) -> Void = { _ in }) {
+    init(script: Script) {
         _model = State(initialValue: ScriptDetailViewModel(script: script))
-        self.open = open
     }
 
     private var script: Script { model.script }
@@ -43,6 +41,14 @@ struct ScriptDetailView: View {
 
     private var content: some View {
         List {
+            // The title on the page, not in the bar, where a long one was cut short beside the
+            // buttons (plan 015, decision 12). It wraps as it needs.
+            Text(script.title)
+                .font(.largeTitle.bold())
+                .foregroundStyle(EarwigTheme.text)
+                .accessibilityAddTraits(.isHeader)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
             Section {
                 startCard
                 if let preamble = script.preamble {
@@ -73,29 +79,6 @@ struct ScriptDetailView: View {
                 .listRowBackground(rowBackground(isStart: index == script.lastStep).critterCard())
             }
 
-            // A sample's text is the app's, not the presenter's, and a sample is never deleted
-            // (plan 011, decisions 5, 6 and 15).
-            if !script.isSample {
-                Section {
-                    // Our own button, as on the Scripts screen, so it is the accent yellow.
-                    Button { model.pasteNewVersion(UIPasteboard.general.string, in: context, renderer: renderer) } label: {
-                        AccentPill(title: "Paste New Version", systemImage: "doc.on.clipboard")
-                    }
-                    .buttonStyle(.plain)
-                } footer: {
-                    Text("Paste a new version of this script. Its takes are kept.")
-                        .foregroundStyle(EarwigTheme.secondaryText)
-                }
-                .listRowBackground(EarwigTheme.surface.critterCard())
-                Section {
-                    Button(role: .destructive) { confirmingDelete = true } label: {
-                        Label("Delete Script", systemImage: "trash")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(EarwigTheme.warning)
-                    }
-                }
-                .listRowBackground(EarwigTheme.surface.critterCard())
-            }
         }
         .scrollContentBackground(.hidden)
         // White labels, pale headers and values, in the light scheme (plan 011, decision 16).
@@ -103,29 +86,22 @@ struct ScriptDetailView: View {
         // Never during a take or while Listen is open; one walking goes at once (plan 014, decision 9).
         .critterVisits(keepAway: model.take != nil || model.preview != nil || model.editor != nil)
         .background(EarwigTheme.background)
-        .navigationTitle(script.title)
+        // The title is on the page; the bar has Back, Edit and More.
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(EarwigTheme.background, for: .navigationBar)
-        // White titles on the sky blue in the light scheme (plan 011, decision 16).
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        // No bar background or dark bar of its own, as on the Scripts screen: the dark bar made
+        // More's menu near-black, and a light one turned the Scripts title black on the way back
+        // (plan 011, decision 16).
         .earwigBackButton()
         .toolbar {
-            // Share, the way back to the Mac, and Edit, or Edit a Copy for a sample (plan 015).
+            // Edit always in view, and the script's other actions in More, at the top however
+            // long the script (plan 015, decision 12).
             ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: ScriptText(title: script.title, text: script.sourceText), preview: SharePreview(script.title)) {
-                    Label("Share", systemImage: "square.and.arrow.up").toolbarCircle()
-                }
-                .buttonStyle(.plain)
+                ToolbarWordButton("Edit") { model.startEditing() }
             }
             .sharedBackgroundVisibility(.hidden)
-            ToolbarItem(placement: .topBarTrailing) {
-                // An icon, as Share is, so the title keeps its room; the sheet says Edit a Copy.
-                Button { model.startEditing() } label: {
-                    Label(script.isSample ? "Edit a Copy" : "Edit", systemImage: "square.and.pencil").toolbarCircle()
-                }
-                .buttonStyle(.plain)
-            }
-            .sharedBackgroundVisibility(.hidden)
+            ToolbarItem(placement: .topBarTrailing) { moreMenu }
+                .sharedBackgroundVisibility(.hidden)
         }
         .onAppear { model.appeared(in: context, renderer: renderer) }
         #if DEBUG
@@ -137,7 +113,7 @@ struct ScriptDetailView: View {
             model.startTake(with: renderer, in: context, mode: .screen)
         }
         .task {
-            // `-EarwigEdit YES` opens Edit, or Edit a Copy on a sample, for the simulator (plan 015).
+            // `-EarwigEdit YES` opens Edit, for the simulator (plan 015).
             guard UserDefaults.standard.bool(forKey: "EarwigEdit"), model.editor == nil else { return }
             try? await Task.sleep(for: .seconds(1))
             model.startEditing()
@@ -173,9 +149,7 @@ struct ScriptDetailView: View {
             ListenView(preview: preview, title: model.startStep.map { "Step \($0.number)" } ?? "Listen")
         }
         .sheet(item: $model.editor) { editor in
-            ScriptEditorView(editor: editor) { saved in
-                if saved === script { model.edited(with: renderer) } else { open(saved) }
-            }
+            ScriptEditorView(editor: editor) { _ in model.edited(with: renderer) }
         }
         // Paste New Version over changes made in Earwig asks first (plan 015, decision 8).
         .confirmationDialog(
@@ -196,6 +170,11 @@ struct ScriptDetailView: View {
         } message: {
             Text("Its takes go with it.")
         }
+        .confirmationDialog("Reset \(script.title)?", isPresented: $confirmingReset, titleVisibility: .visible) {
+            Button("Reset Sample", role: .destructive) { model.resetSample(in: context, renderer: renderer) }
+        } message: {
+            Text(ResetSample.message)
+        }
         .alert("Can't paste that", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -204,6 +183,36 @@ struct ScriptDetailView: View {
         .alert(model.notice ?? "", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil } })) {
             Button("OK", role: .cancel) {}
         }
+    }
+
+    /// Share, Paste New Version, and Delete Script or Reset Sample (plan 015, decision 12). A
+    /// paste never replaces a sample, and a sample is never deleted (plan 011, decisions 5 and 6).
+    private var moreMenu: some View {
+        Menu {
+            ShareLink(item: ScriptText(title: script.title, text: script.sourceText), preview: SharePreview(script.title)) {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+            if !script.isSample {
+                Button { model.pasteNewVersion(UIPasteboard.general.string, in: context, renderer: renderer) } label: {
+                    Label("Paste New Version", systemImage: "doc.on.clipboard")
+                }
+                Divider()
+                Button(role: .destructive) { confirmingDelete = true } label: {
+                    Label("Delete Script", systemImage: "trash")
+                }
+            } else if script.isEditedSample {
+                Divider()
+                Button(role: .destructive) { confirmingReset = true } label: {
+                    Label("Reset Sample", systemImage: "arrow.counterclockwise")
+                }
+            }
+        } label: {
+            Label("More", systemImage: "ellipsis").toolbarCircle()
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        // The menu's icons in the cards' mid-blue: the accent is faint on iOS's pale menu.
+        .tint(EarwigTheme.surface)
     }
 
     /// The surface, with an accent bar down the leading edge of the start step.
@@ -253,10 +262,7 @@ struct ScriptDetailView: View {
             renderStatus(state, step: stepNumber)
             if isReady {
                 Button { model.listen(with: renderer) } label: {
-                    Label("Listen to Step \(stepNumber)", systemImage: "headphones")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(EarwigTheme.accent)
-                        .frame(minHeight: 32)
+                    Label("Listen to Step \(stepNumber)", systemImage: "headphones").rowAction()
                 }
                 .buttonStyle(.borderless)
             }
@@ -324,10 +330,7 @@ private struct ModeTile: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .foregroundStyle(selected ? EarwigTheme.onAccent : EarwigTheme.text)
-            .frame(maxWidth: .infinity, minHeight: 76)
-            .background(selected ? EarwigTheme.accent : EarwigTheme.control, in: RoundedRectangle(cornerRadius: 16))
-            .contentShape(RoundedRectangle(cornerRadius: 16))
+            .choice(selected, minHeight: EarwigButton.tileHeight, in: RoundedRectangle(cornerRadius: EarwigButton.corner))
         }
         // Borderless, so each tile in the row takes its own tap.
         .buttonStyle(.borderless)
@@ -347,37 +350,12 @@ private struct RecordChip: View {
                 .font(.subheadline.bold())
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-                .foregroundStyle(selected ? EarwigTheme.onAccent : EarwigTheme.text)
                 .padding(.horizontal, 8)
-                .frame(maxWidth: .infinity, minHeight: 40)
-                .background(selected ? EarwigTheme.accent : EarwigTheme.control, in: Capsule())
-                .contentShape(Capsule())
+                .choice(selected, minHeight: EarwigButton.chipHeight)
         }
         .buttonStyle(.borderless)
         .accessibilityLabel("Record \(recording.label)")
         .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-}
-
-/// A filled accent capsule with dark text, for the main action on a row or a sheet.
-struct AccentPill: View {
-    let title: String
-    let systemImage: String
-    var expands = false
-
-    var body: some View {
-        Label(title, systemImage: systemImage)
-            // The word too in a toolbar, which shows a label's icon alone, so New and Paste are
-            // told apart (plan 015).
-            .labelStyle(.titleAndIcon)
-            .font(expands ? .title3.bold() : .subheadline.bold())
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
-            .foregroundStyle(EarwigTheme.onAccent)
-            .frame(maxWidth: expands ? .infinity : nil, minHeight: expands ? 52 : 34)
-            .padding(.horizontal, 14)
-            .background(EarwigTheme.accent, in: Capsule())
-            .contentShape(Capsule())
     }
 }
 

@@ -1,33 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// Toolbar buttons on the cards' mid-blue (plan 011, decision 14). iOS 26 draws each toolbar item
-/// on Liquid Glass, which the app's dark scheme turns near-black on the phone; these hide that
-/// glass and draw their own background, as the Paste pill does.
+/// The toolbar's Back and Done; the buttons' looks are in `ButtonStyles.swift`.
 extension View {
-    /// An icon in a mid-blue circle.
-    func toolbarCircle(_ colour: Color = EarwigTheme.accent) -> some View {
-        labelStyle(.iconOnly)
-            .font(.system(size: 17, weight: .semibold))
-            .foregroundStyle(colour)
-            .frame(width: 40, height: 40)
-            .background(EarwigTheme.surface, in: Circle())
-            .contentShape(Circle())
-    }
-
-    /// A word ("Done") in a mid-blue capsule.
-    func toolbarCapsule() -> some View {
-        font(.body.weight(.semibold))
-            .lineLimit(1)
-            // Its own width, or the toolbar cuts the word short on the phone ("D…").
-            .fixedSize()
-            .foregroundStyle(EarwigTheme.accent)
-            .padding(.horizontal, 16)
-            .frame(height: 40)
-            .background(EarwigTheme.surface, in: Capsule())
-            .contentShape(Capsule())
-    }
-
     /// Our own back button in place of iOS's, which cannot be restyled. The edge swipe still goes
     /// back (`UINavigationController` below).
     func earwigBackButton() -> some View {
@@ -44,8 +19,7 @@ struct DoneButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) { Text("Done").toolbarCapsule() }
-            .buttonStyle(.plain)
+        ToolbarWordButton("Done", action: action)
     }
 }
 

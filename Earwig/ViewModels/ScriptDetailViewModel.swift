@@ -245,17 +245,28 @@ final class ScriptDetailViewModel {
         }
     }
 
-    /// The editor while Edit's sheet is up: the script itself, or a copy of a sample (plan 015,
-    /// decisions 2 and 7).
+    /// The editor while Edit's sheet is up (plan 015, decisions 2 and 7): a sample is edited too.
     var editor: ScriptEditor?
 
     func startEditing() {
-        editor = ScriptEditor(mode: script.isSample ? .copy(of: script) : .edit(script))
+        editor = ScriptEditor(mode: .edit(script))
     }
 
     /// After Save: an edit's start step is rendered again for its new words.
     func edited(with renderer: ScriptRenderer) {
         renderStartStep(with: renderer)
+    }
+
+    /// Reset Sample: an edited sample's text back, its takes kept, and its start step rendered
+    /// again for the words (plan 015, decision 7).
+    func resetSample(in context: ModelContext, renderer: ScriptRenderer) {
+        do {
+            try ScriptImporter(context: context).reset(script)
+            try context.save()
+            renderStartStep(with: renderer)
+        } catch {
+            self.error = error.localizedDescription
+        }
     }
 
     func delete(in context: ModelContext) {

@@ -3,8 +3,8 @@ import SwiftUI
 import UIKit
 
 /// The scripts (PRD §8.1): the presenter's own at the top, swipe to delete, and the built-in
-/// samples below them, which cannot be deleted (plan 011). Paste from the clipboard, or New to
-/// write one (plan 015); tap to open.
+/// samples below them, which cannot be deleted but can be edited and reset (plans 011 and 015).
+/// Paste from the clipboard, or New to write one; tap to open, swipe to edit.
 struct ScriptsView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Script.updatedAt, order: .reverse) private var scripts: [Script]
@@ -36,22 +36,25 @@ struct ScriptsView: View {
                         .buttonStyle(.plain)
                     }
                     .sharedBackgroundVisibility(.hidden)
-                    // While there are none of their own, the paste row has the buttons.
+                    // While there are none of their own, the paste row has the buttons. Words in
+                    // the toolbar's capsules, as on every screen (plan 015, decision 12).
                     if !own.isEmpty {
-                        // Their own widths, or the toolbar cuts the words short.
-                        ToolbarItem(placement: .primaryAction) { newButton.fixedSize() }
-                            // No glass capsule around the pill (iOS 26 draws one for every item).
+                        ToolbarItem(placement: .primaryAction) { ToolbarWordButton("New") { model.newScript() } }
+                            // No glass capsule around it (iOS 26 draws one for every item).
                             .sharedBackgroundVisibility(.hidden)
-                        ToolbarItem(placement: .primaryAction) { pasteButton.fixedSize() }
+                        ToolbarItem(placement: .primaryAction) { ToolbarWordButton("Paste") { paste() } }
                             .sharedBackgroundVisibility(.hidden)
                     }
                 }
                 .navigationDestination(for: Script.self) { script in
-                    ScriptDetailView(script: script, open: { model.open($0) })
+                    ScriptDetailView(script: script)
                 }
                 .sheet(isPresented: $showingSettings) { SettingsView() }
+                // New opens what it saved; Edit from a swipe stays on the list.
                 .sheet(item: $model.editor) { editor in
-                    ScriptEditorView(editor: editor) { model.open($0) }
+                    ScriptEditorView(editor: editor) { saved in
+                        if case .new = editor.mode { model.open(saved) }
+                    }
                 }
                 // A paste over changes made in Earwig asks first (plan 015, decision 8).
                 .confirmationDialog(
@@ -79,6 +82,16 @@ struct ScriptsView: View {
                     Button("Delete Script", role: .destructive) { model.confirmDeletion(of: script, in: context) }
                 } message: { _ in
                     Text("Its takes go with it.")
+                }
+                .confirmationDialog(
+                    "Reset \(model.pendingReset?.title ?? "")?",
+                    isPresented: Binding(get: { model.pendingReset != nil }, set: { if !$0 { model.cancelReset() } }),
+                    titleVisibility: .visible,
+                    presenting: model.pendingReset
+                ) { script in
+                    Button("Reset Sample", role: .destructive) { model.confirmReset(of: script, in: context) }
+                } message: { _ in
+                    Text(ResetSample.message)
                 }
                 #if DEBUG
                 .task(id: samples.count) {
@@ -119,6 +132,7 @@ struct ScriptsView: View {
                                 Label("Delete", systemImage: "trash")
                             }
                             .tint(EarwigTheme.warning)
+                            editAction(script)
                         }
                     }
                 }
@@ -129,6 +143,16 @@ struct ScriptsView: View {
                     NavigationLink(value: script) {
                         ScriptRow(script: script)
                     }
+                    // Edit, as on the Script screen, and Reset once edited (plan 015, decision 7).
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        if script.isEditedSample {
+                            Button { model.askToReset(script) } label: {
+                                Label("Reset", systemImage: "arrow.counterclockwise")
+                            }
+                            .tint(EarwigTheme.warning)
+                        }
+                        editAction(script)
+                    }
                 }
             } header: {
                 Text("Samples")
@@ -137,6 +161,14 @@ struct ScriptsView: View {
             .listRowBackground(EarwigTheme.surface.critterCard())
         }
         .scrollContentBackground(.hidden)
+    }
+
+    /// Edit from a swipe: a shortcut to the Script screen's Edit (plan 015, decision 12).
+    private func editAction(_ script: Script) -> some View {
+        Button { model.edit(script) } label: {
+            Label("Edit", systemImage: "square.and.pencil")
+        }
+        .tint(EarwigTheme.surface)
     }
 
     /// In place of the presenter's own scripts while there are none.
@@ -165,10 +197,14 @@ struct ScriptsView: View {
     /// its white text legible, which turned the accent gold-brown. Reading the clipboard ourselves
     /// asks "Allow Paste?" until Settings › Apps › Earwig › Paste from Other Apps is Allow.
     private var pasteButton: some View {
-        Button { model.paste(UIPasteboard.general.string, in: context) } label: {
+        Button { paste() } label: {
             AccentPill(title: "Paste", systemImage: "doc.on.clipboard")
         }
         .buttonStyle(.plain)
+    }
+
+    private func paste() {
+        model.paste(UIPasteboard.general.string, in: context)
     }
 }
 

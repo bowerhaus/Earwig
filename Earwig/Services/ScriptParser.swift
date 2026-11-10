@@ -336,7 +336,7 @@ enum PlainParser {
     }
 
     /// A title line's title ("# The Pier" is "The Pier"; a bare "#", as New starts with, is ""),
-    /// or nil. The parser, the editor's Title button and Edit a Copy share it (review C7).
+    /// or nil. The parser and the editor's Title button share it (review C7).
     static func titleLine(_ line: String) -> String? {
         line.trimmingCharacters(in: .whitespaces).wholeMatch(of: #/#(?!#)(?:\s+(.*?))?\s*#*/#).map { String($0.1 ?? "") }
     }

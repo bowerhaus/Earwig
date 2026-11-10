@@ -164,11 +164,28 @@ struct ScriptImporterTests {
         #expect(try importer.replace(script, with: edited).outcome == .unchanged)
     }
 
-    @Test func aSampleIsNeverEdited() throws {
+    /// Samples are edited as any script is, and Reset Sample puts the text back, keeping the
+    /// takes (plan 015, decision 7).
+    @Test func aSampleIsEditedAndResetKeepingItsTakes() throws {
         let sample = try importer.add(SampleScript.seasidePier)
         sample.sampleID = "seaside-pier"
-        #expect(try importer.edit(sample, with: "# Changed\n\nNew words.").outcome == .unchanged)
-        #expect(sample.title == "The Seaside Pier")
+        let take = Take(stepIndex: 0)
+        context.insert(take)
+        take.script = sample
+        #expect(try importer.edit(sample, with: "# The Seaside Pier\n\nNew words.").outcome == .replaced)
+        #expect(sample.isEditedSample)
+        #expect(sample.orderedSteps.count == 1)
+        #expect(try importer.reset(sample)?.outcome == .replaced)
+        #expect(!sample.isEditedSample)
+        #expect(sample.sourceHash == ScriptImporter.hash(SampleScript.seasidePier))
+        #expect(sample.orderedSteps.count == 3)
+        #expect(sample.takes?.count == 1)
+    }
+
+    @Test func onlyASampleIsReset() throws {
+        let own = try importer.paste("# The Pier\n\nHello.").script
+        #expect(try importer.reset(own) == nil)
+        #expect(own.title == "The Pier")
     }
 
     @Test func checkSaysWhyTextCannotBeSaved() {

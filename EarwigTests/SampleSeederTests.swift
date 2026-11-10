@@ -105,6 +105,33 @@ struct SampleSeederTests {
         #expect(scripts.count == 4)
     }
 
+    /// An edited sample is the presenter's to keep until Reset Sample (plan 015, decision 7).
+    @Test func anEditedSampleIsLeftAloneByALaterBuild() throws {
+        let old = SampleScript.Sample(id: "harbour-walk", text: SampleScript.harbourWalk.components(separatedBy: "## 3.")[0])
+        try seeder.seed([old])
+        let walk = try #require(scripts.first)
+        let edited = old.text.replacingOccurrences(of: "Morning!", with: "Hello!")
+        _ = try ScriptImporter(context: context).edit(walk, with: edited)
+        try seeder.seed([SampleScript.all[0]])
+        #expect(walk.sourceHash == ScriptImporter.hash(ScriptImporter.cleaned(edited)))
+        #expect(walk.isEditedSample)
+    }
+
+    @Test func aSwipeResetsOnlyAnEditedSample() throws {
+        try seeder.seed()
+        let walk = try #require(scripts.first { $0.sampleID == "harbour-walk" })
+        let model = ScriptsViewModel()
+        model.askToReset(walk)
+        #expect(model.pendingReset == nil)
+        _ = try ScriptImporter(context: context).edit(walk, with: SampleScript.harbourWalk.replacingOccurrences(of: "Morning!", with: "Hello!"))
+        model.askToReset(walk)
+        #expect(model.pendingReset === walk)
+        model.confirmReset(of: walk, in: context)
+        #expect(model.pendingReset == nil)
+        #expect(walk.sourceHash == ScriptImporter.hash(SampleScript.harbourWalk))
+        #expect(!walk.isEditedSample)
+    }
+
     @Test func samplesAreNotDeleted() throws {
         try seeder.seed()
         let own = try ScriptImporter(context: context).paste(Fixtures.plain).script

@@ -96,10 +96,9 @@ struct ScriptImporter {
     }
 
     /// Edit in the editor (plan 015, decision 3): as Paste New Version, keeping the takes,
-    /// renderings, cues setting and start step, and marking the script as changed in Earwig.
-    /// A sample is never edited; Edit a Copy makes a new script by `create(_:)`.
+    /// renderings, cues setting and start step, and marking the script as changed in Earwig. A
+    /// sample is edited as any script is, and Reset Sample puts its text back (decision 7).
     func edit(_ script: Script, with text: String) throws -> Result {
-        guard !script.isSample else { return Result(script: script, outcome: .unchanged) }
         let cleaned = Self.cleaned(text)
         let parsed = try Self.parsed(cleaned)
         let hash = Self.hash(cleaned)
@@ -107,6 +106,16 @@ struct ScriptImporter {
         apply(parsed, text: cleaned, hash: hash, to: script)
         script.editedInEarwig = true
         return Result(script: script, outcome: .replaced)
+    }
+
+    /// Reset Sample (plan 015, decision 7): an edited sample's text back as this build has it,
+    /// keeping its takes. Nil for a script that isn't a sample.
+    @discardableResult
+    func reset(_ script: Script) throws -> Result? {
+        guard let id = script.sampleID, let sample = SampleScript.all.first(where: { $0.id == id }) else { return nil }
+        let result = try replace(script, with: sample.text, replacingEdits: true)
+        script.editedInEarwig = false
+        return result
     }
 
     /// Whether the text could be saved, and why not: for the editor's line (plan 015, decision 2).

@@ -21,8 +21,8 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 5. [x] On the screens: the modifier on Scripts, Script and Settings, checked in the simulator with `-EarwigVisits YES`.
 6. [x] The slider: Earwig Visits in Diagnostics.
 7. [x] Tests + lint: 372 tests pass, SwiftLint clean (commit `2401a34`).
-8. [ ] Review + fixes.
-9. [ ] Manual test: device.
+8. [x] Review + fixes: recorded in the plan with its Outcome; 395 tests pass, SwiftLint clean (commit `dd0d719`).
+9. [ ] Manual test: device. **In progress**: installed on the iPhone 14 Pro, the plan's Verification checks one at a time. Check 1 (the walk): **passed** (Andy, 2026-11-10, "Walk looks right"; 29 visits logged in 3½ minutes, 4 to 14 s each). Next: check 2 (behind).
 10. [ ] Complete (commit + PR).
 
 ## To resume

@@ -243,6 +243,8 @@ What already exists:
     - **Hear Cues As** moves from the Voice group into its own **Cues** group, its footer "Cues at the top of a step are read before the take." (Settings has eight groups.)
     - Listen still reads the slate in full before the tones.
 
+15. **Settings in the order a take goes** (Andy): Voice (Voice, Preview, Voice Speed, Allow Personal Voice), Start, Cues (Cue Voice, moved from Voice, and Hear Cues As), Following, Screen, Recording, Diagnostics, About. Following stays after Cues, not beside Voice, so the one rule holds; Mode and the Critter stay in Screen.
+
 ## Files
 
 - `Earwig/Views/Editor/ScriptEditorView.swift` (new): the sheet, the bar of buttons, the live line.

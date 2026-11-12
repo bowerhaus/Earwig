@@ -42,7 +42,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 ## Notes
 
 - 456 tests pass, SwiftLint clean.
-- For Completion: CLAUDE.md's status says Settings has seven groups; with Cues it has eight (decision 14). The PRD's §4.2 slate and §4.8 Settings need the same.
+- For Completion: CLAUDE.md's status says Settings has seven groups (Voice, Following, Start, Screen, Recording, Diagnostics, About); now eight, in a take's order, Cue Voice in Cues (decisions 14, 15). The PRD's §4.2 slate and §4.8 Settings need the same.
 - For Completion: README screenshots and banner (and plan 013's App Store screenshots) show "SHOWS" on the Harbour Walk and need retaking.
 - The console launch's connection drops after a few minutes; relaunching closes the app, so only relaunch between checks.
 - Plan 013 is in flight on `app-store-release` and touches the README, the PRD and CLAUDE.md; whichever merges second rebases those.

@@ -21,7 +21,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - [x] Device-check fixes so far: Step, Cue, capitals (decision 2 amended on the phone); one set of buttons, Edit and More, title on the page, samples edited and reset, swipe Edit/Reset (decision 12, decision 7 amended); the title's gap; Title, Step and Cue in a glass capsule above the keyboard (decision 2 amended)
 - [x] 6. Andy's next changes, agreed 2026-11-12 (below): done, 448 tests pass, lint clean, looked at in the simulator; decisions 2 and 5 amended, decision 13 added
 - [x] Device-check fixes, 2026-11-12: styling, no capital in cues and the samples (Andy: "this all looks good"); Shift kept as capitals on a heading's whole line, so dictation keeps them (`b4a18ad`); Step leaves the cursor after its `##` with the line under the editor explaining (`61ec168`, Andy: "Works well")
-- [ ] Manual test: device (checks 1 and 2 passed, and Edit's cursor at the title's end; checks 3–7 still to report)
+- [ ] Manual test: device (checks 1–3 passed, and Edit's cursor at the title's end; check 3 led to decision 14, cues read before the tones, to check on the phone; checks 4–7 still to report)
 - [ ] Complete (commit + PR)
 
 ## Done: Andy's agreed changes (next: install on the phone and resume the device checks, including the Shift experiment's verdict)
@@ -41,7 +41,8 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 ## Notes
 
-- 448 tests pass, SwiftLint clean.
+- 456 tests pass, SwiftLint clean.
+- For Completion: CLAUDE.md's status says Settings has seven groups; with Cues it has eight (decision 14). The PRD's §4.2 slate and §4.8 Settings need the same.
 - For Completion: README screenshots and banner (and plan 013's App Store screenshots) show "SHOWS" on the Harbour Walk and need retaking.
 - The console launch's connection drops after a few minutes; relaunching closes the app, so only relaunch between checks.
 - Plan 013 is in flight on `app-store-release` and touches the README, the PRD and CLAUDE.md; whichever merges second rebases those.

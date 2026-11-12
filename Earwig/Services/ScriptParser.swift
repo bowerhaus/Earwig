@@ -233,7 +233,7 @@ enum CutawayParser {
 /// Plain text, the format Earwig documents (PRD §4.1; plan 015, decision 4): a `# ` line is the
 /// title; a `## ` line starts a step, with its name, and blank lines inside a step are only
 /// spacing; with no `## ` line at all, each paragraph is a step. A line wholly in square
-/// brackets before a step's first spoken line is the step's cue, read with the slate. A first
+/// brackets before a step's first spoken line is the step's cue, read before the take. A first
 /// paragraph that is one short title-like line, with more after it, is the script's title.
 /// Step names come only from headings: a short first line is spoken, never taken as a name.
 enum PlainParser {

@@ -72,7 +72,11 @@ struct ScriptDetailViewModelTests {
         model.startTake(with: renderer, in: context, mode: .voice)
         let setup = try #require(model.take?.setup)
         #expect(setup.take == 5)
-        #expect(setup.slateText.hasSuffix("take 5."))
+        // Tones only by default: the step's cues are read before the tones, with no slate
+        // (plan 015, decision 14).
+        #expect(setup.settings.start == .tonesOnly)
+        #expect(setup.slateText == "Setting off. Presenter at the harbour wall, boats behind.")
+        #expect(setup.engineSettings.cuesFirst)
         #expect(setup.slateWords.last == .number(5))
         #expect(setup.script.phrases.count == setup.phraseList.phrases.count)
 

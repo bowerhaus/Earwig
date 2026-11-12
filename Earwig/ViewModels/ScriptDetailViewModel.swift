@@ -104,7 +104,8 @@ final class ScriptDetailViewModel {
             self.error = error.localizedDescription
             return
         }
-        let slateText = Slate.text(for: step, take: number, cuesOn: script.cuesOn)
+        let settings = AppSettings.take.followSettings
+        let slateText = Slate.text(for: step, take: number, cuesOn: script.cuesOn, start: settings.start)
         var setup = TakeSetup(
             stepNumber: step.number,
             stepTitle: step.title,
@@ -114,7 +115,7 @@ final class ScriptDetailViewModel {
             audio: built.audio,
             slateText: slateText,
             slateWords: Slate.replyWords(for: step, take: number),
-            settings: AppSettings.take.followSettings,
+            settings: settings,
             contextWords: TakeSetup.contextWords(phraseList: phraseList, slateText: slateText),
             voiceSpeed: AppSettings.take.voiceSpeed,
             mode: mode,

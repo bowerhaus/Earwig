@@ -153,7 +153,8 @@ struct PromptViewModel: Equatable {
         case .running:
             switch snapshot.status {
             case .idle: return "Getting ready"
-            case .slate: return "Slate"
+            // Before the tones alone, only the step's cues are read (plan 015, decision 14).
+            case .slate: return setup.start == .tonesOnly ? "Cues" : "Slate"
             case .tones: return "Tones"
             case .speaking: return "Speaking"
             case .waiting: return "Waiting"

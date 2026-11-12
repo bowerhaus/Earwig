@@ -236,6 +236,13 @@ What already exists:
     - Cutaway is still tested: the Cutaway Harbour Walk is `Fixtures.harbourWalk`, the parser and import tests' main fixture. Cutaway paste is unchanged.
     - For Completion: the README's screenshots and banner show "SHOWS" on the Harbour Walk and need retaking (`scripts/readme/make_readme_images.py`), as do plan 013's App Store screenshots.
 
+14. **Cues at the top of a step are read before every take** (Andy, after device check 3: to hear one you had to pick a slate start, while cues within lines are set under Voice).
+    - With **Tones Only** (the default) and Read Cues on, the cue voice reads the step's name, its `Shows:` text and its opening cues, then the tones play (`FollowSettings.cuesFirst`; `Slate.text(for:take:cuesOn:start:)`). A tap skips them; the Prompt screen says **Cues** meanwhile. With no cues, or Read Cues off, nothing is read, rendered or waited for, as before.
+    - The slate starts are unchanged: name, cues, then "Step 1, take 2."
+    - The start mode is then only how a take starts; Read Cues on the start card turns both kinds of cue on and off, as before.
+    - **Hear Cues As** moves from the Voice group into its own **Cues** group, its footer "Cues at the top of a step are read before the take." (Settings has eight groups.)
+    - Listen still reads the slate in full before the tones.
+
 ## Files
 
 - `Earwig/Views/Editor/ScriptEditorView.swift` (new): the sheet, the bar of buttons, the live line.

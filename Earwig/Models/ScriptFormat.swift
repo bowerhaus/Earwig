@@ -9,7 +9,7 @@ enum ScriptFormat: String, Codable, CaseIterable, Sendable {
 
 /// Text in a step that the presenter does not say (PRD §3, "Direction"; a cue where users see
 /// it, plan 015, decision 11). Never matched; the title, `Shows:` and a step's opening cue are
-/// read with the slate at the start of a take.
+/// read before the take.
 struct Direction: Codable, Equatable, Hashable, Sendable {
     enum Kind: String, Codable, Sendable {
         case shows, footage, open, notes

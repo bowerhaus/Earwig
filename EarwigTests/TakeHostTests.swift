@@ -114,8 +114,8 @@ struct TakeHostTests {
         output.calls = { [calls] in calls.list.append($0) }
     }
 
-    private func host(start: StartMode = .slateWithReply, slateFails: Bool = false, mode: TakeMode = .voice,
-                      capture: FakeCapture? = nil) -> TakeHost {
+    private func host(start: StartMode = .slateWithReply, slateText: String = "Step 1, take 2.", slateFails: Bool = false,
+                      mode: TakeMode = .voice, capture: FakeCapture? = nil) -> TakeHost {
         let phrases = Self.lines.map { line in
             let words = ScriptWords.words(in: line)
             return FollowPhrase(kind: .spoken, words: words, wordStarts: words.indices.map { Double($0) * 0.4 }, duration: Double(words.count) * 0.4)
@@ -127,7 +127,7 @@ struct TakeHostTests {
             stepNumber: 1, stepTitle: "The footpath", take: 2,
             phraseList: PhraseList(lines: Self.lines),
             script: FollowScript(phrases: phrases), audio: audio,
-            slateText: "Step 1, take 2.", slateWords: Slate.replyWords(number: 1, shotID: nil, take: 2),
+            slateText: slateText, slateWords: Slate.replyWords(number: 1, shotID: nil, take: 2),
             settings: settings, contextWords: ["We", "follow"]
         )
         setup.mode = mode
@@ -378,10 +378,23 @@ struct TakeHostTests {
 
     @Test func tonesOnlyPlaysNoSlate() async {
         // A slate that would fail to render: with tones only it is never rendered (review C3).
-        let host = host(start: .tonesOnly, slateFails: true)
+        let host = host(start: .tonesOnly, slateText: "", slateFails: true)
         await host.start()
         #expect(!calls.list.contains("slate"))
         #expect(output.played.map(\.channel) == [.tone])
+        #expect(recorder.started.count == 1)
+    }
+
+    /// Plan 015, decision 14: a step's cues are read before the tones alone.
+    @Test func tonesOnlyReadsTheCuesThenTheTones() async {
+        let host = host(start: .tonesOnly, slateText: "The entrance. At the pier gates.")
+        await host.start()
+        #expect(calls.list.contains("slate"))
+        #expect(output.played.map(\.channel) == [.cue])
+        pass(1.5, host)
+        output.end(.cue)
+        pass(0.1, host)
+        #expect(output.played.map(\.channel) == [.cue, .tone])
         #expect(recorder.started.count == 1)
     }
 

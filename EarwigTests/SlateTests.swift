@@ -38,6 +38,16 @@ struct SlateTests {
         #expect(Slate.text(for: step, take: 1, cuesOn: false) == "Step 1, take 1.")
     }
 
+    /// Plan 015, decision 14: before the tones alone, the cues with no slate.
+    @Test func tonesOnlyReadsTheCuesAlone() {
+        let step = Step(sortOrder: 0, number: 1, title: "The entrance")
+        step.directions = [Direction(kind: .cue, text: "At the pier gates")]
+        #expect(Slate.text(for: step, take: 1, cuesOn: true, start: .tonesOnly) == "The entrance. At the pier gates.")
+        #expect(Slate.text(for: step, take: 1, cuesOn: false, start: .tonesOnly) == "")
+        #expect(Slate.text(for: Step(sortOrder: 0, number: 1, title: ""), take: 1, cuesOn: true, start: .tonesOnly) == "")
+        #expect(Slate.text(for: step, take: 1, cuesOn: true, start: .slate) == "Step 1. The entrance. At the pier gates. Step 1, take 1.")
+    }
+
     @Test func theReplyIsTheNumberTakeAndTakeNumber() {
         #expect(Slate.replyWords(number: 3, shotID: nil, take: 2) == [.number(3), ScriptWord(text: "take"), .number(2)])
     }

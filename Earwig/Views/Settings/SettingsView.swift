@@ -2,9 +2,10 @@ import AVFoundation
 import SwiftData
 import SwiftUI
 
-/// The Settings screen (PRD §4.8, §8.4; plan 005, decision 11): the voice, its speed, the cue voice
-/// and how directions are read (plan 011, decision 15; plan 012, decision 2), following, the
-/// start, the screen, recording, diagnostics, and the version (plan 012, decision 7).
+/// The Settings screen (PRD §4.8, §8.4; plan 005, decision 11): the voice, its speed and the cue
+/// voice (plan 011, decision 15; plan 012, decision 2), how cues are heard (plan 015, decision
+/// 14), following, the start, the screen, recording, diagnostics, and the version (plan 012,
+/// decision 7).
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(TakeSettings.leadKey) private var lead = TakeSettings.defaultLead
@@ -66,22 +67,27 @@ struct SettingsView: View {
                         }
                         .foregroundStyle(EarwigTheme.accent)
                     }
-                    // "Cue", the one word for them (plan 015, decision 11); the footer says what
-                    // the name doesn't.
+                } header: {
+                    Text("Voice")
+                } footer: {
+                    if let problem = preview.problem {
+                        Text(problem)
+                            .foregroundStyle(EarwigTheme.warning)
+                    }
+                }
+                .listRowBackground(EarwigTheme.surface)
+
+                // Cues in one place (plan 015, decision 14): the start card's Read Cues turns
+                // them on, and the footer says what the name doesn't.
+                Section {
                     Picker("Hear Cues As", selection: $inlineDirections) {
                         ForEach(InlineDirections.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
                 } header: {
-                    Text("Voice")
+                    Text("Cues")
                 } footer: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        if let problem = preview.problem {
-                            Text(problem)
-                                .foregroundStyle(EarwigTheme.warning)
-                        }
-                        Text("Cues at the top of a step are read with the slate, not chimed.")
-                            .foregroundStyle(EarwigTheme.secondaryText)
-                    }
+                    Text("Cues at the top of a step are read before the take.")
+                        .foregroundStyle(EarwigTheme.secondaryText)
                 }
                 .listRowBackground(EarwigTheme.surface)
 

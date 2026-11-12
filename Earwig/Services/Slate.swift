@@ -21,9 +21,28 @@ enum Slate {
 
     /// The slate for a step of a script.
     static func text(for step: Step, take: Int, cuesOn: Bool) -> String {
+        text(number: step.number, shotID: step.shotID, take: take, directions: cuesOn ? directions(of: step) : nil)
+    }
+
+    /// What is read before a take that starts with the tones alone (plan 015, decision 14): the
+    /// step's title, `Shows:` text and opening cues, with no slate; empty with cues off or none.
+    static func cues(for step: Step, cuesOn: Bool) -> String {
+        guard cuesOn else { return "" }
+        return directions(of: step)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .map(sentence)
+            .joined(separator: " ")
+    }
+
+    /// What is read before a take in this start mode: the slate, or the cues alone before the tones.
+    static func text(for step: Step, take: Int, cuesOn: Bool, start: StartMode) -> String {
+        start == .tonesOnly ? cues(for: step, cuesOn: cuesOn) : text(for: step, take: take, cuesOn: cuesOn)
+    }
+
+    private static func directions(of step: Step) -> [String] {
         let shows = step.directions.first { $0.kind == .shows }?.text ?? ""
-        let cues = step.directions.filter { $0.kind == .cue }.map(\.text)
-        return text(number: step.number, shotID: step.shotID, take: take, directions: cuesOn ? [step.title, shows] + cues : nil)
+        return [step.title, shows] + step.directions.filter { $0.kind == .cue }.map(\.text)
     }
 
     /// What the presenter says back in `.slateWithReply` (plan 005, decision 5), as the engine

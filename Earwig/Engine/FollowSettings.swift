@@ -76,6 +76,9 @@ struct FollowSettings: Equatable, Sendable {
     var slateGap: TimeInterval = 3
     /// Slate words to hear before the take starts in `.slateWithReply` mode.
     var slateWordsNeeded = 2
+    /// Whether, in `.tonesOnly`, the step's cues are read before the tones (plan 015, decision
+    /// 14). They come as the slate's audio; a tap skips them.
+    var cuesFirst = false
 
     /// Whether a voice reads the script. Without one (Screen Only, plan 008,
     /// decision 1), the engine follows the presenter alone: no phrases are played, no lead is

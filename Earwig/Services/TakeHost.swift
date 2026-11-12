@@ -120,6 +120,7 @@ struct TakeSetup {
     var engineSettings: FollowSettings {
         var engine = settings
         engine.voiced = mode.voiced
+        engine.cuesFirst = settings.start == .tonesOnly && !slateText.isEmpty
         return engine
     }
 
@@ -236,9 +237,10 @@ final class TakeHost: Identifiable {
             return await fail("The audio could not start: \(error.localizedDescription)")
         }
         guard await readyListeningAndCamera() else { return }
-        // With tones only no slate is played, so none is rendered (review C3).
+        // With tones only and no cues to read first nothing is played before the tones, so
+        // nothing is rendered (review C3; plan 015, decision 14).
         var slate: AVAudioPCMBuffer?
-        if setup.settings.start != .tonesOnly {
+        if setup.settings.start != .tonesOnly || setup.engineSettings.cuesFirst {
             do {
                 slate = try await renderSlate(setup.slateText)
             } catch {

@@ -289,7 +289,7 @@ struct ScriptTakeRecorderTests {
 
     @Test func withKeepOffTheLastTakeAloneNamesARecording() throws {
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
         func recorder(take: Int) throws -> (ScriptTakeRecorder, String) {
             let url = try store.url(scriptTitle: script.title, step: 1, take: take, video: false)
             try Data(count: 10).write(to: url)

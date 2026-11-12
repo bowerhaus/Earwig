@@ -1,3 +1,4 @@
+import Foundation
 @testable import Earwig
 import SwiftData
 import Testing
@@ -89,20 +90,59 @@ struct ScriptEditorTests {
 
     // MARK: Capitals
 
-    @Test func theStartOfATitleAStepOrACueGetsACapital() {
+    @Test func theStartOfATitleOrAStepGetsACapital() {
         #expect(ScriptEditor.capitalised("my walk", at: 2, in: "# ") == "My walk")
         #expect(ScriptEditor.capitalised("the pier", at: 9, in: "# Hi\n\n## ") == "The pier")
         #expect(ScriptEditor.capitalised(" the pier", at: 8, in: "# Hi\n\n##") == " The pier")
-        #expect(ScriptEditor.capitalised("wave", at: 5, in: "Hi.\n[]") == "Wave")
-        #expect(ScriptEditor.capitalised("w", at: 4, in: "Hi [") == "W")
     }
 
     @Test func otherTextIsLeft() {
         #expect(ScriptEditor.capitalised("walk", at: 4, in: "# My ") == nil)
         #expect(ScriptEditor.capitalised("hello", at: 0, in: "") == nil)
         #expect(ScriptEditor.capitalised("My walk", at: 2, in: "# ") == nil)
-        #expect(ScriptEditor.capitalised("iPhone", at: 1, in: "[") == nil)
+        #expect(ScriptEditor.capitalised("iPhone", at: 2, in: "# ") == nil)
+        #expect(ScriptEditor.capitalised("wave", at: 5, in: "Hi.\n[]") == nil)
+        #expect(ScriptEditor.capitalised("w", at: 4, in: "Hi [") == nil)
         #expect(ScriptEditor.capitalised("#", at: 0, in: "") == nil)
+    }
+
+    @Test func theKeyboardOffersACapitalAtATitleOrAStepsStart() {
+        #expect(ScriptEditor.wantsCapital(at: 2, in: "# "))
+        #expect(ScriptEditor.wantsCapital(at: 9, in: "# Hi\n\n## "))
+        #expect(ScriptEditor.wantsCapital(at: 9, in: "# Hi\n\n##\n"))
+        #expect(ScriptEditor.wantsCapital(at: 18, in: "# Hi\n\n## The pier\n"))
+    }
+
+    @Test func theKeyboardIsLeftAloneElsewhere() {
+        #expect(!ScriptEditor.wantsCapital(at: 0, in: ""))
+        #expect(!ScriptEditor.wantsCapital(at: 1, in: "#"))
+        #expect(!ScriptEditor.wantsCapital(at: 3, in: "# M"))
+        #expect(!ScriptEditor.wantsCapital(at: 5, in: "# Hi\n"))
+        #expect(!ScriptEditor.wantsCapital(at: 5, in: "Hi.\n["))
+        #expect(!ScriptEditor.wantsCapital(at: 26, in: "# Hi\n\n## The pier\nHello.\n"))
+    }
+
+    // MARK: How the text looks
+
+    private func styles(_ text: String) -> [String] {
+        ScriptHighlight.styles(in: text).map { "\($0.kind) \((text as NSString).substring(with: $0.range))" }
+    }
+
+    @Test func aTitleAndAStepAreBoldWithTheirMarksFaint() {
+        #expect(styles("# The Walk\n\n## Off we go\nHello.") == ["title # The Walk", "mark #", "step ## Off we go", "mark ##"])
+        #expect(styles("##") == ["step ##", "mark ##"])
+    }
+
+    @Test func cuesAreColouredOpenOrClosed() {
+        #expect(styles("[Wave] Hello [smile] there.\n[Turn") == ["cue [Wave]", "cue [smile]", "cue [Turn"])
+    }
+
+    @Test func otherTextIsNotStyled() {
+        #expect(styles("#hashtag and ####### and Morning!\n- Says (round)") == [])
+    }
+
+    @Test func stylesCountAsUIKitDoes() {
+        #expect(styles("Café 👋 [wave]") == ["cue [wave]"])
     }
 
     @Test func aSelectionPastTheEndIsKeptInside() {
@@ -156,7 +196,7 @@ struct ScriptEditorTests {
         editor.text = editor.text.replacingOccurrences(of: "Morning!", with: "Hello!")
         #expect(try editor.save(in: context) === sample)
         #expect(sample.isEditedSample)
-        #expect(sample.format == .cutaway)
+        #expect(sample.format == .plain)
         #expect(try context.fetchCount(FetchDescriptor<Script>()) == 1)
     }
 

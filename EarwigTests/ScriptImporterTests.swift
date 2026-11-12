@@ -13,7 +13,7 @@ struct ScriptImporterTests {
     private var count: Int { (try? context.fetchCount(FetchDescriptor<Script>())) ?? -1 }
 
     @Test func aNewPasteAddsAScript() throws {
-        let result = try importer.paste(SampleScript.harbourWalk)
+        let result = try importer.paste(Fixtures.harbourWalk)
         #expect(result.outcome == .added)
         #expect(result.script.title == "The Harbour Walk")
         #expect(result.script.format == .cutaway)
@@ -24,8 +24,8 @@ struct ScriptImporterTests {
     }
 
     @Test func theSameTextAgainAddsNothing() throws {
-        let first = try importer.paste(SampleScript.harbourWalk).script
-        let messy = SampleScript.harbourWalk.replacingOccurrences(of: "\n", with: "  \r\n") + "\n\n"
+        let first = try importer.paste(Fixtures.harbourWalk).script
+        let messy = Fixtures.harbourWalk.replacingOccurrences(of: "\n", with: "  \r\n") + "\n\n"
         let again = try importer.paste(messy)
         #expect(again.outcome == .unchanged)
         #expect(again.script === first)
@@ -33,7 +33,7 @@ struct ScriptImporterTests {
     }
 
     @Test func theSameTitleWithNewTextReplacesAndKeepsTakesAndRenderings() throws {
-        let script = try importer.paste(SampleScript.harbourWalk).script
+        let script = try importer.paste(Fixtures.harbourWalk).script
         script.cuesOn = false
         script.lastStep = 2
         let take = Take(stepIndex: 1)
@@ -44,7 +44,7 @@ struct ScriptImporterTests {
         rendering.script = script
 
         // Shorter, and with the title in another case.
-        let shorter = SampleScript.harbourWalk.components(separatedBy: "## 3.")[0]
+        let shorter = Fixtures.harbourWalk.components(separatedBy: "## 3.")[0]
             .replacingOccurrences(of: "# The Harbour Walk", with: "# the harbour walk")
         let result = try importer.paste(shorter)
         #expect(result.outcome == .replaced)
@@ -66,13 +66,13 @@ struct ScriptImporterTests {
     }
 
     @Test func anotherTitleIsANewScript() throws {
-        _ = try importer.paste(SampleScript.harbourWalk)
+        _ = try importer.paste(Fixtures.harbourWalk)
         _ = try importer.paste(Fixtures.rosie)
         #expect(count == 2)
     }
 
     @Test func pasteNewVersionReplacesWhateverTheTitle() throws {
-        let script = try importer.paste(SampleScript.harbourWalk).script
+        let script = try importer.paste(Fixtures.harbourWalk).script
         let result = try importer.replace(script, with: Fixtures.rosie)
         #expect(result.outcome == .replaced)
         #expect(script.title == "Rosie's Walk")
@@ -87,7 +87,7 @@ struct ScriptImporterTests {
     }
 
     @Test func staleStepsAreRebuiltFromTheSourceText() throws {
-        let script = try importer.paste(SampleScript.harbourWalk).script
+        let script = try importer.paste(Fixtures.harbourWalk).script
         let step = try #require(script.orderedSteps.first)
         step.phraseList = PhraseList(parserVersion: 0)
         let updatedAt = script.updatedAt
@@ -111,20 +111,20 @@ struct ScriptImporterTests {
     }
 
     @Test func newWithAStoredScriptsTextOpensIt() throws {
-        let pasted = try importer.paste(SampleScript.harbourWalk).script
-        let written = try importer.create(SampleScript.harbourWalk + "\n")
+        let pasted = try importer.paste(Fixtures.harbourWalk).script
+        let written = try importer.create(Fixtures.harbourWalk + "\n")
         #expect(written.outcome == .unchanged)
         #expect(written.script === pasted)
         #expect(count == 1)
     }
 
     @Test func anEditKeepsTakesAndTheStartStepAndIsMarked() throws {
-        let script = try importer.paste(SampleScript.harbourWalk).script
+        let script = try importer.paste(Fixtures.harbourWalk).script
         script.lastStep = 1
         let take = Take(stepIndex: 1)
         context.insert(take)
         take.script = script
-        let edited = SampleScript.harbourWalk.replacingOccurrences(of: "built in 1890", with: "built in 1891")
+        let edited = Fixtures.harbourWalk.replacingOccurrences(of: "built in 1890", with: "built in 1891")
         let result = try importer.edit(script, with: edited)
         #expect(result.outcome == .replaced)
         #expect(script.editedInEarwig)
@@ -135,9 +135,9 @@ struct ScriptImporterTests {
     }
 
     @Test func aPasteOverAnEditAsksFirst() throws {
-        let script = try importer.paste(SampleScript.harbourWalk).script
-        _ = try importer.edit(script, with: SampleScript.harbourWalk.replacingOccurrences(of: "Morning!", with: "Hello!"))
-        let newer = SampleScript.harbourWalk.replacingOccurrences(of: "Morning!", with: "Good morning!")
+        let script = try importer.paste(Fixtures.harbourWalk).script
+        _ = try importer.edit(script, with: Fixtures.harbourWalk.replacingOccurrences(of: "Morning!", with: "Hello!"))
+        let newer = Fixtures.harbourWalk.replacingOccurrences(of: "Morning!", with: "Good morning!")
 
         // By title on the Scripts screen.
         let asked = try importer.paste(newer)
@@ -150,15 +150,15 @@ struct ScriptImporterTests {
         #expect(count == 1)
 
         // By Paste New Version on the Script screen.
-        _ = try importer.edit(script, with: SampleScript.harbourWalk)
+        _ = try importer.edit(script, with: Fixtures.harbourWalk)
         #expect(try importer.replace(script, with: Fixtures.rosie).outcome == .wouldReplaceEdits)
         #expect(try importer.replace(script, with: Fixtures.rosie, replacingEdits: true).outcome == .replaced)
         #expect(!script.editedInEarwig)
     }
 
     @Test func aPasteOfTheSameTextOverAnEditOpensIt() throws {
-        let script = try importer.paste(SampleScript.harbourWalk).script
-        let edited = SampleScript.harbourWalk.replacingOccurrences(of: "Morning!", with: "Hello!")
+        let script = try importer.paste(Fixtures.harbourWalk).script
+        let edited = Fixtures.harbourWalk.replacingOccurrences(of: "Morning!", with: "Hello!")
         _ = try importer.edit(script, with: edited)
         #expect(try importer.paste(edited).outcome == .unchanged)
         #expect(try importer.replace(script, with: edited).outcome == .unchanged)

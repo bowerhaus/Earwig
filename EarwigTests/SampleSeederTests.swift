@@ -19,18 +19,27 @@ struct SampleSeederTests {
         take.script = script
     }
 
-    @Test func eachSampleParsesAsItsFormatWithWordsInEveryStep() {
-        let expected: [String: (ScriptFormat, Int)] = [
-            "harbour-walk": (.cutaway, 3), "weekend-loaf": (.cutaway, 4),
-            "old-watermill": (.cutaway, 7), "seaside-pier": (.plain, 3),
-        ]
+    @Test func eachSampleIsInTheDocumentedFormatWithWordsInEveryStep() {
+        let steps = ["harbour-walk": 3, "weekend-loaf": 4, "old-watermill": 7, "seaside-pier": 3]
         for sample in SampleScript.all {
             let parsed = ScriptParser.parse(sample.text)
-            #expect(parsed.format == expected[sample.id]?.0, "\(sample.id)")
-            #expect(parsed.steps.count == expected[sample.id]?.1, "\(sample.id)")
+            #expect(parsed.format == .plain, "\(sample.id)")
+            #expect(parsed.steps.count == steps[sample.id], "\(sample.id)")
             #expect(parsed.titleIsStated, "\(sample.id)")
             #expect(parsed.steps.allSatisfy { !PhraseList(lines: $0.lines).spoken.isEmpty }, "\(sample.id)")
         }
+    }
+
+    /// Plan 015, decision 13: the same steps in the same order, so takes kept by step stay right,
+    /// and Cutaway's `Shows:` is the cue at the top of each step.
+    @Test func theHarbourWalkSaysWhatItSaidInCutawaysFormat() {
+        let documented = ScriptParser.parse(SampleScript.harbourWalk)
+        let cutaway = ScriptParser.parse(Fixtures.harbourWalk)
+        #expect(documented.title == cutaway.title)
+        #expect(documented.steps.map(\.title) == cutaway.steps.map(\.title))
+        #expect(documented.steps.map(\.lines) == cutaway.steps.map(\.lines))
+        #expect(documented.steps.map { $0.directions.filter { $0.kind == .cue }.map(\.text) }
+            == cutaway.steps.map { $0.directions.filter { $0.kind == .shows }.map { String($0.text.dropLast()) } })
     }
 
     @Test func theSeasidePiersStepsAreNamed() {
@@ -51,7 +60,7 @@ struct SampleSeederTests {
     }
 
     @Test func aChangedSampleTextReplacesTheStoredTextAndKeepsItsTakes() throws {
-        let old = SampleScript.Sample(id: "harbour-walk", text: SampleScript.harbourWalk.components(separatedBy: "## 3.")[0])
+        let old = SampleScript.Sample(id: "harbour-walk", text: SampleScript.harbourWalk.components(separatedBy: "## Up the cliff path")[0])
         try seeder.seed([old])
         let walk = try #require(scripts.first)
         addTake(to: walk)
@@ -88,7 +97,7 @@ struct SampleSeederTests {
 
     @Test func aPasteTitledLikeASampleIsANewScriptOfTheirOwn() throws {
         try seeder.seed()
-        let shorter = SampleScript.harbourWalk.components(separatedBy: "## 3.")[0]
+        let shorter = SampleScript.harbourWalk.components(separatedBy: "## Up the cliff path")[0]
         let result = try ScriptImporter(context: context).paste(shorter)
         #expect(result.outcome == .added)
         #expect(!result.script.isSample)
@@ -107,7 +116,7 @@ struct SampleSeederTests {
 
     /// An edited sample is the presenter's to keep until Reset Sample (plan 015, decision 7).
     @Test func anEditedSampleIsLeftAloneByALaterBuild() throws {
-        let old = SampleScript.Sample(id: "harbour-walk", text: SampleScript.harbourWalk.components(separatedBy: "## 3.")[0])
+        let old = SampleScript.Sample(id: "harbour-walk", text: SampleScript.harbourWalk.components(separatedBy: "## Up the cliff path")[0])
         try seeder.seed([old])
         let walk = try #require(scripts.first)
         let edited = old.text.replacingOccurrences(of: "Morning!", with: "Hello!")

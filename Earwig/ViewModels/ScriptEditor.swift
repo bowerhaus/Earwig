@@ -155,17 +155,29 @@ final class ScriptEditor {
     }
 
     /// What typing or dictating `inserted` at `at` puts in: its first letter a capital at the
-    /// start of a title, a step's name or a cue, which the keyboard leaves small after `#` and
-    /// `[` (Andy on the phone). Nil to put it in as it is; a word like "iPhone" is left.
+    /// start of a title or a step's name, which the keyboard leaves small after `#` (Andy on the
+    /// phone). A cue is left as it is: it needs no capital (Andy). Nil to put it in as it is; a
+    /// word like "iPhone" is left.
     static func capitalised(_ inserted: String, at: Int, in text: String) -> String? {
         guard let first = inserted.firstIndex(where: { !$0.isWhitespace }), inserted[first].isLowercase else { return nil }
         let next = inserted.index(after: first)
         if next < inserted.endIndex, inserted[next].isUppercase { return nil }
         let line = String(text.prefix(at).split(separator: "\n", omittingEmptySubsequences: false).last ?? "")
             + inserted[..<first]
-        let starts = line.wholeMatch(of: #/\s*#{1,6}\s+/#) != nil || line.trimmingCharacters(in: .whitespaces).hasSuffix("[")
-        guard starts else { return nil }
+        guard line.wholeMatch(of: #/\s*#{1,6}\s+/#) != nil else { return nil }
         return String(inserted[..<first]) + inserted[first].uppercased() + inserted[next...]
+    }
+
+    /// Whether the keyboard should start the next word with a capital (plan 015, the Shift
+    /// experiment): right after a title's `# ` or a step's `## `, and at the start of the line
+    /// under a step's heading. iOS has no way to light Shift, so there the text view asks the
+    /// keyboard for a capital at every word; `capitalised` stays as the backstop.
+    static func wantsCapital(at: Int, in text: String) -> Bool {
+        let lines = text.prefix(at).split(separator: "\n", omittingEmptySubsequences: false)
+        let line = lines.last ?? ""
+        if line.wholeMatch(of: #/\s*#{1,6}\s+/#) != nil { return true }
+        guard line.isEmpty, lines.count > 1 else { return false }
+        return lines[lines.count - 2].wholeMatch(of: #/\s*#{2,6}(?:\s.*)?/#) != nil
     }
 
     /// The text and cursor once a change is made.

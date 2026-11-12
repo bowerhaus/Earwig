@@ -19,11 +19,11 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 - [x] Tests + lint
 - [x] Review + fixes (review pass and outcome in the plan; issue comment posted)
 - [x] Device-check fixes so far: Step, Cue, capitals (decision 2 amended on the phone); one set of buttons, Edit and More, title on the page, samples edited and reset, swipe Edit/Reset (decision 12, decision 7 amended); the title's gap; Title, Step and Cue in a glass capsule above the keyboard (decision 2 amended)
-- [ ] 6. Andy's next changes, agreed 2026-11-12 (below)
+- [x] 6. Andy's next changes, agreed 2026-11-12 (below): done, 448 tests pass, lint clean, looked at in the simulator; decisions 2 and 5 amended, decision 13 added
 - [ ] Manual test: device (check 1 passed apart from the capitals; checks 2–7 still to report)
 - [ ] Complete (commit + PR)
 
-## Next: Andy's agreed changes (do these first, then reinstall for the device checks)
+## Done: Andy's agreed changes (next: install on the phone and resume the device checks, including the Shift experiment's verdict)
 
 1. **Shift lit after Title and Step: an experiment.** iOS has no API to set Shift. Try: while the cursor sits right after `# ` or `## ` (a title or step name's start, and the start of a step's first line), set the text view's `autocapitalizationType = .words` and `reloadInputViews()`; back to `.sentences` once the cursor leaves that spot. Only switch when `markedTextRange == nil` (not mid-dictation), and only when the mode actually changes. Keep `ScriptEditor.capitalised` as the backstop for titles and step names. On the phone, watch for keyboard flicker and dictation being cut off; Andy's verdict decides whether it stays. Andy noted the capital currently lands only once a line is finished (dictation).
 2. **Cues are not capitalised.** Andy: "I don't think cues need to be capitalized." Drop the `[` case from `ScriptEditor.capitalised` and its tests (`theStartOfATitleAStepOrACueGetsACapital`, `otherTextIsLeft`), and the Shift experiment doesn't touch cues.
@@ -39,6 +39,7 @@ Scratch state for the plan in flight. Overwritten at the start of a plan, emptie
 
 ## Notes
 
-- 441 tests pass, SwiftLint clean (as of `257b636`).
+- 448 tests pass, SwiftLint clean.
+- For Completion: README screenshots and banner (and plan 013's App Store screenshots) show "SHOWS" on the Harbour Walk and need retaking.
 - The console launch's connection drops after a few minutes; relaunching closes the app, so only relaunch between checks.
 - Plan 013 is in flight on `app-store-release` and touches the README, the PRD and CLAUDE.md; whichever merges second rebases those.

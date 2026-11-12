@@ -12,7 +12,7 @@ struct ScriptDetailViewModelTests {
 
     @Test func theRowShowsTheRenderOfThisScriptsStartStepOnly() async throws {
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
         let other = try ScriptImporter(context: context).paste(Fixtures.rosie).script
         let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
         let model = ScriptDetailViewModel(script: script)
@@ -40,8 +40,8 @@ struct ScriptDetailViewModelTests {
 
     @Test func pasteNewVersionOverAnEditAsksFirst() async throws {
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
-        _ = try ScriptImporter(context: context).edit(script, with: SampleScript.harbourWalk.replacingOccurrences(of: "Morning!", with: "Hello!"))
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
+        _ = try ScriptImporter(context: context).edit(script, with: Fixtures.harbourWalk.replacingOccurrences(of: "Morning!", with: "Hello!"))
         let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
         let model = ScriptDetailViewModel(script: script)
 
@@ -60,7 +60,7 @@ struct ScriptDetailViewModelTests {
 
     @Test func startOpensATakeNumberedAfterTheStepsLast() async throws {
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
         let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
         let model = ScriptDetailViewModel(script: script)
         model.appeared(in: context, renderer: renderer)
@@ -84,7 +84,7 @@ struct ScriptDetailViewModelTests {
 
     @Test func onTheScreenAloneATakeStartsWithNothingRendered() throws {
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
         let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
         let model = ScriptDetailViewModel(script: script)
         #expect(model.renderState(renderer) == .idle)
@@ -117,7 +117,7 @@ struct ScriptDetailViewModelTests {
 
     @Test func withAVoiceATakeStillNeedsTheRendering() throws {
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
         let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
         let model = ScriptDetailViewModel(script: script)
         model.startTake(with: renderer, in: context, mode: .voice)
@@ -127,7 +127,7 @@ struct ScriptDetailViewModelTests {
 
     @Test func withCuesOffATakeHasNoCuePhrases() async throws {
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
         script.cuesOn = false
         let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
         let model = ScriptDetailViewModel(script: script)
@@ -144,7 +144,7 @@ struct ScriptDetailViewModelTests {
 
     @Test func aTakeIsRecordedAtItsSlateAndFinishedAtItsEnd() throws {
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
         let recorder = ScriptTakeRecorder(script: script, stepIndex: 1, number: 3, context: context)
         recorder.started(at: Date())
         #expect(script.takes(forStep: 1).map(\.number) == [3])

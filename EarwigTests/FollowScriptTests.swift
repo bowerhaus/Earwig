@@ -44,7 +44,7 @@ struct FollowScriptTests {
     }
 
     @Test func theSampleStepBecomesTheEnginesInput() {
-        let parsed = ScriptParser.parse(SampleScript.harbourWalk)
+        let parsed = ScriptParser.parse(Fixtures.harbourWalk)
         let list = PhraseList(lines: parsed.steps[0].lines)
         let follow = FollowScript(phraseList: list)
         #expect(follow.phrases.count == list.phrases.count)

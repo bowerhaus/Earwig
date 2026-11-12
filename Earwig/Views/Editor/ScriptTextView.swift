@@ -31,10 +31,12 @@ struct ScriptTextView: UIViewRepresentable {
         view.keyboardDismissMode = .interactive
         view.accessibilityLabel = "Script"
         view.text = text
+        view.autocapitalizationType = .sentences
         view.inputAccessoryView = Self.toolBar(tools, controller: controller)
         view.delegate = context.coordinator
         controller.textView = view
         controller.onChange = { context.coordinator.changed(view) }
+        Self.restyle(view)
         ScriptTextController.select(selection, in: view)
         return view
     }
@@ -109,7 +111,45 @@ struct ScriptTextView: UIViewRepresentable {
         if text != context.coordinator.known {
             view.text = text
             context.coordinator.known = text
+            Self.restyle(view)
         }
+    }
+
+    /// The marks faint, headings bold and cues in the cue colour (plan 015, decision 2), as
+    /// attributes on the text the view has, so the text, the cursor and undo are untouched. Left
+    /// while the keyboard is still composing or dictation is coming in; it runs again once the
+    /// text is settled.
+    fileprivate static func restyle(_ view: UITextView) {
+        guard view.markedTextRange == nil else { return }
+        let storage = view.textStorage
+        let body = UIFont.preferredFont(forTextStyle: .body)
+        let plain: [NSAttributedString.Key: Any] = [.font: body, .foregroundColor: UIColor(EarwigTheme.text)]
+        storage.beginEditing()
+        storage.setAttributes(plain, range: NSRange(location: 0, length: storage.length))
+        for style in ScriptHighlight.styles(in: storage.string) {
+            switch style.kind {
+            case .title: storage.addAttribute(.font, value: UIFont.preferredFont(forTextStyle: .title2).bold, range: style.range)
+            case .step: storage.addAttribute(.font, value: body.bold, range: style.range)
+            case .mark: storage.addAttribute(.foregroundColor, value: UIColor(EarwigTheme.editorMark), range: style.range)
+            case .cue: storage.addAttribute(.foregroundColor, value: UIColor(EarwigTheme.cue), range: style.range)
+            }
+        }
+        storage.endEditing()
+        view.typingAttributes = plain
+    }
+
+    /// The Shift experiment (plan 015): the keyboard asked for a capital at every word while the
+    /// cursor is where a title, a step's name or a step's first line starts, and for sentences'
+    /// capitals elsewhere. iOS has no way to light Shift itself. Never while the keyboard is
+    /// composing or dictating, and the keyboard is reloaded only when the choice changes.
+    fileprivate static func offerCapitals(_ view: UITextView) {
+        guard view.markedTextRange == nil, view.isFirstResponder, view.selectedRange.length == 0 else { return }
+        let text = view.text ?? ""
+        let wanted: UITextAutocapitalizationType = ScriptEditor.wantsCapital(
+            at: ScriptTextController.characters(view.selectedRange.location, in: text), in: text) ? .words : .sentences
+        guard view.autocapitalizationType != wanted else { return }
+        view.autocapitalizationType = wanted
+        view.reloadInputViews()
     }
 
     /// All the space it is given, never its text's height, or the bar under it moves down a line
@@ -134,7 +174,13 @@ struct ScriptTextView: UIViewRepresentable {
             changed(textView)
         }
 
-        /// Puts a capital at the start of a title, a step's name or a cue, for typing and
+        /// After the input system has finished with the change that moved the cursor, so the
+        /// keyboard is never reloaded in the middle of one.
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            Task { @MainActor in ScriptTextView.offerCapitals(textView) }
+        }
+
+        /// Puts a capital at the start of a title or a step's name, for typing and
         /// dictation alike. Text the keyboard is still composing is left to it.
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText inserted: String) -> Bool {
             let text = textView.text ?? ""
@@ -149,6 +195,7 @@ struct ScriptTextView: UIViewRepresentable {
         }
 
         func changed(_ view: UITextView) {
+            ScriptTextView.restyle(view)
             known = view.text
             if text.wrappedValue != view.text { text.wrappedValue = view.text }
         }
@@ -158,6 +205,11 @@ struct ScriptTextView: UIViewRepresentable {
 private extension UIFont {
     func withWeight(_ weight: UIFont.Weight) -> UIFont {
         UIFont.systemFont(ofSize: pointSize, weight: weight)
+    }
+
+    /// The same font, bold, keeping its text style's size.
+    var bold: UIFont {
+        fontDescriptor.withSymbolicTraits(.traitBold).map { UIFont(descriptor: $0, size: 0) } ?? self
     }
 }
 

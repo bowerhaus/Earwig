@@ -4,6 +4,37 @@ import AVFoundation
 /// Made-up scripts for the parser and import tests. The repo is public: never a real one.
 enum Fixtures {
 
+    /// The parser and import tests' main fixture (plan 002, decision 12): the Harbour Walk in
+    /// Cutaway's format, as the sample was until plan 015 (decision 13) wrote it in the documented one.
+    static let harbourWalk = """
+        # The Harbour Walk
+
+        ## 1. Setting off
+        Shows: Presenter at the harbour wall, boats behind.
+        Says:
+        - Morning! We're starting at the old harbour, just as the tide turns.
+        - The plan is simple: along the sea wall, up the cliff path, and back through the village for a late breakfast.
+        - It's about four miles in all, and if we don't stop too often, it should take a couple of hours.
+        - [Gesture to the boats] Most of these boats go out at first light, so by now the harbour is almost empty.
+
+        ## 2. The sea wall
+        Shows: Walking shot along the wall, waves below.
+        Says:
+        - The sea wall was built in 1890, after a storm took half the cottages on the front.
+        - You can still see the marks where the old ones stood, if you know where to look.
+        - On a calm day like this it's an easy stroll, but in winter the spray comes right over the top.
+        - The trick is to keep an eye on the tide tables, and never to be here at high water in a gale.
+
+        ## 3. Up the cliff path
+        Shows: Steep path, gorse either side.
+        Says:
+        - Now the hard part. The path climbs about three hundred feet in less than half a mile.
+        - Take it steadily; there's a bench at the top, and the view is worth every step.
+        - On a clear day you can see the lighthouse to the west, and the headland beyond it.
+        - And if you're very lucky, there are seals on the rocks below, sleeping off their breakfast.
+        - Which reminds me, it's time we thought about ours.
+        """
+
     /// Cutaway's own example from its file contract, with a source span and an `Open:` field.
     static let rosie = """
         # Script: Rosie's Walk

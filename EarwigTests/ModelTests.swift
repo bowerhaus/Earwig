@@ -23,7 +23,7 @@ struct ModelTests {
     @Test func deletingAScriptDeletesItsStepsTakesAndRenderings() throws {
         let container = ModelContainerFactory.inMemory()
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
         let take = Take(stepIndex: 0)
         let rendering = Rendering(scriptHash: script.sourceHash, voiceIdentifier: "v")
         context.insert(take)

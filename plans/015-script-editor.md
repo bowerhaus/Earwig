@@ -117,6 +117,9 @@ What already exists:
      - **Step puts the cursor on the line under its `## `.** With it after the `## `, everything Andy dictated became the step's name, the step had nothing to say and Save never came on (review C4). A name is typed after the `## `.
      - **Cue at the end of a line starts a line of its own**, and **tapped inside a cue it ends it**: past the `]`, and for a cue on a line of its own onto a new line under it. Mid-sentence it is still inline.
      - **Capitals.** The keyboard leaves the first letter after `# `, `## ` or `[` small, so the text view makes it a capital as it is typed or dictated (`ScriptEditor.capitalised`), leaving a word like "iPhone".
+     - **No capital in a cue** (Andy: "I don't think cues need to be capitalized"): `capitalised` is for titles and step names only.
+     - **Shift at a title's or step's start: an experiment.** iOS has no way to light Shift, so while the cursor sits right after `# ` or `## `, or at the start of the line under a step's heading (`ScriptEditor.wantsCapital`), the text view asks for `.words` capitals and reloads the keyboard, and `.sentences` elsewhere: only when the choice changes, never while the keyboard is composing or dictating. `capitalised` stays as the backstop. Andy's verdict on the phone (keyboard flicker, dictation cut off) decides whether it stays.
+     - **`##` kept, but quieter** (Andy chose this over "a blank line starts a step"). The editor colours the text as it is typed (`ScriptHighlight`), attributes only, the stored text unchanged: the `#` and `##` faint (`EarwigTheme.editorMark`), the title bold and larger, a step's heading bold, cues in the cue colour. Skipped while the keyboard is composing or dictating. This is option (b), after all.
 
 3. **Saving.**
    - **Edit** saves through `ScriptImporter.replace(_:with:)`, the same path as Paste New Version, so takes, renderings, the cues setting and the start step are kept. Unchanged text saves nothing.
@@ -162,7 +165,7 @@ What already exists:
 5. **The format labels go.**
    - `ScriptFormat.label` is deleted, and the Scripts screen's row reads "3 steps · last take yesterday".
    - `ScriptFormat` itself stays inside the app, choosing the parser.
-   - **The Seaside Pier** is rewritten with `#` and `##`, since its step names were guessed. A later build's sample text replaces the stored one and keeps its takes (plan 011).
+   - **The Seaside Pier** is rewritten with `#` and `##`, since its step names were guessed. A later build's sample text replaces the stored one and keeps its takes (plan 011). **Amended: all four samples are in the documented format (decision 13).**
 
 6. **Share: the way back to the Mac.**
    - A `Transferable` `ScriptText` gives the share sheet the text both as plain text (so **Copy** gives the words, for Universal Clipboard) and as a `.md` file named after the title (for AirDrop, Files and Mail).
@@ -225,6 +228,12 @@ What already exists:
       - The menu is iOS's pale one: the screen sets no bar background or dark bar of its own, as the Scripts screen sets none. A dark bar made the menu near-black; a bar background without it turned the Scripts title black on the way back. The menu's icons are mid-blue, as the accent is faint on it.
     - **The title is on the page**, large and wrapping, not in the bar, where a long one was cut short beside the buttons.
     - **Swipe on the Scripts list** gives **Edit** beside Delete on your own scripts, and Edit, with Reset once edited, on a sample: a shortcut, not the only way (Andy wasn't convinced a swipe alone would be found).
+
+13. **The samples in the documented format** (Andy, on the phone). The Harbour Walk, the Weekend Loaf and the Old Watermill were Cutaway scripts, which is unpublished and shows `Shows:`, `Says:` and `- ` in the editor; a sample should show a new user how to write a script.
+    - Each is `# Title`, `## Step name` (the "1." numbering dropped), the `Shows:` text as a cue line at the top of its step, and each `- ` line a plain line.
+    - The same steps in the same order, so takes (kept by step) stay right; the seeder replaces unedited stored samples on the next launch (plan 011). A test checks the Harbour Walk says what its Cutaway version said.
+    - Cutaway is still tested: the Cutaway Harbour Walk is `Fixtures.harbourWalk`, the parser and import tests' main fixture. Cutaway paste is unchanged.
+    - For Completion: the README's screenshots and banner show "SHOWS" on the Harbour Walk and need retaking (`scripts/readme/make_readme_images.py`), as do plan 013's App Store screenshots.
 
 ## Files
 

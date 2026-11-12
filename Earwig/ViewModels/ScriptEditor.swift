@@ -168,14 +168,17 @@ final class ScriptEditor {
         return String(inserted[..<first]) + inserted[first].uppercased() + inserted[next...]
     }
 
-    /// Whether the keyboard should start the next word with a capital (plan 015, the Shift
-    /// experiment): right after a title's `# ` or a step's `## `, and at the start of the line
-    /// under a step's heading. iOS has no way to light Shift, so there the text view asks the
-    /// keyboard for a capital at every word; `capitalised` stays as the backstop.
+    /// Whether the keyboard should give every word a capital (plan 015, the Shift experiment):
+    /// anywhere on a title's or a step's line past its `# ` or `## `, so headings are in Title
+    /// Case, and at the start of the line under a step's heading. iOS has no way to light Shift,
+    /// so there the text view asks the keyboard for words' capitals. The whole line, not only its
+    /// start (Andy on the phone): dictation writes its words again with the capitals asked for
+    /// at the time, so switching back after the first word took that word's capital away.
+    /// `capitalised` stays as the backstop.
     static func wantsCapital(at: Int, in text: String) -> Bool {
         let lines = text.prefix(at).split(separator: "\n", omittingEmptySubsequences: false)
         let line = lines.last ?? ""
-        if line.wholeMatch(of: #/\s*#{1,6}\s+/#) != nil { return true }
+        if line.prefixMatch(of: #/\s*#{1,6}\s/#) != nil { return true }
         guard line.isEmpty, lines.count > 1 else { return false }
         return lines[lines.count - 2].wholeMatch(of: #/\s*#{2,6}(?:\s.*)?/#) != nil
     }

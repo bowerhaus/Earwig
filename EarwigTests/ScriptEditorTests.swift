@@ -106,8 +106,10 @@ struct ScriptEditorTests {
         #expect(ScriptEditor.capitalised("#", at: 0, in: "") == nil)
     }
 
-    @Test func theKeyboardOffersACapitalAtATitleOrAStepsStart() {
+    @Test func theKeyboardOffersCapitalsOnATitleOrAStepAndAtAStepsStart() {
         #expect(ScriptEditor.wantsCapital(at: 2, in: "# "))
+        #expect(ScriptEditor.wantsCapital(at: 3, in: "# M"))
+        #expect(ScriptEditor.wantsCapital(at: 17, in: "# Hi\n\n## The pier"))
         #expect(ScriptEditor.wantsCapital(at: 9, in: "# Hi\n\n## "))
         #expect(ScriptEditor.wantsCapital(at: 9, in: "# Hi\n\n##\n"))
         #expect(ScriptEditor.wantsCapital(at: 18, in: "# Hi\n\n## The pier\n"))
@@ -116,7 +118,7 @@ struct ScriptEditorTests {
     @Test func theKeyboardIsLeftAloneElsewhere() {
         #expect(!ScriptEditor.wantsCapital(at: 0, in: ""))
         #expect(!ScriptEditor.wantsCapital(at: 1, in: "#"))
-        #expect(!ScriptEditor.wantsCapital(at: 3, in: "# M"))
+        #expect(!ScriptEditor.wantsCapital(at: 8, in: "#hashtag"))
         #expect(!ScriptEditor.wantsCapital(at: 5, in: "# Hi\n"))
         #expect(!ScriptEditor.wantsCapital(at: 5, in: "Hi.\n["))
         #expect(!ScriptEditor.wantsCapital(at: 26, in: "# Hi\n\n## The pier\nHello.\n"))

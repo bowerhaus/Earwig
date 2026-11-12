@@ -139,8 +139,8 @@ struct ScriptTextView: UIViewRepresentable {
     }
 
     /// The Shift experiment (plan 015): the keyboard asked for a capital at every word while the
-    /// cursor is where a title, a step's name or a step's first line starts, and for sentences'
-    /// capitals elsewhere. iOS has no way to light Shift itself. Never while the keyboard is
+    /// cursor is on a title's or a step's line, or where a step's first line starts, and for
+    /// sentences' capitals elsewhere. iOS has no way to light Shift itself. Never while the keyboard is
     /// composing or dictating, and the keyboard is reloaded only when the choice changes.
     fileprivate static func offerCapitals(_ view: UITextView) {
         guard view.markedTextRange == nil, view.isFirstResponder, view.selectedRange.length == 0 else { return }

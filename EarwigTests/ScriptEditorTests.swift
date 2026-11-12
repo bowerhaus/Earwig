@@ -231,6 +231,13 @@ struct ScriptEditorTests {
         #expect(try context.fetchCount(FetchDescriptor<Script>()) == 1)
     }
 
+    @Test func editStartsAtTheEndOfTheTitleLine() throws {
+        let script = try ScriptImporter(context: context).add(SampleScript.seasidePier)
+        #expect(ScriptEditor(mode: .edit(script)).selection == 18..<18)
+        #expect(ScriptEditor.titleEnd(in: "\n# Pier\n\nHello.") == 7)
+        #expect(ScriptEditor.titleEnd(in: "Hello.\n\nAgain.") == 0)
+    }
+
     @Test func aSharedFileIsNamedAfterTheTitle() {
         #expect(ScriptText(title: "Walk: 1/2?", text: "").fileName == "Walk 12.md")
         #expect(ScriptText(title: " / ", text: "").fileName == "Script.md")

@@ -39,7 +39,7 @@ final class ScriptEditor {
         self.mode = mode
         let start: Edit = switch mode {
         case .new: Edit(text: "# ", selection: 2..<2)
-        case .edit(let script): Edit(text: script.sourceText, selection: 0..<0)
+        case .edit(let script): Edit(text: script.sourceText, selection: Self.titleEnd(in: script.sourceText)..<Self.titleEnd(in: script.sourceText))
         }
         text = start.text
         selection = start.selection
@@ -155,6 +155,14 @@ final class ScriptEditor {
         var range: Range<Int>
         var text: String
         var cursor: Int
+    }
+
+    /// Where Edit starts the cursor: the end of the title line, so the title shows which script
+    /// this is and typing at once doesn't break its `#` (Andy on the phone: the end of a long
+    /// script would scroll away from it). The top with no title line.
+    static func titleEnd(in text: String) -> Int {
+        let change = titleChange(in: Edit(text: text, selection: 0..<0))
+        return change.text.isEmpty ? change.cursor : 0
     }
 
     /// Title: the cursor to the end of the title line, or a `# ` line added at the top for one.

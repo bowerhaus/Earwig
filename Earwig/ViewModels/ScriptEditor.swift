@@ -30,6 +30,9 @@ final class ScriptEditor {
     private(set) var checked: Result<ParsedScript, ScriptImporter.ImportError>
     /// Where the cursor starts, as character offsets into `text`.
     let selection: Range<Int>
+    /// Where the cursor is now, in characters, as the text view reports it, for the line under
+    /// the editor.
+    var cursor: Int
     private let original: String
 
     init(mode: Mode) {
@@ -40,6 +43,7 @@ final class ScriptEditor {
         }
         text = start.text
         selection = start.selection
+        cursor = start.selection.lowerBound
         original = ScriptImporter.cleaned(start.text)
         checked = ScriptImporter.check(start.text)
     }
@@ -63,20 +67,72 @@ final class ScriptEditor {
         return true
     }
 
-    /// The line under the editor: what the text makes, or how to start.
+    /// The line under the editor: on a step's heading, what its name is for; otherwise what the
+    /// text makes, or how to start, and a named step with nothing to say, which isn't a step.
     var summary: String {
+        if let name = Self.stepName(at: cursor, in: text) {
+            return name.isEmpty ? Self.nameHint : Self.returnHint
+        }
+        let silent = Self.silentStep(in: text, apartFrom: cursor).map(Self.silentHint)
         switch checked {
         case .success(let parsed):
             let steps = parsed.steps.count
             let lines = parsed.steps.reduce(0) { $0 + $1.lines.count }
-            return "\(parsed.title) · \(steps == 1 ? "1 step" : "\(steps) steps") · \(lines == 1 ? "1 line" : "\(lines) lines")"
+            let count = "\(parsed.title) · \(steps == 1 ? "1 step" : "\(steps) steps") · \(lines == 1 ? "1 line" : "\(lines) lines")"
+            return silent.map { count + "\n" + $0 } ?? count
         case .failure:
-            return Self.hint
+            return silent ?? Self.hint
         }
     }
 
     /// How the format works, shown until there is something to say (plan 015, decision 11).
     static let hint = "Type a title, then tap Step for each part. A cue, a stage direction for you, goes in square brackets: [Gesture to the boats]."
+    /// On a step's heading with no name yet (plan 015, decision 2, amended on the phone).
+    static let nameHint = "Name this step, or press Return to skip the name. A name is shown on the step's card and read in the slate."
+    /// On a step's heading with a name.
+    static let returnHint = "Press Return to write what you'll say in this step."
+
+    /// A named step with nothing to say: what went wrong on the phone when the words went into
+    /// the heading (review C4).
+    static func silentHint(_ name: String) -> String {
+        "“\(name)” has nothing to say yet. Words on a step's ## line are its name: press Return after it to write what you'll say."
+    }
+
+    /// The name on the step heading the cursor is on: empty for none, nil off a step's heading.
+    static func stepName(at cursor: Int, in text: String) -> String? {
+        let before = text.prefix(cursor).split(separator: "\n", omittingEmptySubsequences: false).last ?? ""
+        let after = text.dropFirst(cursor).prefix { $0 != "\n" }
+        return PlainParser.stepHeading(String(before + after).trimmingCharacters(in: .whitespaces))
+    }
+
+    /// The first step with a name and nothing to say, in a script of the documented format:
+    /// the plain parser leaves such a step out. Cutaway's steps can mean to say nothing. The step
+    /// the cursor is in is left out, being written (seen in the simulator: Return after a name
+    /// brought the warning straight away).
+    static func silentStep(in text: String, apartFrom cursor: Int? = nil) -> String? {
+        guard ScriptParser.detectFormat(text) == .plain else { return nil }
+        let cursorLine = cursor.map { text.prefix($0).count { $0 == "\n" } }
+        var name: String?
+        var says = false
+        var writing = false
+        func silent() -> String? {
+            guard let name, !name.isEmpty, !says, !writing else { return nil }
+            return name
+        }
+        for (index, line) in text.components(separatedBy: "\n").enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if let heading = PlainParser.stepHeading(trimmed) {
+                if let found = silent() { return found }
+                name = heading
+                says = false
+                writing = false
+            } else if PlainParser.titleLine(trimmed) == nil, !trimmed.isEmpty, trimmed.wholeMatch(of: #/\[[^\[\]]*\]/#) == nil {
+                says = true
+            }
+            if index == cursorLine { writing = true }
+        }
+        return silent()
+    }
 
     /// Saves the text: a new script for New, or the edited script. Returns the
     /// script to show.
@@ -112,16 +168,18 @@ final class ScriptEditor {
         return Change(range: 0..<0, text: edit.text.isEmpty ? "# " : "# \n\n", cursor: 2)
     }
 
-    /// Step: a new step at the cursor, after a blank line, with the cursor on the line under its
-    /// `## `, so what is dictated next is said, not the step's name (Andy on the phone: Save
-    /// never came on, the words had all gone into the heading). A name is typed after the `## `.
-    /// A selection is kept, under the heading.
+    /// Step: a new step at the cursor, after a blank line, with the cursor after its `## `, ready
+    /// for a name, or Return to skip it (plan 015, decision 2, amended on the phone: the cursor
+    /// on the line under the heading looked odd and didn't say why). The line under the editor
+    /// says what to do, and names a step whose words all went into its heading. Text after the
+    /// cursor goes on the line under the heading.
     static func stepChange(in edit: Edit) -> Change {
         let at = edit.selection.lowerBound
         let before = edit.text.prefix(at)
         let gap = if before.isEmpty || before.hasSuffix("\n\n") { "" } else if before.hasSuffix("\n") { "\n" } else { "\n\n" }
-        let heading = gap + "## \n"
-        return Change(range: at..<at, text: heading, cursor: at + heading.count)
+        let restOfLine = edit.text.dropFirst(at).prefix { $0 != "\n" }
+        let heading = gap + "## "
+        return Change(range: at..<at, text: heading + (restOfLine.isEmpty ? "" : "\n"), cursor: at + heading.count)
     }
 
     /// Cue: the selection in square brackets with the cursor after them. With none, `[]` with

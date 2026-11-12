@@ -18,7 +18,7 @@ struct ScriptEditorView: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 10) {
-                ScriptTextView(text: $editor.text, selection: editor.selection, controller: textView, tools: Self.tools)
+                ScriptTextView(text: $editor.text, selection: editor.selection, cursor: $editor.cursor, controller: textView, tools: Self.tools)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(EarwigTheme.surface, in: RoundedRectangle(cornerRadius: EarwigButton.corner))
                 // Three lines kept for it, so the text above stays put when the hint gives way to
@@ -70,7 +70,7 @@ struct ScriptEditorView: View {
     /// Title, Step and Cue, on a bar above the keyboard (plan 015, decision 2).
     private static let tools: [ScriptTextView.Tool] = [
         .init(title: "Title", systemImage: "textformat.size", hint: "Goes to the script's title, or adds one at the top", change: ScriptEditor.titleChange),
-        .init(title: "Step", systemImage: "list.number", hint: "Starts a new step, with the cursor on the line under it", change: ScriptEditor.stepChange),
+        .init(title: "Step", systemImage: "list.number", hint: "Starts a new step, ready for its name", change: ScriptEditor.stepChange),
         .init(title: "Cue", systemImage: "text.bubble", hint: "Starts a cue in square brackets, or ends the one the cursor is in", change: ScriptEditor.cueChange),
     ]
 

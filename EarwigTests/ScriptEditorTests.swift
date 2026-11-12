@@ -29,36 +29,65 @@ struct ScriptEditorTests {
     // MARK: Step
 
     @Test func stepAtTheStartOfEmptyText() {
-        #expect(ScriptEditor.step(in: Edit(text: "", selection: 0..<0)) == Edit(text: "## \n", selection: 4..<4))
+        #expect(ScriptEditor.step(in: Edit(text: "", selection: 0..<0)) == Edit(text: "## ", selection: 3..<3))
     }
 
     @Test func stepAtTheEndOfALineLeavesABlankLineFirst() {
-        #expect(ScriptEditor.step(in: Edit(text: "# Pier", selection: 6..<6)) == Edit(text: "# Pier\n\n## \n", selection: 12..<12))
-        #expect(ScriptEditor.step(in: Edit(text: "# Pier\n", selection: 7..<7)) == Edit(text: "# Pier\n\n## \n", selection: 12..<12))
-        #expect(ScriptEditor.step(in: Edit(text: "# Pier\n\n", selection: 8..<8)) == Edit(text: "# Pier\n\n## \n", selection: 12..<12))
+        #expect(ScriptEditor.step(in: Edit(text: "# Pier", selection: 6..<6)) == Edit(text: "# Pier\n\n## ", selection: 11..<11))
+        #expect(ScriptEditor.step(in: Edit(text: "# Pier\n", selection: 7..<7)) == Edit(text: "# Pier\n\n## ", selection: 11..<11))
+        #expect(ScriptEditor.step(in: Edit(text: "# Pier\n\n", selection: 8..<8)) == Edit(text: "# Pier\n\n## ", selection: 11..<11))
     }
 
-    /// What is dictated after Step is said, so the step is a step and Save comes on (Andy on
-    /// the phone: it never did, the words had gone into the heading).
-    @Test func whatIsDictatedAfterStepIsSaid() {
+    /// The line under the editor says what a step's heading is for while the cursor is on it.
+    @Test func onAStepsHeadingTheLineSaysWhatTheNameIsFor() {
         let editor = ScriptEditor(mode: .new)
-        let titled = Edit(text: "# The Pier", selection: 10..<10)
-        let stepped = ScriptEditor.step(in: titled)
-        editor.text = ScriptEditor.applied(ScriptEditor.Change(range: stepped.selection, text: "Hello there.", cursor: 0), to: stepped.text).text
+        let stepped = ScriptEditor.step(in: Edit(text: "# The Pier", selection: 10..<10))
+        editor.text = stepped.text
+        editor.cursor = stepped.selection.lowerBound
+        #expect(editor.summary == ScriptEditor.nameHint)
+        editor.text += "Arriving"
+        editor.cursor = editor.text.count
+        #expect(editor.summary == ScriptEditor.returnHint)
+        editor.text += "\nHello there."
+        editor.cursor = editor.text.count
         #expect(editor.summary == "The Pier · 1 step · 1 line")
         #expect(editor.canSave)
     }
 
-    @Test func stepInTheMiddleOfALineBreaksIt() {
-        #expect(ScriptEditor.step(in: Edit(text: "Hello world", selection: 6..<6)) == Edit(text: "Hello \n\n## \nworld", selection: 12..<12))
+    /// Words dictated into a step's heading make a step with nothing to say, which the line names
+    /// (Andy on the phone: Save never came on, and nothing said why).
+    @Test func aStepWithOnlyANameIsNamed() {
+        let editor = ScriptEditor(mode: .new)
+        editor.text = "# The Pier\n\n## Hello there everyone"
+        editor.cursor = 0
+        #expect(editor.summary == ScriptEditor.silentHint("Hello there everyone"))
+        #expect(!editor.canSave)
+        editor.text = "# The Pier\n\n## One\nHello.\n\n## Two\n[Wave]\n\n## \n"
+        #expect(editor.summary == "The Pier · 1 step · 1 line\n" + ScriptEditor.silentHint("Two"))
     }
 
-    @Test func stepKeepsASelectionUnderTheHeading() {
-        #expect(ScriptEditor.step(in: Edit(text: "One. Two.", selection: 5..<9)) == Edit(text: "One. \n\n## \nTwo.", selection: 11..<11))
+    @Test func theStepBeingWrittenIsNotNamed() {
+        let text = "# The Pier\n\n## One\nHello.\n\n## Two\n"
+        #expect(ScriptEditor.silentStep(in: text, apartFrom: text.count) == nil)
+        #expect(ScriptEditor.silentStep(in: text, apartFrom: 13) == "Two")
+    }
+
+    @Test func aStepWithNothingYetOrACutawayStepIsNotNamed() {
+        #expect(ScriptEditor.silentStep(in: "# The Pier\n\n## One\nHello.\n\n## ") == nil)
+        #expect(ScriptEditor.silentStep(in: "# The Pier\n\n## One\n[Wave] Hello.") == nil)
+        #expect(ScriptEditor.silentStep(in: "# Walk\n\n## 1. Off\nShows: Gate.\nSays: nothing\n\n## 2. On\nSays:\n- Hi.") == nil)
+    }
+
+    @Test func stepInTheMiddleOfALineBreaksIt() {
+        #expect(ScriptEditor.step(in: Edit(text: "Hello world", selection: 6..<6)) == Edit(text: "Hello \n\n## \nworld", selection: 11..<11))
+    }
+
+    @Test func stepPutsASelectionUnderTheHeading() {
+        #expect(ScriptEditor.step(in: Edit(text: "One. Two.", selection: 5..<9)) == Edit(text: "One. \n\n## \nTwo.", selection: 10..<10))
     }
 
     @Test func stepBeforeALineBreak() {
-        #expect(ScriptEditor.step(in: Edit(text: "One.\nTwo.", selection: 4..<4)) == Edit(text: "One.\n\n## \n\nTwo.", selection: 10..<10))
+        #expect(ScriptEditor.step(in: Edit(text: "One.\nTwo.", selection: 4..<4)) == Edit(text: "One.\n\n## \nTwo.", selection: 9..<9))
     }
 
     // MARK: Cue

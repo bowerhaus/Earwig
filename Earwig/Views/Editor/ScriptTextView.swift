@@ -17,6 +17,8 @@ struct ScriptTextView: UIViewRepresentable {
     @Binding var text: String
     /// Where the cursor starts, in characters.
     let selection: Range<Int>
+    /// Where the cursor is, in characters, kept up to date for the line under the editor.
+    @Binding var cursor: Int
     let controller: ScriptTextController
     let tools: [Tool]
 
@@ -108,6 +110,7 @@ struct ScriptTextView: UIViewRepresentable {
     /// view would otherwise put back the text from before the newest character.
     func updateUIView(_ view: UITextView, context: Context) {
         context.coordinator.text = $text
+        context.coordinator.cursor = $cursor
         if text != context.coordinator.known {
             view.text = text
             context.coordinator.known = text
@@ -158,15 +161,17 @@ struct ScriptTextView: UIViewRepresentable {
         proposal.replacingUnspecifiedDimensions(by: CGSize(width: 320, height: 200))
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
+    func makeCoordinator() -> Coordinator { Coordinator(text: $text, cursor: $cursor) }
 
     final class Coordinator: NSObject, UITextViewDelegate {
         var text: Binding<String>
+        var cursor: Binding<Int>
         /// The text as the text view last had it, or as last given to it.
         var known: String
 
-        init(text: Binding<String>) {
+        init(text: Binding<String>, cursor: Binding<Int>) {
             self.text = text
+            self.cursor = cursor
             known = text.wrappedValue
         }
 
@@ -177,7 +182,11 @@ struct ScriptTextView: UIViewRepresentable {
         /// After the input system has finished with the change that moved the cursor, so the
         /// keyboard is never reloaded in the middle of one.
         func textViewDidChangeSelection(_ textView: UITextView) {
-            Task { @MainActor in ScriptTextView.offerCapitals(textView) }
+            Task { @MainActor in
+                ScriptTextView.offerCapitals(textView)
+                let at = ScriptTextController.characters(textView.selectedRange.location, in: textView.text ?? "")
+                if cursor.wrappedValue != at { cursor.wrappedValue = at }
+            }
         }
 
         /// The cursor is placed before the keyboard comes, so New's `# ` is checked again once

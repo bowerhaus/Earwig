@@ -180,6 +180,12 @@ struct ScriptTextView: UIViewRepresentable {
             Task { @MainActor in ScriptTextView.offerCapitals(textView) }
         }
 
+        /// The cursor is placed before the keyboard comes, so New's `# ` is checked again once
+        /// it has (Andy on the phone: Shift wasn't lit until a letter was typed and deleted).
+        func textViewDidBeginEditing(_ textView: UITextView) {
+            Task { @MainActor in ScriptTextView.offerCapitals(textView) }
+        }
+
         /// Puts a capital at the start of a title or a step's name, for typing and
         /// dictation alike. Text the keyboard is still composing is left to it.
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText inserted: String) -> Bool {

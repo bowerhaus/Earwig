@@ -4,7 +4,7 @@ import Testing
 
 struct PhraseListTests {
 
-    private let harbour = ScriptParser.parse(SampleScript.harbourWalk)
+    private let harbour = ScriptParser.parse(Fixtures.harbourWalk)
 
     @Test func inlineDirectionsAreCuePhrasesInPlace() {
         let list = PhraseList(lines: harbour.steps[0].lines)

@@ -103,8 +103,7 @@ struct FollowEngine: Sendable {
             voice = phrase + 1 < script.phrases.count ? .waiting(phrase + 1) : .done(now)
             pacer.pause()
         case .cueEnded:
-            guard phase == .slateCue else { break }
-            phase = settings.start == .slateWithReply ? .slateReply(since: now) : .slateGap(until: now + settings.slateGap)
+            return cueEnded()
         case .tonesEnded:
             guard phase == .tones else { break }
             phase = .following
@@ -429,8 +428,21 @@ extension FollowEngine {
             phase = .slateCue
             return [.playCue(.slate)]
         case .tonesOnly:
-            return startTones()
+            guard settings.cuesFirst else { return startTones() }
+            phase = .slateCue
+            return [.playCue(.slate)]
         }
+    }
+
+    /// The slate, or the cues before the tones alone, has been read.
+    private mutating func cueEnded() -> [FollowCommand] {
+        guard phase == .slateCue else { return [] }
+        switch settings.start {
+        case .slateWithReply: phase = .slateReply(since: now)
+        case .slate: phase = .slateGap(until: now + settings.slateGap)
+        case .tonesOnly: return startTones()
+        }
+        return []
     }
 
     private mutating func tap() -> [FollowCommand] {

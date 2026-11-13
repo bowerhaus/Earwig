@@ -376,7 +376,7 @@ enum SimulationScripts {
     /// The sample's step: the harbour walk, step 2 by default, made the engine's input. The
     /// voice says a word every `secondsPerWord` (2.5 words a second by default).
     static func harbour(step: Int, secondsPerWord: TimeInterval = 0.4) -> FollowScript {
-        let parsed = ScriptParser.parse(SampleScript.harbourWalk)
+        let parsed = ScriptParser.parse(Fixtures.harbourWalk)
         return FollowScript(phraseList: PhraseList(lines: parsed.steps[step].lines), secondsPerWord: secondsPerWord)
     }
 }

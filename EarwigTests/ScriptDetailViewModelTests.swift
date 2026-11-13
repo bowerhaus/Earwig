@@ -12,7 +12,7 @@ struct ScriptDetailViewModelTests {
 
     @Test func theRowShowsTheRenderOfThisScriptsStartStepOnly() async throws {
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
         let other = try ScriptImporter(context: context).paste(Fixtures.rosie).script
         let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
         let model = ScriptDetailViewModel(script: script)
@@ -38,9 +38,29 @@ struct ScriptDetailViewModelTests {
         #expect(model.renderState(renderer) == .idle)
     }
 
+    @Test func pasteNewVersionOverAnEditAsksFirst() async throws {
+        let context = container.mainContext
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
+        _ = try ScriptImporter(context: context).edit(script, with: Fixtures.harbourWalk.replacingOccurrences(of: "Morning!", with: "Hello!"))
+        let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
+        let model = ScriptDetailViewModel(script: script)
+
+        model.pasteNewVersion(Fixtures.rosie, in: context, renderer: renderer)
+        #expect(model.pendingNewVersion == Fixtures.rosie)
+        #expect(model.notice == nil)
+        #expect(script.title == "The Harbour Walk")
+
+        model.confirmNewVersion(Fixtures.rosie, in: context, renderer: renderer)
+        await renderer.finished()
+        #expect(model.pendingNewVersion == nil)
+        #expect(model.notice == "Updated to the new version.")
+        #expect(script.title == "Rosie's Walk")
+        #expect(!script.editedInEarwig)
+    }
+
     @Test func startOpensATakeNumberedAfterTheStepsLast() async throws {
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
         let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
         let model = ScriptDetailViewModel(script: script)
         model.appeared(in: context, renderer: renderer)
@@ -52,7 +72,11 @@ struct ScriptDetailViewModelTests {
         model.startTake(with: renderer, in: context, mode: .voice)
         let setup = try #require(model.take?.setup)
         #expect(setup.take == 5)
-        #expect(setup.slateText.hasSuffix("take 5."))
+        // Tones only by default: the step's cues are read before the tones, with no slate
+        // (plan 015, decision 14).
+        #expect(setup.settings.start == .tonesOnly)
+        #expect(setup.slateText == "Setting off. Presenter at the harbour wall, boats behind.")
+        #expect(setup.engineSettings.cuesFirst)
         #expect(setup.slateWords.last == .number(5))
         #expect(setup.script.phrases.count == setup.phraseList.phrases.count)
 
@@ -64,7 +88,7 @@ struct ScriptDetailViewModelTests {
 
     @Test func onTheScreenAloneATakeStartsWithNothingRendered() throws {
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
         let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
         let model = ScriptDetailViewModel(script: script)
         #expect(model.renderState(renderer) == .idle)
@@ -97,7 +121,7 @@ struct ScriptDetailViewModelTests {
 
     @Test func withAVoiceATakeStillNeedsTheRendering() throws {
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
         let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
         let model = ScriptDetailViewModel(script: script)
         model.startTake(with: renderer, in: context, mode: .voice)
@@ -107,7 +131,7 @@ struct ScriptDetailViewModelTests {
 
     @Test func withCuesOffATakeHasNoCuePhrases() async throws {
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
         script.cuesOn = false
         let renderer = ScriptRenderer(renderer: fake, voices: ScriptRendererTests.voices)
         let model = ScriptDetailViewModel(script: script)
@@ -124,7 +148,7 @@ struct ScriptDetailViewModelTests {
 
     @Test func aTakeIsRecordedAtItsSlateAndFinishedAtItsEnd() throws {
         let context = container.mainContext
-        let script = try ScriptImporter(context: context).paste(SampleScript.harbourWalk).script
+        let script = try ScriptImporter(context: context).paste(Fixtures.harbourWalk).script
         let recorder = ScriptTakeRecorder(script: script, stepIndex: 1, number: 3, context: context)
         recorder.started(at: Date())
         #expect(script.takes(forStep: 1).map(\.number) == [3])

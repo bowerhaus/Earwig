@@ -60,6 +60,12 @@ struct StepView: View {
     }
 
     private func directionText(_ direction: Direction) -> AttributedString {
+        // An opening cue is shown as it was written, in square brackets, as a cue in a line is.
+        if direction.kind == .cue {
+            var cue = AttributedString("[\(direction.text)]")
+            cue.font = .subheadline.italic()
+            return cue
+        }
         guard let label = direction.label else { return AttributedString(direction.text) }
         var labelText = AttributedString(label.uppercased() + "  ")
         labelText.font = .caption.weight(.bold)

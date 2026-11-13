@@ -44,7 +44,7 @@ There are no accounts, no servers and no network, and nothing leaves the phone.
 
 ## Before you start: get a good voice
 
-Earwig usually uses two voices: one reads your script, and a second reads the slate and any stage directions you've chosen to hear spoken. Your iPhone comes with only the basic, compact voices, and they sound robotic, so download better ones before you try Earwig, or the first thing you hear will put you off. It only takes a couple of minutes:
+Earwig usually uses two voices: one reads your script, and a second reads the slate and the cues: the reminders to yourself in square brackets. Your iPhone comes with only the basic, compact voices, and they sound robotic, so download better ones before you try Earwig, or the first thing you hear will put you off. It only takes a couple of minutes:
 
 1. On the iPhone, open **Settings › Accessibility › Read & Speak › Voices › English**.
 2. The page lists the voices, and you can play a preview of each one. Any that isn't on the phone yet has a little cloud icon: tap it to download.
@@ -64,7 +64,7 @@ Earwig comes with four made-up sample scripts, so you can try it out before past
 
 Now put the earbud in.
 
-6. Choose **With Voice** and tap **Start Take 2**. You'll hear three tones, then the voice starts the first phrase.
+6. Choose **With Voice** and tap **Start Take 2**. You'll hear the step's name and its cue in the second voice, then three tones, then the voice starts the first phrase.
 7. Start speaking a moment after the voice, a few words behind it. You never have to catch it up, because it speeds up or slows down a little to keep its lead on you.
 8. Pause at the end of a sentence. The voice finishes the phrase and waits, and when you go on, so does it.
 9. Stumble on purpose and start the sentence again. The voice waits while you correct yourself and carries on with you. If you lose your place altogether, tap **Back** (⏮) to hear the phrase again.
@@ -72,46 +72,49 @@ Now put the earbud in.
 
 Speaking just a couple of words behind a voice in your ear feels odd at first, and it takes a little practice to get used to. Don't give up too easily: after a few takes it starts to feel natural, and that's when Earwig really helps.
 
-Then paste in a script of your own.
+Then write a script of your own, or paste one in.
 
 ## Features
 
 ### Scripts
 
-- **Paste a script.** Copy the text on your Mac, then tap **Paste** on the Scripts screen and Universal Clipboard brings it across. Earwig reads two formats.
-
-  Markdown, with a `# ` title, numbered `## ` steps, and the lines to say as bullets under `Says:`. Lines starting `Shows:`, `Footage:` or `Open:` are directions: they're shown on the Script screen but never spoken.
-
-  ```markdown
-  # Script: The Harbour Walk
-
-  ## 1. Setting off
-  Shows: Presenter at the harbour wall, boats behind.
-  Says:
-  - Morning! We're starting at the old harbour, just as the tide turns.
-  - [Gesture to the boats] Most of these boats go out at first light.
-  ```
-
-  Or plain text, where each block separated by a blank line is a step. A short first line with no full stop is the step's title, and a lone line at the top is the script's title.
-
-  ```text
-  The Seaside Pier
-
-  The entrance
-  This pier opened in 1899, and for a while it was the longest on the coast.
-  [Gesture along the boards] It runs out nearly a third of a mile.
-  ```
-
-- **Stage directions.** Anything in square brackets inside a line is a stage direction, like a gesture or a look. During a take you hear a chime at that point (the default), or the direction read out in a second voice. Choose which under **Stage Directions** in Settings.
-- **Pasting again.** Paste the same text again and Earwig simply opens the script you already have. Paste a script with the same title and it replaces the text but keeps your takes. If the title has changed, use **Paste New Version** at the foot of the Script screen.
-- **Samples.** *The Harbour Walk*, *The Weekend Loaf*, *The Old Watermill* and *The Seaside Pier* are always there, below your own scripts. You can't delete them, and their takes are kept like any other script's.
-- **Deleting a script.** Swipe one of your own scripts and tap **Delete**, or tap **Delete Script** at the foot of its Script screen. Earwig asks first, since its takes go with it.
+- **Write a script.** Tap **New** on the Scripts screen and type, or tap the keyboard's microphone and dictate. Above the keyboard, **Title**, **Step** and **Cue** put the marks in for you, so you never have to hunt for a `#` or a bracket. Under the text, Earwig tells you what it makes of it so far: the title, the steps and the lines, or what's missing.
+- **Paste a script.** Copy the text on your Mac, then tap **Paste** on the Scripts screen and Universal Clipboard brings it across.
+- **Edit a script.** Tap **Edit** on the Script screen to fix a line on the day. Your takes are kept, and the voice says the new words.
+- **Back to your Mac.** **More › Share** on the Script screen sends the script as a `.md` file by AirDrop, or **Copy** puts its text on the clipboard.
+- **Cues.** A cue is a reminder to yourself, like a gesture or a look, in square brackets. A cue at the top of a step is read before the take. One inside a line gives you a chime at that point (the default), or is read out in the second voice: choose which under **Hear Cues As** in Settings. Turn **Read Cues** off on the start card and you hear none of them.
+- **Pasting again.** Paste the same text again and Earwig simply opens the script you already have. Paste a script with the same title and it replaces the text but keeps your takes. If the title has changed, use **More › Paste New Version**. If you've changed the script in Earwig since, it asks before replacing your changes, so share it first if you want to keep them.
+- **Samples.** *The Harbour Walk*, *The Weekend Loaf*, *The Old Watermill* and *The Seaside Pier* are always there, below your own scripts. You can edit them to try things out, and **Reset Sample** puts the words back. You can't delete them, and their takes are kept like any other script's.
+- **Deleting a script.** Swipe one of your own scripts and tap **Delete**, or use **More › Delete Script**. Earwig asks first, since its takes go with it.
 - **The paste prompt.** iOS asks "Allow Paste?" every time until you set **Settings › Apps › Earwig › Paste from Other Apps** to **Allow**.
+
+### Writing a script
+
+A script is plain text with three marks:
+
+- `# ` starts the title.
+- `## ` starts a step, with its name if you want one.
+- Square brackets make a cue, like `[Gesture to the boats]`.
+- Everything else is what you say, a line at a time.
+
+```markdown
+# The Seaside Pier
+
+## The entrance
+[Walk onto the boards]
+This pier opened in 1899, and for a while it was the longest on the coast.
+[Gesture along the boards] It runs out nearly a third of a mile, so we'll take it slowly.
+
+## Halfway out
+Every board under your feet was replaced in the 1990s, one plank at a time.
+```
+
+With no `##` at all, each paragraph is a step. Earwig also reads a fuller Markdown layout, with a step's lines as bullets under `Says:` and the shot described under `Shows:`.
 
 ### The Script screen
 
-- **Steps.** Each step's card shows its directions, its lines and the takes you've done. Tap a step to start your takes from there; the start step has a bar down its side.
-- **The start card** at the top is where you set up the next take. Choose **With Voice** or **Screen Only**, and whether to **Record** (**Off**, **Sound** or **Video**). **Read Cues** decides, for this script, whether the slate reads out the step's name and its `Shows:` line, and whether you hear its directions during the take. The card also shows the voice being prepared, and **Listen to Step N** once it's ready. Your choice of mode and recording is remembered, and matches the same settings in Settings.
+- **Steps.** Each step's card shows its cues, its lines and the takes you've done. Tap a step to start your takes from there; the start step has a bar down its side.
+- **The start card** at the top is where you set up the next take. Choose **With Voice** or **Screen Only**, and whether to **Record** (**Off**, **Sound** or **Video**). **Read Cues** decides, for this script, whether the step's name and its cue are read before the take, and whether you hear the cues in its lines. The card also shows the voice being prepared, and **Listen to Step N** once it's ready. Your choice of mode and recording is remembered, and matches the same settings in Settings.
 - **Listen** plays the step straight through, with the words lit as they're spoken, at 0.85×, 1× or 1.2×. It's a handy way to hear a script before you film it, and nothing is recorded.
 
 ### As a teleprompter
@@ -123,7 +126,7 @@ Then paste in a script of your own.
 - **Start Take N** on the start step's card opens the take. Takes are numbered for each step, so the slate and the file names match your shot log.
 - **Getting ready.** Earwig sets up the microphone, the audio and listening. The very first time, it may need to download Apple's British English speech model.
 - **How a take starts** is your choice in Settings:
-  - **Tones only** (the default): three tones, then the voice starts.
+  - **Tones only** (the default): the step's name and its cue, then three tones, then the voice starts.
   - **Slate alone:** the slate ("Step 2, take 3") is read into your ear, with a pause for you to say it to the camera, then the tones.
   - **Slate with a reply:** the same, but Earwig waits to hear you say the slate back, or for a tap on the screen, before the tones.
 - **The route check.** Two icons at the top of the take show where the sound is going and where Earwig is listening, and a note appears if something is wrong, such as "The earpiece is in hands-free mode: reconnect it." The earbud needs to play in its normal music mode (Bluetooth A2DP), and Earwig always listens on the iPhone's own microphone.
@@ -162,9 +165,10 @@ Tap the gear on the Scripts screen.
 
 | Group | Settings |
 |---|---|
-| Voice | **Voice**: your Personal Voice, if you have one and allow it (**Allow Personal Voice**), or any English voice of Enhanced quality or better, British first. **Preview** plays a line in it at the voice speed, through the earbud if it's in. **Voice Speed** (0.80× to 1.00×, default 0.95×). **Cue Voice**: Automatic, a voice of the other gender so a cue never sounds like your script, or any English voice of Enhanced quality or better of the other gender. **Stage Directions**: Chime or Spoken. |
-| Following | **Lead** (2 to 6 words, default 5, with the seconds that comes to), **Pacing** (Hybrid or Phrase-gated) |
+| Voice | **Voice**: your Personal Voice, if you have one and allow it (**Allow Personal Voice**), or any English voice of Enhanced quality or better, British first. **Preview** plays a line in it at the voice speed, through the earbud if it's in. **Voice Speed** (0.80× to 1.00×, default 0.95×). |
 | Start | **Slate with a reply**, **Slate alone** or **Tones only** (the default) |
+| Cues | **Cue Voice**: Automatic, a voice of the other gender so a cue never sounds like your script, or any English voice of Enhanced quality or better of the other gender. **Hear Cues As**: Chime or Spoken, for cues inside a line. |
+| Following | **Lead** (2 to 6 words, default 5, with the seconds that comes to), **Pacing** (Hybrid or Phrase-gated) |
 | Screen | **Mode** (With Voice or Screen Only), **Light the Voice's Phrase**, **Text Size** (24 to 72 pt, default 40) |
 | Recording | **Record** (Off, Sound or Video), **Video Quality**, **Camera Behind the Text**, **Keep Recordings**, the space used, and **Delete All Recordings** |
 | Diagnostics | **Listening Check** shows where the sound is going and where Earwig is listening, and lists the words it hears with how late each one arrived. **Say Test** plays a line through the earbud: with the earbud in, none of it should turn up among the heard words. |
@@ -173,7 +177,7 @@ Tap the gear on the Scripts screen.
 <p align="center">
   <img src="docs/screenshots/voice-take.png" alt="A take with the voice, its phrase lit just ahead of your line" width="250">&nbsp;&nbsp;
   <img src="docs/screenshots/finished.png" alt="A finished take, with Next Take and Done" width="250">&nbsp;&nbsp;
-  <img src="docs/screenshots/settings.png" alt="Settings: Voice, Following and Start" width="250">
+  <img src="docs/screenshots/settings.png" alt="Settings: Start, Cues and Following" width="250">
 </p>
 
 ## Requirements

@@ -2,8 +2,8 @@ import AVFoundation
 import Observation
 import SwiftData
 
-/// The Script screen (PRD §8.2): the start step and its rendering, the cues switch, Listen, a
-/// new version, delete.
+/// The Script screen (PRD §8.2): the start step and its rendering, the cues switch, Listen, Edit,
+/// a new version, delete.
 @MainActor
 @Observable
 final class ScriptDetailViewModel {
@@ -104,7 +104,8 @@ final class ScriptDetailViewModel {
             self.error = error.localizedDescription
             return
         }
-        let slateText = Slate.text(for: step, take: number, cuesOn: script.cuesOn)
+        let settings = AppSettings.take.followSettings
+        let slateText = Slate.text(for: step, take: number, cuesOn: script.cuesOn, start: settings.start)
         var setup = TakeSetup(
             stepNumber: step.number,
             stepTitle: step.title,
@@ -114,7 +115,7 @@ final class ScriptDetailViewModel {
             audio: built.audio,
             slateText: slateText,
             slateWords: Slate.replyWords(for: step, take: number),
-            settings: AppSettings.take.followSettings,
+            settings: settings,
             contextWords: TakeSetup.contextWords(phraseList: phraseList, slateText: slateText),
             voiceSpeed: AppSettings.take.voiceSpeed,
             mode: mode,
@@ -217,10 +218,52 @@ final class ScriptDetailViewModel {
             error = ScriptImporter.ImportError.noSteps.localizedDescription
             return
         }
+        replace(with: text, replacingEdits: false, in: context, renderer: renderer)
+    }
+
+    /// Paste New Version's text, while it asks whether to replace changes made in Earwig (plan
+    /// 015, decision 8).
+    var pendingNewVersion: String?
+
+    /// Replace was chosen.
+    func confirmNewVersion(_ text: String, in context: ModelContext, renderer: ScriptRenderer) {
+        pendingNewVersion = nil
+        replace(with: text, replacingEdits: true, in: context, renderer: renderer)
+    }
+
+    private func replace(with text: String, replacingEdits: Bool, in context: ModelContext, renderer: ScriptRenderer) {
         do {
-            let result = try ScriptImporter(context: context).replace(script, with: text)
+            let result = try ScriptImporter(context: context).replace(script, with: text, replacingEdits: replacingEdits)
+            if result.outcome == .wouldReplaceEdits {
+                pendingNewVersion = text
+                return
+            }
             try context.save()
             notice = result.outcome == .unchanged ? "That is the version already here." : "Updated to the new version."
+            renderStartStep(with: renderer)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    /// The editor while Edit's sheet is up (plan 015, decisions 2 and 7): a sample is edited too.
+    var editor: ScriptEditor?
+
+    func startEditing() {
+        editor = ScriptEditor(mode: .edit(script))
+    }
+
+    /// After Save: an edit's start step is rendered again for its new words.
+    func edited(with renderer: ScriptRenderer) {
+        renderStartStep(with: renderer)
+    }
+
+    /// Reset Sample: an edited sample's text back, its takes kept, and its start step rendered
+    /// again for the words (plan 015, decision 7).
+    func resetSample(in context: ModelContext, renderer: ScriptRenderer) {
+        do {
+            try ScriptImporter(context: context).reset(script)
+            try context.save()
             renderStartStep(with: renderer)
         } catch {
             self.error = error.localizedDescription

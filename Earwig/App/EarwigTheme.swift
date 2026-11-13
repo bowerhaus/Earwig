@@ -32,6 +32,9 @@ enum EarwigTheme {
     /// Words already heard in the scrolling text: white, faint, so the presenter's place is
     /// where the white starts (plan 008, Andy's eyeline choice).
     static let heardText = Color.white.opacity(0.45)
+    /// The `#` and `##` of a title or step in the editor: white, faint, so the words read first
+    /// (plan 015, decision 2).
+    static let editorMark = Color.white.opacity(0.4)
     /// An unchosen control on a card, such as a mode tile not picked: white, faint.
     static let control = Color.white.opacity(0.15)
     /// Behind the voice's phrase in the scrolling text: the cards' mid-blue, so white text reads

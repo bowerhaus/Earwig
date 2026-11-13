@@ -32,7 +32,7 @@ struct ScriptRendererTests {
     )
 
     private let fake = FakeRenderer()
-    private let parsed = ScriptParser.parse(SampleScript.harbourWalk)
+    private let parsed = ScriptParser.parse(Fixtures.harbourWalk)
 
     private func list(_ step: Int) -> PhraseList { PhraseList(lines: parsed.steps[step].lines) }
 

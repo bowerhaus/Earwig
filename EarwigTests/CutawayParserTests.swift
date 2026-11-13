@@ -4,14 +4,14 @@ import Testing
 struct CutawayParserTests {
 
     @Test func detectsTheFormat() {
-        #expect(ScriptParser.detectFormat(SampleScript.harbourWalk) == .cutaway)
+        #expect(ScriptParser.detectFormat(Fixtures.harbourWalk) == .cutaway)
         #expect(ScriptParser.detectFormat(Fixtures.rosie) == .cutaway)
         #expect(ScriptParser.detectFormat(Fixtures.plain) == .plain)
         #expect(ScriptParser.detectFormat("## A heading\nBut no lines field.") == .plain)
     }
 
     @Test func parsesTheHarbourWalk() {
-        let script = ScriptParser.parse(SampleScript.harbourWalk)
+        let script = ScriptParser.parse(Fixtures.harbourWalk)
         #expect(script.format == .cutaway)
         #expect(script.title == "The Harbour Walk")
         #expect(script.preamble == nil)
@@ -76,8 +76,8 @@ struct CutawayParserTests {
     }
 
     @Test func windowsLineEndingsParseTheSame() {
-        let crlf = SampleScript.harbourWalk.replacingOccurrences(of: "\n", with: "\r\n")
-        #expect(ScriptParser.parse(crlf) == ScriptParser.parse(SampleScript.harbourWalk))
+        let crlf = Fixtures.harbourWalk.replacingOccurrences(of: "\n", with: "\r\n")
+        #expect(ScriptParser.parse(crlf) == ScriptParser.parse(Fixtures.harbourWalk))
     }
 
     @Test func noStepsMeansNoWords() {

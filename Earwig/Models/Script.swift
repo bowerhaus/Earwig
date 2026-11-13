@@ -21,6 +21,9 @@ final class Script {
     /// The built-in sample this is (`SampleScript.Sample.id`), or nil for the presenter's own
     /// (plan 011, decision 3).
     var sampleID: String?
+    /// Whether the text was written or changed in Earwig since it was last pasted, so a paste
+    /// that would replace it asks first (plan 015, decision 8).
+    var editedInEarwig: Bool = false
 
     @Relationship(deleteRule: .cascade, inverse: \Step.script)
     var steps: [Step]? = []
@@ -42,6 +45,8 @@ final class Script {
     }
 
     var isSample: Bool { sampleID != nil }
+    /// A sample whose text was changed in Earwig: it has Reset Sample (plan 015, decision 7).
+    var isEditedSample: Bool { isSample && editedInEarwig }
 
     var orderedSteps: [Step] { (steps ?? []).sorted { $0.sortOrder < $1.sortOrder } }
 

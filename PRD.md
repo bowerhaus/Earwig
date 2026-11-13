@@ -1,6 +1,6 @@
 # Earwig - Product Requirements Document (PRD)
 
-**Status:** Draft v0.15, 2026-11-10. Changes by version are in the Document History at the end.
+**Status:** Draft v0.16, 2026-11-13. Changes by version are in the Document History at the end.
 **Name:** Earwig (decided 2026-11-05: UK slang for listening in). Bundle identifier `com.bowerhaus.Earwig`.
 
 ## Executive Summary
@@ -59,8 +59,9 @@ take sounds like you talking, not reading.
 
 ### 1.4 Non-Goals
 
-- Not a script editor. Scripts are written elsewhere (Cutaway, a text file). Earwig
-  parses, shows and plays them; a rewrite is a new paste.
+- ~~Not a script editor.~~ Struck in plan 015: a script can be written and edited in
+  Earwig, in one simple format (4.1), by typing or the keyboard's dictation. It is still no
+  word processor: no formatting beyond the format's marks.
 - Not a camera app in v1. The camera is the Osmo. Since plan 010 Earwig can film a take
   itself with the front camera, for checking a performance (4.7); the stock Camera app is
   still no use with it, since it takes the audio session and silences Earwig. Filming meant
@@ -103,9 +104,9 @@ None at run time. Development needs Xcode 27 or later, `xcodegen`, `swiftlint`.
 | Term | Meaning |
 |---|---|
 | **Script** | A text imported into Earwig, kept with its source text, its format (plain or Cutaway) and a hash so a re-paste of the same text is recognised. |
-| **Step** | A numbered section of a script. From Cutaway's `script.md` a step is `## N. Title`; plain text has one step per blank-line-separated block, or a single step. Takes are started from a step. |
+| **Step** | A numbered section of a script. From Cutaway's `script.md` a step is `## N. Title`; in the documented format a `## ` line, with its name if it has one; plain text with no `##` has one step per blank-line-separated block, or a single step. Takes are started from a step. |
 | **Line** | A spoken sentence or item within a step. In Cutaway's format, each `- ` item under `Says:`. |
-| **Direction** | Text in a step that is not spoken by the presenter: a step's title and `Shows:` field, anything in brackets inside a line, a `Footage:` or `Open:` field. Directions are never matched against what the presenter says. Some are read as cues (section 4.2). |
+| **Direction** | Text in a step that is not spoken by the presenter: a step's title and `Shows:` field, anything in brackets inside a line, a `Footage:` or `Open:` field. Directions are never matched against what the presenter says. Some are read as cues (section 4.2). Users see every direction as a **cue**, the one word in the app and the README (plan 015); "direction" stays the code's and this document's term. |
 | **Phrase** | The unit of playback and gating: a line split at sentence ends and, in a sentence of more than about twelve words, at clause breaks (commas, dashes, semicolons, colons), packing clauses into phrases of up to twelve words. A clause itself is not cut unless it is longer than twenty words, since a cut with no punctuation sounds like a full stop (plan 009). The voice can only wait at a phrase boundary. |
 | **Rendering** | A phrase's audio in one voice, with the start time of every word in it. The phrases of the step a take starts from are rendered when the step is chosen, and kept in memory while the app runs by voice, rate and text (plan 004). |
 | **Lead** | How far ahead of the presenter the voice runs, set in words, with the equivalent in seconds shown: the head start the presenter feels, since the engine allows for the recogniser's delay itself (5.4). Default 5, the author's pick against 3 on real takes in plan 005. |
@@ -126,12 +127,15 @@ Priorities: P0 is v1, P1 should follow soon, P2 is nice to have.
 |---|---|---|
 | Import by paste from the clipboard (Universal Clipboard from the Mac) | P0 | The Scripts screen has a Paste button, Earwig's own in the accent yellow (plan 004: SwiftUI's `PasteButton` avoided the Allow Paste prompt, but iOS darkens its tint to gold-brown to keep its white text legible). iOS asks Allow Paste until Settings › Apps › Earwig › Paste from Other Apps is set to Allow, once; Earwig detects the format (Cutaway when the text has a `## ` heading and a `Says:` field) and names the script from its title or first line. The clipboard must hold the script's text: a `script.md` copied as a file in Finder pastes only its name (plan 002). |
 | Parse Cutaway `script.md` (`cutaway/script@1`) | P0 | As Cutaway's own parser, but lenient: a misnumbered or unnumbered step is kept, not an error. Title `# Script: X` (prefix optional), the first such line before the first step; steps `## N. Title`; `Says:` items (`- `, `* `, `+ `) are lines; `Shows:`, `Footage:`, `Open:` and an old `Notes:` are directions; fields may be bold; a source span in round brackets at the end of a line is stripped; run-on indented lines are joined. Text before the first step is kept as a preamble, shown, never spoken. Unknown lines are kept as directions. |
-| Parse plain text | P0 | Blank-line-separated blocks are steps (no blank lines: one step); a block's first line is its title if it has at most eight words, no sentence-ending punctuation and more lines after it. The script's title is a leading `# ` line, or a first block that is only such a title line, or else the first line cut to 40 characters. |
-| Directions inside a line | P0 | Square brackets only, in both formats: `[Gesture to the boats]` is a direction at that point, read in the cue voice. Round brackets are spoken. |
-| Show a script as its steps with each step's lines and directions | P0 | Read-only. The start-from-step picker lives here. |
-| Re-paste replaces a script's text, keeping its takes | P0 | The same text (line endings and trailing spaces aside) opens the stored script. A paste whose stated title (a `# ` line, or a plain script's lone title line) matches a stored script's, ignoring case, replaces that script's text and keeps its takes, renderings, cues setting and start step; a title taken from a first line or first step never replaces another script. The Script screen has Paste new version for a script whose title changed. Unchanged phrases are not rendered again while the app runs (plan 004). |
-| Delete a script | P0 | Swipe on the Scripts screen, or Delete Script at the foot of the Script screen, which asks first. Samples cannot be deleted. |
-| Built-in samples | P0 | Four made-up scripts, *The Harbour Walk*, *The Weekend Loaf* and *The Old Watermill* (Markdown) and *The Seaside Pier* (plain text), always in a Samples section below the presenter's own scripts (plan 011). Seeded at launch as stored scripts with a `sampleID`, so their takes are kept; a later build's new text replaces a sample's, keeping its takes; a script of the presenter's own with a sample's exact text becomes that sample. A paste titled like a sample is a new script, never a replacement. The format is labelled Markdown, not Cutaway, wherever the presenter sees it. |
+| The documented format (plain text) | P0 | Plan 015: a `# ` line is the title; a `## ` line starts a step, with its name if it has one, and blank lines inside a step are only spacing; with no `##` at all, each blank-line-separated block is a step (no blank lines: one step); square brackets are a cue; everything else is spoken. Text before the first `##` is a step with no name, never dropped. Step names come only from `##` (the guess from a short first line went: dictated "Hello everyone" vanished into a name). A first block that is one short line, with more after it, is still the script's title; else the first line cut to 40 characters. Parser version 3, so stored scripts are parsed again. |
+| Cues | P0 | Square brackets only, in both formats. Inside a line, `[Gesture to the boats]` is a cue at that point, chimed or spoken (4.2). A line wholly in square brackets before a step's first spoken line is the step's cue (`Direction.Kind.cue`), read before the take as Cutaway's `Shows:` is (4.5). Round brackets are spoken. |
+| Show a script as its steps with each step's lines and cues | P0 | The start-from-step picker lives here. A step's cue is shown in square brackets in the cue colour. |
+| Write a script (New) | P0 | Plan 015. New on the Scripts screen opens the editor on `# `. The editor is the text as written (a UIKit text view, so the keyboard's dictation and undo are the system's), with Title, Step and Cue in a glass capsule above the keyboard: Title goes to the title line or adds one; Step starts a step after a blank line with the cursor after its `## `; Cue wraps a selection, puts `[]` at the cursor (on a line of its own at a line's end), or ends the cue it is in. The `#` and `##` are faint, headings bold, the title larger, cues in the cue colour; the stored text is unchanged. The keyboard is asked for a capital on every word of a heading's line (dictation rewrites its words with the capitals asked for at the time, and iOS gives no sign it is dictating), and the first letter after `# ` or `## ` is made a capital as typed; cues get none. A line under the text says what it makes ("The Harbour Walk · 3 steps · 13 lines"), what a step's name is for while the cursor is on its heading, a named step with nothing to say, or how to start. Save only once there is something to say; Cancel with changes asks first. A new script never replaces another by its title. |
+| Edit a script | P0 | Plan 015. Edit on the Script screen, or a swipe on the Scripts list, opens the editor with the cursor at the end of the title line. Saving keeps the takes, renderings, cues setting and start step, as Paste New Version does, and marks the script as changed in Earwig. |
+| Share a script | P0 | Plan 015. More › Share gives the stored text exactly: Copy as plain text, and AirDrop, Files and Mail as a `.md` file named after the title. A Cutaway script goes back as valid Cutaway. |
+| Re-paste replaces a script's text, keeping its takes | P0 | The same text (line endings and trailing spaces aside) opens the stored script. A paste whose stated title (a `# ` line, or a plain script's lone title line) matches a stored script's, ignoring case, replaces that script's text and keeps its takes, renderings, cues setting and start step; a title taken from a first line or first step never replaces another script. The Script screen's More menu has Paste New Version for a script whose title changed. A paste that would replace a script changed in Earwig asks first ("Replace the changes made in Earwig?", plan 015). Unchanged phrases are not rendered again while the app runs (plan 004). |
+| Delete a script | P0 | Swipe on the Scripts screen, or More › Delete Script on the Script screen, which asks first. Samples cannot be deleted. |
+| Built-in samples | P0 | Four made-up scripts, *The Harbour Walk*, *The Weekend Loaf*, *The Old Watermill* and *The Seaside Pier*, all in the documented format since plan 015, so a sample shows how to write one; always in a Samples section below the presenter's own scripts (plan 011). Seeded at launch as stored scripts with a `sampleID`, so their takes are kept; a later build's new text replaces a sample's, keeping its takes; a script of the presenter's own with a sample's exact text becomes that sample. A paste titled like a sample is a new script, never a replacement. A sample can be edited; an edited sample keeps its text over a later build's until Reset Sample (More, or a swipe) puts this build's back, keeping its takes (plan 015). No format is labelled where the presenter sees it, and Cutaway is never named. |
 | Import from the share sheet and Files, and a pasted file | P1 | After paste proves the flow. Includes a `script.md` copied as a file in Finder, which today pastes only its name. |
 | Watch an iCloud Drive folder so a Cutaway project's script appears by itself | P2 | Roadmap, section 13. |
 
@@ -142,7 +146,7 @@ Priorities: P0 is v1, P1 should follow soon, P2 is nice to have.
 | Render the take's step before it starts, with word timings | P0 | `AVSpeechSynthesizer.write(_:toBufferCallback:toMarkerCallback:)` for the audio; the word boundaries come from word markers, by the marker callback or the `willSpeakMarker` delegate (whichever the voice sends), with `byteSampleOffset` in bytes. The `willSpeakRangeOfSpeechString` delegate is no use for timing during `write`, which runs far ahead of real time (plan 001). Stephanie renders about 20 to 50 times faster than real time on the iPhone 14 Pro (plan 004: a 22 s step in 0.8 to 1.1 s, every word timed), so the start step is rendered, with progress in the Script screen's row, as soon as the script opens or another step is picked, and held in memory while the app runs. Nothing is saved; whether to is reconsidered for a voice that renders slowly. |
 | Presenter's voice: Apple downloaded voices | P0 | Stephanie (Enhanced, en-GB) is the default, the author's pick in plan 001 ("okay, not fantastic"); any English voice of Enhanced quality or better can be picked instead (plan 004, in the Script screen's menu until Settings). iOS 27 puts the quality in a voice's name ("Stephanie (Enhanced)"), which the voice list allows for. A better voice is wanted (section 15). |
 | Personal Voice | Dropped | Tried in plan 004: "the voice quality is actually terrible. It sounds like some cross between me and the built-in voices", and it rendered about 2.3 times faster than real time against Stephanie's 20, though it timed every word. It can still be picked once allowed, but is never the default or the cue voice. The presenter's own recorded reading, or a cloud voice, made on the Mac and imported (section 13), is the route to a better voice. |
-| Cue voice for slates and directions | P0 | An Apple voice, by default (Automatic) the best en-GB voice that is not the presenter's, the other gender first (Jamie, Premium, with Stephanie). Since plan 012 one can be picked in Settings from the English voices of Enhanced quality or better not of the presenter's gender, never the presenter's own or a Personal Voice; a pick that stops being offered is Automatic again. The slate reads the step's number and title, then its `Shows:` text, then the slate ("Step 3. Rosie up ahead. Rosie trots far ahead up the long track. Step 3, take 2."); a shot ID is spelled out ("W 3 1"). A per-script switch turns cues off. Cues are never matched. |
+| Cue voice for slates and directions | P0 | An Apple voice, by default (Automatic) the best en-GB voice that is not the presenter's, the other gender first (Jamie, Premium, with Stephanie). Since plan 012 one can be picked in Settings from the English voices of Enhanced quality or better not of the presenter's gender, never the presenter's own or a Personal Voice; a pick that stops being offered is Automatic again. The slate reads the step's number and title, then its `Shows:` text and its cue (4.1), then the slate ("Step 3. Rosie up ahead. Rosie trots far ahead up the long track. Step 3, take 2."); a shot ID is spelled out ("W 3 1"). A per-script switch turns cues off. Cues are never matched. |
 | Directions inside a line | P0 | A setting (plan 004): **Chime**, the default, plays a low soft pong (0.8 s, about −14 dBFS) at that point, which rings on under the next line while the voice waits only 0.25 s; **Spoken** reads the direction in the cue voice there, and the take waits for it. A spoken direction leaves its own length as a gap in the take (about 1.4 s for "Gesture to the boats"), which is why the chime is the default. Reading the step's inline directions in the slate was tried and dropped: several would be hard to remember. |
 | Rate | P0 | The render uses the synthesiser's default rate (0.5). A **voice speed** in Settings, 0.8x to 1.0x, default 0.95x (plan 005: at 1.0x the voice was "still too quick", phrase-gated as well as hybrid), is the base the player plays the voice at; the engine's pacing speeds multiply it, and cues, the slate and the tones stay at 1.0x. 0.85x to 1.2x through the time-pitch node sounded natural in plan 001. One speed for every voice, not a base rate per voice (plan 012, #14): Preview plays the chosen voice at it. |
 | Import a rendering made elsewhere | P2 | A folder of phrase audio and a timings file, as Cutaway could produce with ElevenLabs or from the presenter's own recording (section 13). |
@@ -209,6 +213,9 @@ slate is read and the take starts when two of its three parts are heard repeated
 **slate alone** (the slate is read, then a 3 s pause to say it to the camera, nothing listened
 for; a tap skips it) and **tones only**. On the phone in plan 005 the author chose **tones
 only** as the default; the slate modes stay in Settings for shoots that want a spoken slate.
+Since plan 015, tones only first reads the step's name, `Shows:` text and cue in the cue
+voice, with Read Cues on and if it has any, then the tones; a tap skips them, and the Prompt
+screen says Cues meanwhile. A step's cue is then heard whatever the start mode.
 
 ### 4.6 Screen mode (teleprompter)
 
@@ -258,15 +265,19 @@ slate) is a roadmap item (section 13): cheap once the microphone is open, but sc
 
 ### 4.8 Settings
 
+In the order a take goes (plan 015):
+
 - Voice: the presenter's voice (Personal Voice once allowed, or an English voice of
   Enhanced quality or better, British first); **Preview**, which plays the sample's first
   line in it at the voice speed through the route, and reads Stop while it plays; **Voice
-  Speed** (0.80x to 1.00x, default 0.95x, one speed for every voice, 4.2); **Cue Voice**,
-  Automatic or a voice of the other gender (4.2); Allow Personal Voice; Stage Directions,
-  chimed or spoken.
+  Speed** (0.80x to 1.00x, default 0.95x, one speed for every voice, 4.2); Allow Personal
+  Voice.
+- Start: slate with a reply, slate alone, or tones only (default).
+- Cues: **Cue Voice**, Automatic or a voice of the other gender (4.2); **Hear Cues As**,
+  Chime or Spoken, for cues inside a line, with the footer "Cues at the top of a step are
+  read before the take."
 - Following: Lead, in words (2 to 6, default 5), with seconds shown; Pacing, hybrid
   (default) or phrase-gated.
-- Start: slate with a reply, slate alone, or tones only (default).
 - Screen: the mode (With Voice or Screen Only), Light the Voice's Phrase, Text Size;
   Critter, how often the earwig wanders across the screen (plan 014, section 10);
   fixed-pace words per minute when that is built (#31).
@@ -293,7 +304,8 @@ Voice) and added About. It struck the pacer's speed bounds (0.85x to 1.2x, tuned
 engine's tests, so they stay in the engine) and cues on or off by default (Read Cues is per
 script, and a new script reads cues). A Show Take Details switch for the engine's line on
 the Prompt screen was built and removed: the take's console summary has the numbers, and
-more.
+more. Plan 015 renamed Stage Directions Hear Cues As, moved it and Cue Voice into a Cues
+group, and put the groups in the order a take goes.
 
 ---
 
@@ -447,7 +459,8 @@ By the start mode (4.5). **Slate with a reply**: the engine plays the slate cue,
 once it has ended, listens for the slate's words (the step number or shot ID, "take", the
 take number, numbers by value); two of them heard, or a tap, emits the tones, and phrase 1
 plays when they end. Words heard before the tones are not followed. **Slate alone**: the
-cue, a 3 s pause, the tones. **Tones only**: the tones. A shot ID said as letters and
+cue, a 3 s pause, the tones. **Tones only**: the tones, after the step's cues if the take has
+any to read (`FollowSettings.cuesFirst`, plan 015), played as the slate cue and skipped by a tap. A shot ID said as letters and
 numbers ("W three one") is matched only as well as the matcher already can; better handling
 waits for real scripts with shot IDs (#10). The default is tones only (plan 005).
 
@@ -566,15 +579,17 @@ docs/            development.md (gotchas), this PRD stays at the root
 
 ### 8.1 Scripts
 
-The presenter's own scripts at the top (title, step count, format, last take), swipe to
-delete, which asks first as Delete Script does ("Delete *title*?", plan 012, #35), and the four samples below them under **Samples**, which cannot be deleted (plan
-011). Tap for the script. The Paste pill is in the toolbar once there are scripts of the
-presenter's own; until then the top section is one row, "Copy a script in Markdown or
-plain text, then paste it here", with the pill. The Settings gear is top left.
+The presenter's own scripts at the top (title, step count, last take; no format label since
+plan 015), swipe to delete, which asks first as Delete Script does ("Delete *title*?", plan
+012, #35), or to edit, and the four samples below them under **Samples**, which cannot be
+deleted (plan 011); a sample's swipe has Edit, and Reset once edited. Tap for the script.
+New and Paste are words in mid-blue capsules in the toolbar once there are scripts of the
+presenter's own; until then the top section is one row, "Paste a script you've copied, or
+write a new one.", with New and Paste as accent pills. The Settings gear is top left.
 
 ### 8.2 Script
 
-The steps, each with its lines and directions in the cue colour. At the top, the start card
+The title on the page, large and wrapping (plan 015), then the steps, each with its lines and cues in the cue colour. At the top, the start card
 (plan 008, Andy's pick): "Step N · take M", the two modes as large tiles that only choose
 (With Voice, Screen Only), **Listen** once the step is rendered (the step played straight
 through, slate, tones, phrases and directions as set, at 0.85x, 1.0x or 1.2x, the word being
@@ -584,16 +599,18 @@ card, once it can start (rendered, or at once in Screen Only). Tap a step to mak
 start step. A tap on the card itself never starts a take, so one is not started by accident
 while scrolling (plan 005). The takes so far for each step, and the next take's number, are
 shown on it. Each step shows its number large, as the slate says it. The start card also
-has the Record chips and the Read Cues toggle. Paste new version and Delete Script are
-buttons at the foot of the screen, for the presenter's own scripts; the toolbar has only the
-back button (plan 011).
+has the Record chips and the Read Cues toggle. The toolbar has the back button, **Edit** and
+**More** (plan 015): Share, Paste New Version and Delete Script, or on a sample Share and,
+once edited, Reset Sample. Buttons take their look from named styles beside the theme's
+colours: an icon in a circle only for Back, Settings and More, a word in a capsule for the
+rest, the accent for the main action and for what is chosen (plan 015, decision 12).
 
 ### 8.3 Prompt
 
 The take screen, usable at arm's length and glanceable from a mount (plan 008):
 
 - Top, one row: step number and title, take number, the status as a word (Getting ready,
-  Slate, Tones, Speaking, Waiting, Reading, Lost, Held), the take's mode, and the route
+  Slate, or Cues before the tones alone, Tones, Speaking, Waiting, Reading, Lost, Held), the take's mode, and the route
   check (earpiece and mic icons, red when wrong, the earpiece amber on the speaker; not
   judged in Screen Only), judged only while the take runs. What to do under it (in the
   slate-with-reply mode "Say the slate, or tap"; a tap on the text skips it). No line of the
@@ -617,7 +634,8 @@ The take screen, usable at arm's length and glanceable from a mount (plan 008):
 
 ### 8.4 Settings
 
-As 4.8, grouped: Voice, Following, Start, Screen, Recording, Diagnostics, About. From plan
+As 4.8, grouped in the order a take goes: Voice, Start, Cues, Following, Screen, Recording,
+Diagnostics, About (plan 015). From plan
 005, Following, Start and Diagnostics, opened from a gear on the Scripts screen; from plan
 008, Screen; from plan 010, Recording; from plan 011, Voice (the voice, Allow Personal Voice
 and Stage Directions); from plan 012, Preview, Voice Speed and Cue Voice in Voice, and
@@ -852,6 +870,7 @@ directly, and filming with the phone locked, which iOS does not allow.
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.16 | 2026-11-13 | Plan 015 (#43): scripts written and edited in Earwig, the non-goal struck (1.4). The documented format, `#`, `##` and cues in square brackets, in the plain parser, with no step-name guess and parser version 3; a cue at the top of a step read before the take (3, 4.1). New, Edit and Share, the editor and its toolbar, the warning before a paste replaces changes made in Earwig, samples edited and reset, all four samples in the documented format, no format labels (4.1, 8.1). "Cue" the one word users see (3). With tones only, a step's cues are read before the tones (4.5, 5.5, 8.3). Settings in a take's order with a Cues group, Stage Directions renamed Hear Cues As (4.2, 4.8, 8.4). One set of button styles; Edit and More on the Script screen, the title on the page (8.2). Checked on the iPhone 14 Pro: dictating a script, editing on a shoot, a top cue, Share, the warning, a sample reset, the buttons. |
 | 0.15 | 2026-11-10 | Plan 014 (#40): the critter, the mark walking across the Scripts, Script and Settings screens now and then, under a card only if out within 2 s, moving with the scroll, running from a tap; the Critter setting in the Screen group (4.8, 10); its folder (7.3); the plan beside the stages (12). The splash half as long again, 1.425 s (10). Checked on the iPhone 14 Pro: the walk, under and over the cards, the scroll, the tap, keeping away, smoothness; the default rate waits for a week of TestFlight use. |
 | 0.14 | 2026-11-09 | Plan 012 (#38, #36, #35, #14): Settings as built, in seven groups with About (4.8, 8.4); Preview, Voice Speed in the Voice group, one speed for every voice (#14), and a Cue Voice of the other gender or Automatic (4.2, 4.8); speed bounds and cues on by default struck (4.8); the take details line built and removed, the take's console summary having the numbers (4.8, 8.3); swipe to delete asks first (8.1); the paste hint without "on your Mac" (8.1); Say Test the sample's whole first line, not "Morning!" alone (4.3); the release script, the Keychain key, the privacy manifest and the App Store Connect record, Earwig Ear Prompter, with the first TestFlight build, 0.2.0 (2), installed over the development build and back, keeping the data (2); stage 7 done, the MVP stages complete (12). |
 | 0.13 | 2026-11-09 | Plan 011 (#22): four built-in samples in their own section of the Scripts screen, seeded at launch and adopted from pasted copies, never deleted or replaced by a paste (4.1, 8.1); the format labelled Markdown where users see it; the README; version 0.1.0 and the release scheme, tags on `main` with no binary; the licence, PolyForm Noncommercial with a permission to make videos commercially; an App Store version planned (1, 1.3, 2). No More menu: the voice, Personal Voice and Stage Directions in a Voice group in Settings, Read Cues on the start card, Delete Script at the foot of the Script screen (4.8, 8.2, 8.4). The light scheme, mid-blue toolbar buttons and Earwig's own back button and Lead stepper (10). Stage 7 is plan 012. |

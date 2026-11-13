@@ -46,6 +46,28 @@ struct FollowEngineTests {
         #expect(engine.snapshot.status == .speaking)
     }
 
+    /// Plan 015, decision 14: with cues to read, tones only reads them first, then the tones.
+    @Test func tonesOnlyReadsTheCuesFirst() {
+        var settings = FollowSettings()
+        settings.start = .tonesOnly
+        settings.cuesFirst = true
+        var engine = FollowEngine(script: script, settings: settings, slateWords: [])
+        #expect(engine.handle(.start, at: 0) == [.playCue(.slate)])
+        #expect(engine.snapshot.status == .slate)
+        #expect(engine.handle(.cueEnded, at: 2) == [.playTones])
+        #expect(engine.snapshot.status == .tones)
+        #expect(engine.handle(.tonesEnded, at: 3.5) == [.play(phrase: 0, speed: 1)])
+    }
+
+    @Test func aTapSkipsTheCuesBeforeTheTones() {
+        var settings = FollowSettings()
+        settings.start = .tonesOnly
+        settings.cuesFirst = true
+        var engine = FollowEngine(script: script, settings: settings, slateWords: [])
+        _ = engine.handle(.start, at: 0)
+        #expect(engine.handle(.tap, at: 0.5) == [.stopVoice, .playTones])
+    }
+
     @Test func theSlateIsRepliedTo() {
         var engine = engine(.slateWithReply)
         #expect(engine.handle(.start, at: 0) == [.playCue(.slate)])

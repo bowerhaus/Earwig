@@ -2,9 +2,10 @@ import AVFoundation
 import SwiftData
 import SwiftUI
 
-/// The Settings screen (PRD §4.8, §8.4; plan 005, decision 11): the voice, its speed, the cue voice
-/// and how directions are read (plan 011, decision 15; plan 012, decision 2), following, the
-/// start, the screen, recording, diagnostics, and the version (plan 012, decision 7).
+/// The Settings screen (PRD §4.8, §8.4; plan 005, decision 11), its groups in the order a take
+/// goes (plan 015, decision 15): the voice and its speed (plan 011, decision 15; plan 012,
+/// decision 2), the start, cues and the cue voice (plan 015, decision 14), following, the
+/// screen, recording, diagnostics, and the version (plan 012, decision 7).
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(TakeSettings.leadKey) private var lead = TakeSettings.defaultLead
@@ -52,10 +53,6 @@ struct SettingsView: View {
                     Picker("Voice Speed", selection: $voiceSpeed) {
                         ForEach(TakeSettings.voiceSpeeds, id: \.self) { Text(String(format: "%.2f×", $0)).tag($0) }
                     }
-                    Picker("Cue Voice", selection: $cueVoiceID) {
-                        Text("Automatic").tag("")
-                        ForEach(cueOptions, id: \.identifier) { Text($0.displayName).tag($0.identifier) }
-                    }
                     if AVSpeechSynthesizer.personalVoiceAuthorizationStatus == .notDetermined {
                         Button("Allow Personal Voice") {
                             Task {
@@ -66,9 +63,6 @@ struct SettingsView: View {
                         }
                         .foregroundStyle(EarwigTheme.accent)
                     }
-                    Picker("Stage Directions", selection: $inlineDirections) {
-                        ForEach(InlineDirections.allCases, id: \.self) { Text($0.label).tag($0) }
-                    }
                 } header: {
                     Text("Voice")
                 } footer: {
@@ -76,6 +70,40 @@ struct SettingsView: View {
                         Text(problem)
                             .foregroundStyle(EarwigTheme.warning)
                     }
+                }
+                .listRowBackground(EarwigTheme.surface)
+
+                Section {
+                    Picker("Start", selection: $start) {
+                        ForEach(StartMode.allCases, id: \.self) { Text($0.label).foregroundStyle(EarwigTheme.text).tag($0) }
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
+                } header: {
+                    Text("Start")
+                } footer: {
+                    if let startFooter {
+                        Text(startFooter)
+                            .foregroundStyle(EarwigTheme.secondaryText)
+                    }
+                }
+                .listRowBackground(EarwigTheme.surface)
+
+                // Cues in one place, the cue voice too (plan 015, decision 14): the start card's
+                // Read Cues turns them on, and the footer says what the name doesn't.
+                Section {
+                    Picker("Cue Voice", selection: $cueVoiceID) {
+                        Text("Automatic").tag("")
+                        ForEach(cueOptions, id: \.identifier) { Text($0.displayName).tag($0.identifier) }
+                    }
+                    Picker("Hear Cues As", selection: $inlineDirections) {
+                        ForEach(InlineDirections.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
+                } header: {
+                    Text("Cues")
+                } footer: {
+                    Text("Cues at the top of a step are read before the take.")
+                        .foregroundStyle(EarwigTheme.secondaryText)
                 }
                 .listRowBackground(EarwigTheme.surface)
 
@@ -95,22 +123,6 @@ struct SettingsView: View {
                 } footer: {
                     Text("Both wait at phrase ends; Hybrid also speeds the voice up or down to keep the lead.")
                         .foregroundStyle(EarwigTheme.secondaryText)
-                }
-                .listRowBackground(EarwigTheme.surface)
-
-                Section {
-                    Picker("Start", selection: $start) {
-                        ForEach(StartMode.allCases, id: \.self) { Text($0.label).foregroundStyle(EarwigTheme.text).tag($0) }
-                    }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
-                } header: {
-                    Text("Start")
-                } footer: {
-                    if let startFooter {
-                        Text(startFooter)
-                            .foregroundStyle(EarwigTheme.secondaryText)
-                    }
                 }
                 .listRowBackground(EarwigTheme.surface)
 

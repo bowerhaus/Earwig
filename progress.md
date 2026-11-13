@@ -2,6 +2,6 @@
 
 Scratch state for the plan in flight. Overwritten at the start of a plan, emptied to a stub when it completes.
 
-**Status:** Plan 014 (Earwig Visits, the critter, #40) is complete, its Results in `plans/014-earwig-visits.md`, carried by the PR from branch `earwig-visits` (check with `gh pr view earwig-visits --json state`: `OPEN` means `main` does not carry it yet, `MERGED` means it does).
+**Status:** Plan 015 (Write and Edit Scripts, #43) is complete, its Results in `plans/015-script-editor.md`, carried by the PR from branch `script-editor` (check with `gh pr view script-editor --json state`: `OPEN` means `main` does not carry it yet, `MERGED` means it does).
 
-**Next:** plan 013, the App Store release (#37), on its own branch `app-store-release`. Its progress is in that branch's own `progress.md`, which supersedes this one there. The critter's default rate waits for a week of TestFlight use (#42).
+**Next:** plan 013, the App Store release (#37), on its own branch `app-store-release`; it touches the README, the PRD and CLAUDE.md, so whichever of 013 and 015 merges second rebases those. Plan 015's decision 13 changed the samples, so plan 013's App Store screenshots showing "SHOWS" need retaking. The black status bar on iOS 27 is its own task, outside both. Plan 015's two Cutaway issues are filed: bowerhaus/Cutaway#43 and #44.

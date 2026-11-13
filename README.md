@@ -177,7 +177,7 @@ Tap the gear on the Scripts screen.
 <p align="center">
   <img src="docs/screenshots/voice-take.png" alt="A take with the voice, its phrase lit just ahead of your line" width="250">&nbsp;&nbsp;
   <img src="docs/screenshots/finished.png" alt="A finished take, with Next Take and Done" width="250">&nbsp;&nbsp;
-  <img src="docs/screenshots/settings.png" alt="Settings: Voice, Start and Cues" width="250">
+  <img src="docs/screenshots/settings.png" alt="Settings: Start, Cues and Following" width="250">
 </p>
 
 ## Requirements

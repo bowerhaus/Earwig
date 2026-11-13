@@ -219,6 +219,14 @@ struct ScriptDetailView: View {
         .tint(EarwigTheme.surface)
     }
 
+    private static var isSimulator: Bool {
+        #if targetEnvironment(simulator)
+        true
+        #else
+        false
+        #endif
+    }
+
     /// The surface, with an accent bar down the leading edge of the start step.
     private func rowBackground(isStart: Bool) -> some View {
         HStack(spacing: 0) {
@@ -270,7 +278,9 @@ struct ScriptDetailView: View {
                 }
                 .buttonStyle(.borderless)
             }
-            if let voices = renderer.voices, !voices.presenterIsPreferred {
+            // Not in the simulator, which can't download voices, so its screenshots show the card
+            // as a phone with the voices does (plan 015).
+            if let voices = renderer.voices, !voices.presenterIsPreferred, !Self.isSimulator {
                 Text("\(VoiceCatalogue.preferredName) (Enhanced) isn't on this iPhone, so the voice is \(voices.presenter.displayName). \(VoiceCatalogue.downloadHint)")
                     .font(.footnote)
                     .foregroundStyle(EarwigTheme.caution)

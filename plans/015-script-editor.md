@@ -266,7 +266,7 @@ What already exists:
 
 ## Steps
 
-1. **The Cutaway issues.** With Andy's yes, file decision 9's two issues in `bowerhaus/Cutaway`, and link them here.
+1. **The Cutaway issues.** With Andy's yes, file decision 9's two issues in `bowerhaus/Cutaway`, and link them here. Filed 2026-11-13: bowerhaus/Cutaway#43 (square-bracket cues in `Says:` lines) and bowerhaus/Cutaway#44 (`script check` warns when a line no longer matches its source span).
 2. **The parser.** Decision 4's rules, parser version 3, `Direction.Kind.cue`, and the slate reading it.
    - Tests for:
      - `##` sections with blank lines inside;

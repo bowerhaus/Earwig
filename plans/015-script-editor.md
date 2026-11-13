@@ -324,7 +324,21 @@ What already exists:
 
 ## Results
 
-Not started.
+Device checks on Andy's iPhone 14 Pro, ending 2026-11-13. Verdicts are Andy's. All seven passed, after the changes below.
+
+1. **Dictating a new script: passed.** "New line", "new paragraph" and the punctuation dictation adds all work. What changed on the way:
+   - Step put the cursor after `## ` at first, and everything dictated became the step's name (review C4). It moved to the line under the heading, and later back after the `## `, with the line under the editor explaining (decision 2, amended).
+   - The capital after `#` and `##` (decision 2): the text view adds it as typed, and the keyboard is asked for a capital on every word of a heading's line. Asking only at a heading's start lost the capital while dictating. The console showed why: dictation rewrites its words using whichever capitals setting is current, and iOS 26 gives no sign that dictation is running. Cues get no capital.
+   - Title, Step and Cue moved from pills under the text to a glass capsule above the keyboard. The editor shows `#` and `##` faint, headings bold and cues in the cue colour.
+   - Edit starts the cursor at the end of the title line: the top broke the title when typing began, and the end of a long script scrolled away from it.
+2. **Editing on a shoot: passed.** The takes are kept, and the voice says the new words.
+3. **A cue at the top of a step: passed**, read with the slate. This led to decision 14: with Tones Only, Andy's default, a top cue had never been heard. Now it's read before the tones, and that passed on the phone too, with Settings in a take's order (decision 15).
+4. **Back to the Mac: passed.** AirDrop gives the `.md` file. Copy gives the stored text, a Cutaway script as valid Cutaway (pasted into Notes on the phone). Universal Clipboard didn't carry it to the Mac, nor text copied in Notes: Andy's devices, not Earwig.
+5. **The warning: passed.** Pasting Rosie's Walk over an edit made in Earwig asked first. A sample can't be used for this: a paste never replaces a sample, and adds a script of your own instead.
+6. **A sample edited and reset: passed.** The text is back and the takes are kept.
+7. **The buttons: passed.**
+
+Tests: 456 pass; SwiftLint clean; no warnings.
 
 ## Review pass — 2026-11-10
 
